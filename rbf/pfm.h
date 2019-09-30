@@ -39,6 +39,7 @@ public:
     unsigned readPageCounter;
     unsigned writePageCounter;
     unsigned appendPageCounter;
+    static const int pageOffset = 1;
 
     FileHandle();                                                       // Default constructor
     ~FileHandle();                                                      // Destructor
@@ -58,7 +59,7 @@ private:
     bool checkPageNum(int);
 
     std::fstream file;
-    static const int pageOffset = 1;
+    
 };
 
 #endif

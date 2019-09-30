@@ -25,8 +25,8 @@ RC PagedFileManager::createFile(const std::string &fileName) {
     else {
         file.clear();
         file.open(fileName, std::ios::out | std::ios::binary);
-        char* dummyPage = new char [PAGE_SIZE];
-        file.write(dummyPage,PAGE_SIZE);
+        char* dummyPage = new char [ FileHandle::pageOffset * PAGE_SIZE];
+        file.write(dummyPage,FileHandle::pageOffset * PAGE_SIZE);
         file.close();
         return 0;
     }
