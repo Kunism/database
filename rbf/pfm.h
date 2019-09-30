@@ -8,7 +8,9 @@ typedef unsigned char byte;
 #define PAGE_SIZE 4096
 
 #include <string>
+#include <cstring>
 #include <climits>
+#include <fstream>
 
 class FileHandle;
 
@@ -44,9 +46,19 @@ public:
     RC readPage(PageNum pageNum, void *data);                           // Get a specific page
     RC writePage(PageNum pageNum, const void *data);                    // Write a specific page
     RC appendPage(const void *data);                                    // Append a specific page
+
+    RC openFile(const std::string &fileName);
+    RC closeFile();
+    
     unsigned getNumberOfPages();                                        // Get the number of pages in the file
     RC collectCounterValues(unsigned &readPageCount, unsigned &writePageCount,
                             unsigned &appendPageCount);                 // Put current counter values into variables
+private:
+    
+    bool checkPageNum(int);
+
+    std::fstream file;
+    static const int pageOffset = 1;
 };
 
 #endif
