@@ -11,8 +11,11 @@ typedef unsigned char byte;
 #include <cstring>
 #include <climits>
 #include <fstream>
+#include <vector>
+#include <utility>
 
 class FileHandle;
+class HiddenPage;
 
 class PagedFileManager {
 public:
@@ -44,12 +47,12 @@ public:
     FileHandle();                                                       // Default constructor
     ~FileHandle();                                                      // Destructor
 
-    RC readPage(PageNum pageNum, void *data);                           // Get a specific page
+    RC readPage(PageNum pageNum, void *data);     // TODO: read datapage                      // Get a specific page
     RC writePage(PageNum pageNum, const void *data);                    // Write a specific page
     RC appendPage(const void *data);                                    // Append a specific page
 
-    RC openFile(const std::string &fileName);
-    RC closeFile();
+    RC openFile(const std::string &fileName);   // TODO: read hiddenpage
+    RC closeFile();                             // TODO: wirte hiddenpage
     
     unsigned getNumberOfPages();                                        // Get the number of pages in the file
     RC collectCounterValues(unsigned &readPageCount, unsigned &writePageCount,
@@ -59,7 +62,8 @@ private:
     bool checkPageNum(int);
 
     std::fstream file;
-    
+    //HiddenPage* hiddenPage;
+    //DataPage* currentpage;
 };
 
 #endif

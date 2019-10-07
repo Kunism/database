@@ -1,5 +1,5 @@
 #include "pfm.h"
-
+#include <iostream>
 PagedFileManager *PagedFileManager::_pf_manager = nullptr;
 
 PagedFileManager &PagedFileManager::instance() {
@@ -88,7 +88,7 @@ RC FileHandle::writePage(PageNum pageNum, const void *data) {
 
 RC FileHandle::appendPage(const void *data) {
     char* buffer = new char [PAGE_SIZE];
-    std::memcpy(buffer,data, PAGE_SIZE);
+    std::memcpy(buffer, data, PAGE_SIZE);
     file.seekp(0, std::ios_base::end);
     file.write(buffer, PAGE_SIZE);
     appendPageCounter++;
@@ -107,15 +107,12 @@ RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePage
     return 0;
 }
 
-RC FileHandle::openFile(const std::string &fileName)
-{
+RC FileHandle::openFile(const std::string &fileName) {
     file.open(fileName, std::ios::in | std::ios::out | std::ios::binary);
-    if( !file.is_open())
-    {
+    if( !file.is_open()) {
         return -1;
     }
-    else
-    {
+    else {
         // file >> readPageCounter;
         // file >> writePageCounter;
         // file >> appendPageCounter;
@@ -123,8 +120,7 @@ RC FileHandle::openFile(const std::string &fileName)
     }
 }
 
-RC FileHandle::closeFile()
-{
+RC FileHandle::closeFile() {
     file.seekp(0);
     file << readPageCounter;
     file << writePageCounter;
@@ -133,8 +129,7 @@ RC FileHandle::closeFile()
     return 0;
 }
 
-bool FileHandle::checkPageNum(int pageNum)
-{
+bool FileHandle::checkPageNum(int pageNum) {
     file.seekg(0, std::ios_base::end);
     auto fileEnd = file.tellg();
     auto pos = (pageOffset + pageNum) * PAGE_SIZE;
@@ -144,5 +139,20 @@ bool FileHandle::checkPageNum(int pageNum)
     else {
         return false;
     }
+}
+
+HiddenPage::HiddenPage() {
+    this->readPageCounter = 0;
+    this->writePageCounter = 0;
+    this->appendPageCounter = 0;
+    this->size = HIDDEN_PAGE_VAR_NUM * sizeof(unsigned);
+}
+
+HiddenPage::~HiddenPage() {
+
+}
+
+bool HiddenPage::isFull() {
+    return size > PAGE_SIZE;
 }
 
