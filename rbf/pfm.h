@@ -15,7 +15,6 @@ typedef unsigned char byte;
 #include <utility>
 
 class FileHandle;
-class HiddenPage;
 
 class PagedFileManager {
 public:
