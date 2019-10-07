@@ -37,9 +37,8 @@ RC RecordBasedFileManager::closeFile(FileHandle &fileHandle) {
     return pfm.closeFile(fileHandle);
 }
 
-RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
-                                        const void *data, RID &rid) {
-    
+RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,const void *data, RID &rid) {
+    return -1;    
 }
 
 RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
@@ -80,20 +79,29 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle, const std::vector<Attrib
 Record::Record(const std::vector<Attribute> &_descriptor, const void* _data, RID &_rid) {
     descriptor = _descriptor;
 
-    int size = _descriptor.size();
-    int indicatorSize = std::ceil((double)descriptor.size() /CHAR_BIT);
+    unsigned int size = _descriptor.size();
+    unsigned int indicatorSize = std::ceil((double)descriptor.size() /CHAR_BIT);
 
     nullIndicator = std::vector<bool> (indicatorSize * CHAR_BIT, 0);
 
     // create null indicator filed
-    void* bitMask = (unsigned char *) malloc(indicatorSize);
+    unsigned char* bitMask = (unsigned char *) malloc(indicatorSize);
     // extract null indicator
     memcpy(bitMask, _data, indicatorSize);
 
-    for(int i = 0 ; i < indicatorSize*CHAR_BIT; i++) {
-        ;
+    for(int i = 0 ; i < indicatorSize ; i++) {
+        for (int j = 0 ; i < CHAR_BIT ; i++) {
+            if( bitMask[i] >> (CHAR_BIT - 1 -i) & 1 ) {
+                nullIndicator[i * CHAR_BIT +j] = 1;
+            }
+            else {
+                nullIndicator[i * CHAR_BIT +j] = 0;
+            }
+        }
     }
 
+    recordData = _data + indicatorSize;
+    rid = _rid;
 
 }
 

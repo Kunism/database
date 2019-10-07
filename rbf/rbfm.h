@@ -7,6 +7,8 @@
 
 #include "pfm.h"
 
+class Record;
+
 // Record ID
 typedef struct {
     unsigned pageNum;    // page number
@@ -151,11 +153,10 @@ class Record {
 public:
     Record(const std::vector<Attribute> &_descriptor, const void* _data, RID &_rid);
 
-
     int size;
     std::vector<Attribute> descriptor;
     std::vector<bool> nullIndicator;  // TODO: VERY DANGEROUS !!??
-    void* recordData;
+    const void* recordData;
 
     RID rid;
 };
