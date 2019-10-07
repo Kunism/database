@@ -18,15 +18,17 @@ PagedFileManager &PagedFileManager::operator=(const PagedFileManager &) = defaul
 RC PagedFileManager::createFile(const std::string &fileName) {
     std::fstream file;
     file.open(fileName, std::ios::in | std::ios::binary);
-    
     if( file.is_open()) {
         return -1;
     }
     else {
         file.clear();
         file.open(fileName, std::ios::out | std::ios::binary);
-        char* dummyPage = new char [ FileHandle::pageOffset * PAGE_SIZE];
-        file.write(dummyPage,FileHandle::pageOffset * PAGE_SIZE);
+        HiddenPage hiddenPage;
+        //hiddenPage.writeHiddenPage(file);
+        char* buffer = new char [ FileHandle::pageOffset * PAGE_SIZE];
+        memcpy(buffer, (char*) &hiddenPage, sizeof(hiddenPage));
+        file.write(buffer,FileHandle::pageOffset * PAGE_SIZE);
         file.close();
         return 0;
     }
@@ -49,7 +51,7 @@ RC PagedFileManager::openFile(const std::string &fileName, FileHandle &fileHandl
 }
 
 RC PagedFileManager::closeFile(FileHandle &fileHandle) {
-    fileHandle.closeFile();
+    return fileHandle.closeFile();
 }
 
 FileHandle::FileHandle() {
@@ -96,8 +98,7 @@ RC FileHandle::appendPage(const void *data) {
 }
 
 unsigned FileHandle::getNumberOfPages() {
-    return appendPageCounter;
-    // TODO
+    return hiddenPage->pageNum;
 }
 
 RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
@@ -113,14 +114,14 @@ RC FileHandle::openFile(const std::string &fileName) {
         return -1;
     }
     else {
-        // file >> readPageCounter;
-        // file >> writePageCounter;
-        // file >> appendPageCounter;
+        hiddenPage = new HiddenPage();
+        hiddenPage->readHiddenPage(file);
         return 0;
     }
 }
 
 RC FileHandle::closeFile() {
+    //hiddenPage->writeHiddenPage()
     file.seekp(0);
     file << readPageCounter;
     file << writePageCounter;
@@ -141,3 +142,36 @@ bool FileHandle::checkPageNum(int pageNum) {
     }
 }
 
+HiddenPage::HiddenPage() {
+
+    this->readPageCounter = 0;
+    this->writePageCounter = 0;
+    this->appendPageCounter = 0;
+    //this->size = HIDDEN_PAGE_VAR_NUM * sizeof(unsigned);
+    this->pageNum = 0;
+}
+
+HiddenPage::~HiddenPage() {
+
+}
+
+void HiddenPage::readHiddenPage(std::fstream& file) {
+    hiddenPage = new HiddenPage();
+    file.read((char*)hiddenPage, sizeof(HiddenPage));
+    //std::cout << hiddenPage->readPageCounter << std::endl;
+}
+
+void HiddenPage::writeHiddenPage(std::fstream& file) {
+    std::cout << hiddenPage->appendPageCounter << std::endl;
+    std::cout << "1" << std::endl;
+    char* buffer = new char [ FileHandle::pageOffset * PAGE_SIZE];
+    std::cout << "2" << std::endl;
+    memcpy(buffer, (char*)&hiddenPage, sizeof(hiddenPage));
+    std::cout << "3" << std::endl;
+    file.write(buffer,FileHandle::pageOffset * PAGE_SIZE);
+    std::cout << "4" << std::endl;
+}
+
+//bool HiddenPage::isFull() {
+//    return size > PAGE_SIZE;
+//}

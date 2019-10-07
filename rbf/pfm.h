@@ -15,6 +15,9 @@ typedef unsigned char byte;
 #include <utility>
 
 class FileHandle;
+class HiddenPage;
+
+#define HIDDEN_PAGE_VAR_NUM 4
 
 class PagedFileManager {
 public:
@@ -61,8 +64,45 @@ private:
     bool checkPageNum(int);
 
     std::fstream file;
-    //HiddenPage* hiddenPage;
+    HiddenPage* hiddenPage;
     //DataPage* currentpage;
 };
 
+class HiddenPage {
+public:
+
+    unsigned readPageCounter;
+    unsigned writePageCounter;
+    unsigned appendPageCounter;
+
+    //unsigned size;
+    unsigned pageNum;
+    // unsigned pageNum;
+
+
+    HiddenPage();
+    ~HiddenPage();
+
+    void readHiddenPage(std::fstream& file);
+    void writeHiddenPage(std::fstream& file);
+    bool isFull();
+
+private:
+    HiddenPage * hiddenPage;
+};
+
+class DataPage {
+public:
+
+    DataPage();
+    ~DataPage();
+
+
+    // insertRecord();
+    // isFull();
+
+private:
+
+
+};
 #endif
