@@ -1,3 +1,4 @@
+#include <cmath>
 #include "rbfm.h"
 #include "pfm.h"
 
@@ -75,6 +76,27 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle, const std::vector<Attrib
                                 const std::vector<std::string> &attributeNames, RBFM_ScanIterator &rbfm_ScanIterator) {
     return -1;
 }
+
+Record::Record(const std::vector<Attribute> &_descriptor, const void* _data, RID &_rid) {
+    descriptor = _descriptor;
+
+    int size = _descriptor.size();
+    int indicatorSize = std::ceil((double)descriptor.size() /CHAR_BIT);
+
+    nullIndicator = std::vector<bool> (indicatorSize * CHAR_BIT, 0);
+
+    // create null indicator filed
+    void* bitMask = (unsigned char *) malloc(indicatorSize);
+    // extract null indicator
+    memcpy(bitMask, _data, indicatorSize);
+
+    for(int i = 0 ; i < indicatorSize*CHAR_BIT; i++) {
+        ;
+    }
+
+
+}
+
 
 
 

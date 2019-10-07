@@ -145,4 +145,21 @@ private:
     static RecordBasedFileManager *_rbf_manager;
 };
 
+// //    // Insert a record into a file
+//     RC insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor, const void *data, RID &rid);
+class Record {
+public:
+    Record(const std::vector<Attribute> &_descriptor, const void* _data, RID &_rid);
+
+
+    int size;
+    std::vector<Attribute> descriptor;
+    std::vector<bool> nullIndicator;  // TODO: VERY DANGEROUS !!??
+    void* recordData;
+
+    RID rid;
+};
+
+
+
 #endif
