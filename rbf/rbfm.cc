@@ -1,4 +1,5 @@
 #include "rbfm.h"
+#include "pfm.h"
 
 RecordBasedFileManager *RecordBasedFileManager::_rbf_manager = nullptr;
 
@@ -16,24 +17,28 @@ RecordBasedFileManager::RecordBasedFileManager(const RecordBasedFileManager &) =
 RecordBasedFileManager &RecordBasedFileManager::operator=(const RecordBasedFileManager &) = default;
 
 RC RecordBasedFileManager::createFile(const std::string &fileName) {
-    return -1;
+    PagedFileManager& pfm = PagedFileManager::instance();
+    return pfm.createFile(fileName);
 }
 
 RC RecordBasedFileManager::destroyFile(const std::string &fileName) {
-    return -1;
+    PagedFileManager& pfm = PagedFileManager::instance();
+    return pfm.destroyFile(fileName);
 }
 
 RC RecordBasedFileManager::openFile(const std::string &fileName, FileHandle &fileHandle) {
-    return -1;
+    PagedFileManager& pfm = PagedFileManager::instance();
+    return pfm.openFile(fileName,fileHandle);
 }
 
 RC RecordBasedFileManager::closeFile(FileHandle &fileHandle) {
-    return -1;
+    PagedFileManager& pfm = PagedFileManager::instance();
+    return pfm.closeFile(fileHandle);
 }
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                         const void *data, RID &rid) {
-    return -1;
+    
 }
 
 RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
@@ -41,12 +46,17 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
     return -1;
 }
 
-RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
-                                        const RID &rid) {
+RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescriptor, const void *data) {
     return -1;
 }
 
-RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescriptor, const void *data) {
+//////////////////////////////////////////////////////////////
+// PROJECT 1 TO HERE                                        //
+//////////////////////////////////////////////////////////////
+
+
+RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
+                                        const RID &rid) {
     return -1;
 }
 

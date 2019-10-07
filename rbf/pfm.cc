@@ -36,6 +36,7 @@ RC PagedFileManager::destroyFile(const std::string &fileName) {
     std::fstream file;
     file.open(fileName, std::ios::in | std::ios::binary);
     
+    // TODO check the statment valid
     if( !file.is_open() || remove(fileName.c_str()) != 0) {
         return -1;
     }
@@ -49,7 +50,7 @@ RC PagedFileManager::openFile(const std::string &fileName, FileHandle &fileHandl
 }
 
 RC PagedFileManager::closeFile(FileHandle &fileHandle) {
-    fileHandle.closeFile();
+    return fileHandle.closeFile();
 }
 
 FileHandle::FileHandle() {
