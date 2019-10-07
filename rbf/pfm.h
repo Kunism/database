@@ -44,7 +44,7 @@ public:
     unsigned readPageCounter;
     unsigned writePageCounter;
     unsigned appendPageCounter;
-    static const int pageOffset = 1;
+    static const int PAGE_OFFSET = 1;
 
     FileHandle();                                                       // Default constructor
     ~FileHandle();                                                      // Destructor
@@ -61,22 +61,21 @@ public:
                             unsigned &appendPageCount);                 // Put current counter values into variables
 private:
     
-    bool checkPageNum(int);
+    //bool checkPageNum(int);
 
     std::fstream file;
     HiddenPage* hiddenPage;
     //DataPage* currentpage;
 };
 
+enum counter {READ_PAGE_COUNTER, WRITE_PAGE_COUNTER, APPEND_PAGE_COUNTER, PAGE_NUM};
+
 class HiddenPage {
 public:
-
-    unsigned readPageCounter;
-    unsigned writePageCounter;
-    unsigned appendPageCounter;
+    unsigned var[HIDDEN_PAGE_VAR_NUM];
 
     //unsigned size;
-    unsigned pageNum;
+
     // unsigned pageNum;
 
 
@@ -85,15 +84,18 @@ public:
 
     void readHiddenPage(std::fstream& file);
     void writeHiddenPage(std::fstream& file);
-    bool isFull();
 
 private:
-    HiddenPage * hiddenPage;
+    //HiddenPage * hiddenPage;
 };
 
 class DataPage {
 public:
-
+//    unsigned a;
+//    unsigned b;
+//
+//    Record readRecord(RID);
+//    RID writeRoecord(Record);
     DataPage();
     ~DataPage();
 
