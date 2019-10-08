@@ -13,11 +13,14 @@ typedef unsigned char byte;
 #include <fstream>
 #include <vector>
 #include <utility>
+#include "Record.h"
+#include "rbfm.h"
 
 class FileHandle;
 class HiddenPage;
 
 #define HIDDEN_PAGE_VAR_NUM 4
+#define DATA_PAGE_VAR_NUM 3
 
 class PagedFileManager {
 public:
@@ -44,7 +47,7 @@ public:
     unsigned readPageCounter;
     unsigned writePageCounter;
     unsigned appendPageCounter;
-    static const int pageOffset = 1;
+    static const int PAGE_OFFSET = 1;
 
     FileHandle();                                                       // Default constructor
     ~FileHandle();                                                      // Destructor
@@ -59,24 +62,24 @@ public:
     unsigned getNumberOfPages();                                        // Get the number of pages in the file
     RC collectCounterValues(unsigned &readPageCount, unsigned &writePageCount,
                             unsigned &appendPageCount);                 // Put current counter values into variables
+
 private:
     
-    bool checkPageNum(int);
+    //bool checkPageNum(int);
 
     std::fstream file;
     HiddenPage* hiddenPage;
     //DataPage* currentpage;
 };
 
+enum counter {READ_PAGE_COUNTER, WRITE_PAGE_COUNTER, APPEND_PAGE_COUNTER, PAGE_NUM};
+
 class HiddenPage {
 public:
-
-    unsigned readPageCounter;
-    unsigned writePageCounter;
-    unsigned appendPageCounter;
+    unsigned var[HIDDEN_PAGE_VAR_NUM];
 
     //unsigned size;
-    unsigned pageNum;
+
     // unsigned pageNum;
 
 
@@ -85,24 +88,28 @@ public:
 
     void readHiddenPage(std::fstream& file);
     void writeHiddenPage(std::fstream& file);
-    bool isFull();
 
 private:
-    HiddenPage * hiddenPage;
+    //HiddenPage * hiddenPage;
 };
+
+enum dataPageVar {HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM};
 
 class DataPage {
 public:
 
-    DataPage();
+    Record readRecord(RID);
+    RID writeRoecord(Record record, FileHandle fileHandle, unsigned availablePage);
+    unsigned getFreeSpaceSize();
+
+    DataPage(void* data);
     ~DataPage();
 
-
-    // insertRecord();
-    // isFull();
+    unsigned var[DATA_PAGE_VAR_NUM];
+    std::pair<uint16_t,uint16_t>* pageHeader;
 
 private:
-
+    void* page;
 
 };
 #endif
