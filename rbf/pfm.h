@@ -13,11 +13,14 @@ typedef unsigned char byte;
 #include <fstream>
 #include <vector>
 #include <utility>
+#include "Record.h"
+#include "rbfm.h"
 
 class FileHandle;
 class HiddenPage;
 
 #define HIDDEN_PAGE_VAR_NUM 4
+#define DATA_PAGE_VAR_NUM 3
 
 class PagedFileManager {
 public:
@@ -59,6 +62,7 @@ public:
     unsigned getNumberOfPages();                                        // Get the number of pages in the file
     RC collectCounterValues(unsigned &readPageCount, unsigned &writePageCount,
                             unsigned &appendPageCount);                 // Put current counter values into variables
+
 private:
     
     //bool checkPageNum(int);
@@ -89,22 +93,23 @@ private:
     //HiddenPage * hiddenPage;
 };
 
+enum dataPageVar {HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM};
+
 class DataPage {
 public:
-//    unsigned a;
-//    unsigned b;
-//
-//    Record readRecord(RID);
-//    RID writeRoecord(Record);
-    DataPage();
+
+    Record readRecord(RID);
+    RID writeRoecord(Record record, FileHandle fileHandle, unsigned availablePage);
+    unsigned getFreeSpaceSize();
+
+    DataPage(void* data);
     ~DataPage();
 
-
-    // insertRecord();
-    // isFull();
+    unsigned var[DATA_PAGE_VAR_NUM];
+    std::pair<uint16_t,uint16_t>* pageHeader;
 
 private:
-
+    void* page;
 
 };
 #endif

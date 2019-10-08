@@ -1,4 +1,6 @@
 #include "pfm.h"
+#include "Record.h"
+#include "rbfm.h"
 #include <iostream>
 PagedFileManager *PagedFileManager::_pf_manager = nullptr;
 
@@ -26,9 +28,6 @@ RC PagedFileManager::createFile(const std::string &fileName) {
         file.open(fileName, std::ios::out | std::ios::binary);
         HiddenPage hiddenPage;
         hiddenPage.writeHiddenPage(file);
-//        char* buffer = new char [FileHandle::PAGE_OFFSET * PAGE_SIZE];
-//        memcpy(buffer, (char*) &hiddenPage, sizeof(hiddenPage));
-//        file.write(buffer, FileHandle::PAGE_OFFSET * PAGE_SIZE);
         file.close();
         return 0;
     }
@@ -130,9 +129,9 @@ RC FileHandle::closeFile() {
 
 HiddenPage::HiddenPage() {
 
-    var[READ_PAGE_COUNTER] = 101;
-    var[WRITE_PAGE_COUNTER] = 102;
-    var[APPEND_PAGE_COUNTER] = 103;
+    var[READ_PAGE_COUNTER] = 0;
+    var[WRITE_PAGE_COUNTER] = 0;
+    var[APPEND_PAGE_COUNTER] = 0;
     var[PAGE_NUM] = 0;
 }
 
@@ -163,6 +162,65 @@ void HiddenPage::writeHiddenPage(std::fstream& file) {
 
 }
 
-//bool HiddenPage::isFull() {
-//    return size > PAGE_SIZE;
-//}
+DataPage::DataPage(void* data) {
+    memcpy(&var, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+
+//    char* varBuffer = new char [sizeof(unsigned) * DATA_PAGE_VAR_NUM];
+//    memcpy(varBuffer, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+//
+//    var[HEADER_OFFSET_FROM_END] = ((unsigned*)varBuffer)[HEADER_OFFSET_FROM_END];
+//    var[RECORD_OFFSET_FROM_BEGIN] = ((unsigned*)varBuffer)[RECORD_OFFSET_FROM_BEGIN];
+//    var[SLOT_NUM] = ((unsigned*)varBuffer)[SLOT_NUM];
+
+//    delete[](varBuffer);
+
+    memcpy(&pageHeader, (char*)data, sizeof(std::pair<unsigned, unsigned>) * var[SLOT_NUM]);
+
+//    char* headerBuffer = new char [sizeof(std::pair<unsigned, unsigned>) * var[SLOT_NUM]];
+//    memcpy(headerBuffer, (char*)data, sizeof(std::pair<unsigned, unsigned>) * var[SLOT_NUM]);
+    page = data;
+}
+
+DataPage::~DataPage() {
+
+}
+
+RID DataPage::writeRoecord(Record record, FileHandle fileHandle, unsigned availablePage) {
+
+    std::pair<unsigned,unsigned> newRecordHeader;
+
+    std::cout << record.recordSize << std::endl;
+    unsigned offset = 0;
+    char* newRecordContent = new char [record.recordSize];
+
+    memcpy(newRecordContent + offset, &record.numOfField, record.indexSize);
+    offset += record.indexSize;
+
+    memcpy(newRecordContent + offset, record.nullData, record.indicatorSize);
+    offset += record.indicatorSize;
+
+    memcpy(newRecordContent + offset, &record.indexData, record.indexSize * record.numOfField);
+    offset += record.indexSize * record.numOfField;
+
+    memcpy(newRecordContent + offset, &record.recordData, record.dataSize);
+
+    std::cout << offset << std::endl;
+
+    memcpy((char*)page + var[RECORD_OFFSET_FROM_BEGIN], newRecordContent, record.recordSize);
+    var[RECORD_OFFSET_FROM_BEGIN] += record.recordSize;
+
+    memcpy((char*)page + PAGE_SIZE - var[HEADER_OFFSET_FROM_END] - sizeof(std::pair<uint16_t, uint16_t>),
+            pageHeader + var[SLOT_NUM] - 1,
+            sizeof(std::pair<uint16_t, uint16_t>));
+
+    fileHandle.writePage(availablePage, page);
+}
+
+Record DataPage::readRecord(RID) {
+
+}
+
+unsigned DataPage::getFreeSpaceSize() {
+    return PAGE_SIZE - var[RECORD_OFFSET_FROM_BEGIN] - var[HEADER_OFFSET_FROM_END];
+}
+
