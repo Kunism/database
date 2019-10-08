@@ -188,7 +188,9 @@ enum dataPageVar {HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM};
 class DataPage {
 public:
 
+
     void readRecord(FileHandle& fileHandle, const RID& rid, void* data);
+
     void writeRecord(Record record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
     unsigned getFreeSpaceSize();
 
