@@ -79,10 +79,10 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle, const std::vector<Attrib
 Record::Record(const std::vector<Attribute> &_descriptor, const void* _data, RID &_rid) {
     
     this->descriptor = _descriptor;
-    this->numOfFeild = _descriptor.size();
+    this->numOfField = _descriptor.size();
     this->indicatorSize = std::ceil((double)descriptor.size() /CHAR_BIT);
     
-    this->indexData = new uint16_t [this->numOfFeild];
+    this->indexData = new uint16_t [this->numOfField];
     this->nullData = new uint8_t [indicatorSize];
     memcpy(nullData, _data, indicatorSize);
     convertData(_data);
@@ -98,10 +98,10 @@ bool Record::isNull(int fieldNum) {
 //TypeInt = 0, TypeReal, TypeVarChar
 void Record::convertData(const void* _data) {
     int size = 0;
-    uint16_t byteOffset = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfFeild; 
+    uint16_t byteOffset = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField; 
     // // treat it as byte and move to data part
     const uint8_t* pos = reinterpret_cast<const uint8_t*>(_data) + this->indicatorSize; 
-    for(int i = 0 ; i < this->numOfFeild ; i++ ) {
+    for(int i = 0 ; i < this->numOfField ; i++ ) {
         if ((this->descriptor[i].type == TypeInt   || 
              this->descriptor[i].type == TypeReal) && 
              !isNull(i) ) {
@@ -119,6 +119,8 @@ void Record::convertData(const void* _data) {
     }
     this->recordData = new uint8_t [size];
     memcpy(recordData,_data+this->indicatorSize,size);
+    this->dataSize = size;
+    this->recordSize = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField + this->dataSize;
                          
 }
 

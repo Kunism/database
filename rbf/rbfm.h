@@ -161,9 +161,11 @@ public:
     // total rocord size in bytes (size + null part + index part + data part)
     unsigned int recordSize;
     // number of fields = descriptor.size();
-    unsigned int numOfFeild; 
+    unsigned int numOfField; 
     // null indicator size (bytes) 
     unsigned int indicatorSize;
+    // data part size
+    unsigned int dataSize;
     std::vector<Attribute> descriptor;
     
     
@@ -174,7 +176,6 @@ public:
     // data begin
     uint8_t* recordData;
 
-private:
     // each index size used 2 byte: uint16_t:  65535
     const static unsigned int indexSize = 2;
     
