@@ -262,10 +262,10 @@ void DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned avail
     memcpy(newRecordContent + offset, record.nullData, record.indicatorSize);
     offset += record.indicatorSize;
 
-    memcpy(newRecordContent + offset, &record.indexData, record.indexSize * record.numOfField);
+    memcpy(newRecordContent + offset, record.indexData, record.indexSize * record.numOfField);
     offset += record.indexSize * record.numOfField;
 
-    memcpy(newRecordContent + offset, &record.recordData, record.dataSize);
+    memcpy(newRecordContent + offset, record.recordData, record.dataSize);
     offset += record.dataSize;
 
 
@@ -304,13 +304,13 @@ void DataPage::readRecord(FileHandle& fileHandle, const RID& rid, void* data) {
     uint16_t lenValue = indexPair->second;
     // interpret index
     uint8_t* recordPos =  reinterpret_cast<uint8_t*>(page) + indexValue;
-    uint16_t numOfField = reinterpret_cast<uint16_t>(recordPos);
+    uint16_t numOfField = recordPos[1] << 8 | recordPos[0];
     uint8_t* nullPos = recordPos + Record::indexSize;
     uint8_t* dataPos = nullPos + Record::indexSize * numOfField;
     uint16_t indicatorSize = ceil(static_cast<double>(numOfField)/CHAR_BIT);
 
     memcpy(data, nullPos, indicatorSize);
-    memcpy(data+indicatorSize, dataPos, lenValue-Record::indexSize * (1+numOfField));
+    memcpy((char*)data+indicatorSize, dataPos, lenValue-Record::indexSize * (1+numOfField));
 
 //     memcpy(data, (char*)page + pageHeader[rid.slotNum].first, pageHeader[rid.slotNum].second * sizeof(uint16_t));
 }
