@@ -174,6 +174,13 @@ bool Record::isNull(int fieldNum) {
     return reinterpret_cast<uint8_t*>(this->nullData)[byteOffset] >> (7 - bitOffset) & 1;
 }
 
+Record::~Record() {
+    delete[] this->indexData;
+    delete[] this->nullData;
+    delete[] this->recordData;
+}
+
+
 //TypeInt = 0, TypeReal, TypeVarChar
 void Record::convertData(const void* _data) {
     int size = 0;
