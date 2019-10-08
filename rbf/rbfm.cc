@@ -73,7 +73,7 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
         memcpy(data,record.recordData,record.dataSize);
         return 0;
     }
-    return -1;
+    return 0;
 }
 
 RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescriptor, const void *data) {
@@ -85,11 +85,12 @@ RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescr
     for(int i =  0 ; i < recordDescriptor.size() ; i++) {
         // std::cerr << "No. " <<  i << std::endl;
         std::cout << recordDescriptor[i].name << ' ';
+
         if(record.isNull(i)) {
             std::cout << "NULL ";
         }
         else {
-            uint16_t byteOffset = record.indexData[i] - Record::indexSize + record.indicatorSize + Record::indexSize * record.numOfField;
+            uint16_t byteOffset = Record::indexSize + record.indicatorSize + Record::indexSize * record.numOfField;
             uint16_t diff = record.indexData[i] - byteOffset;
             const uint8_t* pos = reinterpret_cast<const uint8_t*>(data);
             pos += diff;
@@ -98,22 +99,28 @@ RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescr
             uint32_t value = pos[0] | (pos[1] << 8) | (pos[2] << 16) | (pos[3] << 24);
             switch (recordDescriptor[i].type) {
                 case TypeInt: {
-                    std::cout << static_cast<int>(value) << std::endl;
+                    std::cout << static_cast<int>(value);
                     break;
                 }
                 case TypeReal: {
-                    std::cout << static_cast<double>(value) << std::endl;
+                    std::cout << static_cast<double>(value);
                     break;
                 }
                 case TypeVarChar: {
                     char* s = new char [static_cast<int>(value) + 1];
                     memcpy(s,pos+4,static_cast<int>(value));
                     s[static_cast<int>(value)] = '\0';
-                    std::cout << s << std::endl;
+                    std::cout << s;
                     break;
                 }
             }
         }
+        if(i != recordDescriptor.size() -1) {
+            std::cout << ' ';
+        } else {
+            std::cout << std::endl;
+        }
+
     }
 
     return 0;
@@ -217,11 +224,10 @@ DataPage::~DataPage() {
 
 }
 
-RID DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned availablePage, RID &rid ) {
+void DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned availablePage, RID &rid ) {
 
     std::pair<unsigned,unsigned> newRecordHeader;
 
-    std::cout << record.recordSize << std::endl;
     unsigned offset = 0;
     char* newRecordContent = new char [record.recordSize];
 
@@ -236,7 +242,6 @@ RID DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned availa
 
     memcpy(newRecordContent + offset, &record.recordData, record.dataSize);
 
-    std::cout << offset << std::endl;
 
     memcpy((char*)page + var[RECORD_OFFSET_FROM_BEGIN], newRecordContent, record.recordSize);
     var[RECORD_OFFSET_FROM_BEGIN] += record.recordSize;

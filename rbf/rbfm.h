@@ -189,7 +189,7 @@ class DataPage {
 public:
 
     Record readRecord(RID);
-    RID writeRecord(Record record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
+    void writeRecord(Record record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
     unsigned getFreeSpaceSize();
 
     DataPage(void* data);
