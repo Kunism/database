@@ -38,7 +38,7 @@ RC RecordBasedFileManager::closeFile(FileHandle &fileHandle) {
 }
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,const void *data, RID &rid) {
-    return -1;    
+   return 0;
 }
 
 RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
@@ -77,33 +77,53 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle, const std::vector<Attrib
 }
 
 Record::Record(const std::vector<Attribute> &_descriptor, const void* _data, RID &_rid) {
-    descriptor = _descriptor;
+    
+    this->descriptor = _descriptor;
+    this->numOfFeild = _descriptor.size();
+    this->indicatorSize = std::ceil((double)descriptor.size() /CHAR_BIT);
+    
+    this->indexData = new uint16_t [this->numOfFeild];
+    this->nullData = new uint8_t [indicatorSize];
+    memcpy(nullData, _data, indicatorSize);
+    convertData(_data);
+}
 
-    unsigned int size = _descriptor.size();
-    unsigned int indicatorSize = std::ceil((double)descriptor.size() /CHAR_BIT);
+bool Record::isNull(int fieldNum) {
+    int byteOffset = fieldNum / CHAR_BIT;
+    int bitOffset = fieldNum % CHAR_BIT;
 
-    nullIndicator = std::vector<bool> (indicatorSize * CHAR_BIT, 0);
+    return reinterpret_cast<uint8_t*>(this->nullData)[byteOffset] >> (7 - bitOffset) & 1;
+}
 
-    // create null indicator filed
-    unsigned char* bitMask = (unsigned char *) malloc(indicatorSize);
-    // extract null indicator
-    memcpy(bitMask, _data, indicatorSize);
-
-    for(int i = 0 ; i < indicatorSize ; i++) {
-        for (int j = 0 ; i < CHAR_BIT ; i++) {
-            if( bitMask[i] >> (CHAR_BIT - 1 -i) & 1 ) {
-                nullIndicator[i * CHAR_BIT +j] = 1;
-            }
-            else {
-                nullIndicator[i * CHAR_BIT +j] = 0;
-            }
+//TypeInt = 0, TypeReal, TypeVarChar
+void Record::convertData(const void* _data) {
+    int size = 0;
+    uint16_t byteOffset = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfFeild; 
+    // // treat it as byte and move to data part
+    const uint8_t* pos = reinterpret_cast<const uint8_t*>(_data) + this->indicatorSize; 
+    for(int i = 0 ; i < this->numOfFeild ; i++ ) {
+        if ((this->descriptor[i].type == TypeInt   || 
+             this->descriptor[i].type == TypeReal) && 
+             !isNull(i) ) {
+            pos += 4;
+            size += 4;
+            indexData[i] = byteOffset + size;
+        }
+        else if (this->descriptor[i].type == TypeVarChar) {
+            // byte to int
+            uint32_t varCharSize = pos[0] | (pos[1] << 8) | (pos[2] << 16) | (pos[3] << 24);
+            pos += (4 + varCharSize);
+            size += (4 + varCharSize);
+            indexData[i] = byteOffset + size;
         }
     }
-
-    recordData = _data + indicatorSize;
-    rid = _rid;
-
+    this->recordData = new uint8_t [size];
+    memcpy(recordData,_data+this->indicatorSize,size);
+                         
 }
+
+
+
 
 
 

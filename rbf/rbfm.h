@@ -147,18 +147,37 @@ private:
     static RecordBasedFileManager *_rbf_manager;
 };
 
-// //    // Insert a record into a file
-//     RC insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor, const void *data, RID &rid);
+
 class Record {
 public:
     Record(const std::vector<Attribute> &_descriptor, const void* _data, RID &_rid);
 
-    int size;
-    std::vector<Attribute> descriptor;
-    std::vector<bool> nullIndicator;  // TODO: VERY DANGEROUS !!??
-    const void* recordData;
-
+    bool isNull(int fieldNum);
+    // convert Raw data to void*
+    void convertData(const void* _data);
+    
+    // Record ID
     RID rid;
+    // total rocord size in bytes (size + null part + index part + data part)
+    unsigned int recordSize;
+    // number of fields = descriptor.size();
+    unsigned int numOfFeild; 
+    // null indicator size (bytes) 
+    unsigned int indicatorSize;
+    std::vector<Attribute> descriptor;
+    
+    
+    // null indicator
+    uint8_t* nullData;
+    // index begin
+    uint16_t* indexData;
+    // data begin
+    uint8_t* recordData;
+
+private:
+    // each index size used 2 byte: uint16_t:  65535
+    const static unsigned int indexSize = 2;
+    
 };
 
 
