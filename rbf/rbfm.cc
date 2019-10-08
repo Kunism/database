@@ -1,4 +1,5 @@
 #include <cmath>
+#include <iostream>
 #include "rbfm.h"
 #include "pfm.h"
 
@@ -118,13 +119,73 @@ void Record::convertData(const void* _data) {
         }
     }
     this->recordData = new uint8_t [size];
-    memcpy(recordData,_data+this->indicatorSize,size);
+    memcpy(recordData,(char*)_data+this->indicatorSize,size);
     this->dataSize = size;
     this->recordSize = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField + this->dataSize;
                          
 }
 
+DataPage::DataPage(void* data) {
+    memcpy(&var, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
 
+//    char* varBuffer = new char [sizeof(unsigned) * DATA_PAGE_VAR_NUM];
+//    memcpy(varBuffer, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+//
+//    var[HEADER_OFFSET_FROM_END] = ((unsigned*)varBuffer)[HEADER_OFFSET_FROM_END];
+//    var[RECORD_OFFSET_FROM_BEGIN] = ((unsigned*)varBuffer)[RECORD_OFFSET_FROM_BEGIN];
+//    var[SLOT_NUM] = ((unsigned*)varBuffer)[SLOT_NUM];
+
+//    delete[](varBuffer);
+
+    memcpy(&pageHeader, (char*)data, sizeof(std::pair<unsigned, unsigned>) * var[SLOT_NUM]);
+
+//    char* headerBuffer = new char [sizeof(std::pair<unsigned, unsigned>) * var[SLOT_NUM]];
+//    memcpy(headerBuffer, (char*)data, sizeof(std::pair<unsigned, unsigned>) * var[SLOT_NUM]);
+    page = data;
+}
+
+DataPage::~DataPage() {
+
+}
+
+RID DataPage::writeRoecord(Record record, FileHandle fileHandle, unsigned availablePage) {
+
+    std::pair<unsigned,unsigned> newRecordHeader;
+
+    std::cout << record.recordSize << std::endl;
+    unsigned offset = 0;
+    char* newRecordContent = new char [record.recordSize];
+
+    memcpy(newRecordContent + offset, &record.numOfField, record.indexSize);
+    offset += record.indexSize;
+
+    memcpy(newRecordContent + offset, record.nullData, record.indicatorSize);
+    offset += record.indicatorSize;
+
+    memcpy(newRecordContent + offset, &record.indexData, record.indexSize * record.numOfField);
+    offset += record.indexSize * record.numOfField;
+
+    memcpy(newRecordContent + offset, &record.recordData, record.dataSize);
+
+    std::cout << offset << std::endl;
+
+    memcpy((char*)page + var[RECORD_OFFSET_FROM_BEGIN], newRecordContent, record.recordSize);
+    var[RECORD_OFFSET_FROM_BEGIN] += record.recordSize;
+
+    memcpy((char*)page + PAGE_SIZE - var[HEADER_OFFSET_FROM_END] - sizeof(std::pair<uint16_t, uint16_t>),
+           pageHeader + var[SLOT_NUM] - 1,
+           sizeof(std::pair<uint16_t, uint16_t>));
+
+    fileHandle.writePage(availablePage, page);
+}
+
+Record DataPage::readRecord(RID) {
+
+}
+
+unsigned DataPage::getFreeSpaceSize() {
+    return PAGE_SIZE - var[RECORD_OFFSET_FROM_BEGIN] - var[HEADER_OFFSET_FROM_END];
+}
 
 
 

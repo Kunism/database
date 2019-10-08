@@ -13,7 +13,7 @@ typedef unsigned char byte;
 #include <fstream>
 #include <vector>
 #include <utility>
-#include "rbfm.h"
+
 
 class FileHandle;
 class HiddenPage;
@@ -90,25 +90,5 @@ public:
 
 private:
     //HiddenPage * hiddenPage;
-};
-
-enum dataPageVar {HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM};
-
-class DataPage {
-public:
-
-    Record readRecord(RID);
-    RID writeRoecord(Record record, FileHandle fileHandle, unsigned availablePage);
-    unsigned getFreeSpaceSize();
-
-    DataPage(void* data);
-    ~DataPage();
-
-    unsigned var[DATA_PAGE_VAR_NUM];
-    std::pair<uint16_t,uint16_t>* pageHeader;
-
-private:
-    void* page;
-
 };
 #endif
