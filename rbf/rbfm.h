@@ -159,13 +159,13 @@ public:
     // Record ID
     RID rid;
     // total rocord size in bytes (size + null part + index part + data part)
-    unsigned int recordSize;
+    uint16_t recordSize;
     // number of fields = descriptor.size();
-    unsigned int numOfField; 
+    uint16_t numOfField; 
     // null indicator size (bytes) 
-    unsigned int indicatorSize;
+    uint16_t indicatorSize;
     // data part size
-    unsigned int dataSize;
+    uint16_t dataSize;
     std::vector<Attribute> descriptor;
     
     
