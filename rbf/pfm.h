@@ -13,7 +13,6 @@ typedef unsigned char byte;
 #include <fstream>
 #include <vector>
 #include <utility>
-#include "Record.h"
 #include "rbfm.h"
 
 class FileHandle;
