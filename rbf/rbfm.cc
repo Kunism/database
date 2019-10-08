@@ -295,7 +295,24 @@ void DataPage::readRecord(FileHandle& fileHandle, const RID& rid, void* data) {
 //    char* buffer = new char [];
 //    fileHandle.readPage(rid.pageNum - 1, buffer);
     //void* buf = new char [pageHeader[rid.slotNum].second * sizeof(uint16_t)];
-    memcpy(data, (char*)page + pageHeader[rid.slotNum].first, pageHeader[rid.slotNum].second * sizeof(uint16_t));
+    void* indexPos = reinterpret_cast<uint8_t*>(page) + PAGE_SIZE -                 // end of PAGE file 
+                     sizeof(unsigned) * DATA_PAGE_VAR_NUM  -                        // metadata
+                     (rid.slotNum + 1 ) * sizeof(std::pair<unsigned, unsigned>);    // No. i index Offset;
+    // get position of head 
+    std::pair<uint16_t,uint16_t>* indexPair = reinterpret_cast<std::pair<uint16_t,uint16_t>*>(indexPos);
+    uint16_t indexValue = indexPair->first;
+    uint16_t lenValue = indexPair->second;
+    // interpret index
+    uint8_t* recordPos =  reinterpret_cast<uint8_t*>(page) + indexValue;
+    uint16_t numOfField = reinterpret_cast<uint16_t>(recordPos);
+    uint8_t* nullPos = recordPos + Record::indexSize;
+    uint8_t* dataPos = nullPos + Record::indexSize * numOfField;
+    uint16_t indicatorSize = ceil(static_cast<double>(numOfField)/CHAR_BIT);
+
+    memcpy(data, nullPos, indicatorSize);
+    memcpy(data+indicatorSize, dataPos, lenValue-Record::indexSize * (1+numOfField));
+
+//     memcpy(data, (char*)page + pageHeader[rid.slotNum].first, pageHeader[rid.slotNum].second * sizeof(uint16_t));
 }
 
 unsigned DataPage::getFreeSpaceSize() {
