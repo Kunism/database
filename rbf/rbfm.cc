@@ -39,8 +39,16 @@ RC RecordBasedFileManager::closeFile(FileHandle &fileHandle) {
 }
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,const void *data, RID &rid) {
-   Record record(recordDescriptor, data, rid);
-   
+    Record record(recordDescriptor, data, rid);
+    std::cout << "1 page num: " << rid.pageNum << std::endl;
+
+
+    if(fileHandle.getNumberOfPages() == 0) {
+        void* buf = new char [PAGE_SIZE];
+        unsigned var[3] = {sizeof(unsigned) * 3, 0, 0};
+        memcpy((char*)buf + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+        fileHandle.appendPage(buf);
+    }
     int lastPageNum = fileHandle.getNumberOfPages()-1;
     void* pageData = new uint8_t [PAGE_SIZE];
     fileHandle.readPage(lastPageNum,pageData);
@@ -48,6 +56,7 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vecto
     if( record.recordSize <= page.getFreeSpaceSize()) {
         page.writeRecord(record,fileHandle,lastPageNum, rid);
         record.rid = rid;
+        std::cout << "2 page num: " << rid.pageNum << std::endl;
         return 0;
     }
     else {
@@ -57,6 +66,7 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vecto
             if( record.recordSize <= page.getFreeSpaceSize()) {
                 page.writeRecord(record,fileHandle,lastPageNum, rid);
                 record.rid = rid;
+                std::cout << "3 page num: " << rid.pageNum << std::endl;
                 return 0;
             }
         }
@@ -67,6 +77,7 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vecto
 RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                       const RID &rid, void *data) {
     void* pageData = new uint8_t [PAGE_SIZE];
+    std::cout << "Page num: " << rid.pageNum << std::endl;
     if(fileHandle.readPage(rid.pageNum,pageData) == 0) {
         DataPage dataPage(pageData);
         //Record record = dataPage.readRecord(rid);
@@ -75,7 +86,7 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
         //memcpy(data,record.recordData,record.dataSize);
         return 0;
     }
-    return 0;
+    return -1;
 }
 
 RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescriptor, const void *data) {
@@ -276,7 +287,7 @@ void DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned avail
     var[HEADER_OFFSET_FROM_END] -= sizeof(std::pair<uint16_t, uint16_t>);
 
     fileHandle.writePage(availablePage, page);
-    
+    std::cout << "availalepage: " << availablePage << std::endl;
     var[SLOT_NUM]++;
     rid = {availablePage,var[SLOT_NUM]};
 }
