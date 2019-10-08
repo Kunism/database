@@ -69,8 +69,10 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
     void* pageData = new uint8_t [PAGE_SIZE];
     if(fileHandle.readPage(rid.pageNum,pageData) == 0) {
         DataPage dataPage(pageData);
-        Record record = dataPage.readRecord(rid);
-        memcpy(data,record.recordData,record.dataSize);
+        //Record record = dataPage.readRecord(rid);
+        //Record record(recordDescriptor, , rid);
+        dataPage.readRecord(fileHandle, rid, data);
+        //memcpy(data,record.recordData,record.dataSize);
         return 0;
     }
     return -1;
@@ -206,7 +208,9 @@ DataPage::DataPage(void* data) {
 
 //    delete[](varBuffer);
 
-    memcpy(&pageHeader, (char*)data, sizeof(std::pair<unsigned, unsigned>) * var[SLOT_NUM]);
+    pageHeader = new std::pair<uint16_t , uint16_t> [var[SLOT_NUM]];
+    memcpy(&pageHeader, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM - sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM],
+            sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM]);
 
 //    char* headerBuffer = new char [sizeof(std::pair<unsigned, unsigned>) * var[SLOT_NUM]];
 //    memcpy(headerBuffer, (char*)data, sizeof(std::pair<unsigned, unsigned>) * var[SLOT_NUM]);
@@ -217,9 +221,9 @@ DataPage::~DataPage() {
 
 }
 
-RID DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned availablePage, RID &rid ) {
+void DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned availablePage, RID &rid ) {
 
-    std::pair<unsigned,unsigned> newRecordHeader;
+    std::pair<uint8_t ,uint8_t > newRecordHeader;
 
     std::cout << record.recordSize << std::endl;
     unsigned offset = 0;
@@ -235,6 +239,7 @@ RID DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned availa
     offset += record.indexSize * record.numOfField;
 
     memcpy(newRecordContent + offset, &record.recordData, record.dataSize);
+    offset += record.dataSize;
 
     std::cout << offset << std::endl;
 
@@ -245,21 +250,33 @@ RID DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned availa
            pageHeader + var[SLOT_NUM] - 1,
            sizeof(std::pair<uint16_t, uint16_t>));
 
+
+
+    int index = var[RECORD_OFFSET_FROM_BEGIN];
+    int len = offset;
+
+    newRecordHeader = {index,len};
+
+
+
+    memcpy((char*)page + var[HEADER_OFFSET_FROM_END] - sizeof(std::pair<uint16_t, uint16_t>), &newRecordHeader, sizeof(std::pair<uint16_t, uint16_t>));
+    var[RECORD_OFFSET_FROM_BEGIN] += len;
+    var[HEADER_OFFSET_FROM_END] -= sizeof(std::pair<uint16_t, uint16_t>);
+
     fileHandle.writePage(availablePage, page);
     
     var[SLOT_NUM]++;
     rid = {availablePage,var[SLOT_NUM]};
 }
 
-Record DataPage::readRecord(RID) {
-
+void DataPage::readRecord(FileHandle& fileHandle, const RID& rid, void* data) {
+    char* buffer = new char [PAGE_SIZE];
+    fileHandle.readPage(rid.pageNum - 1, buffer);
+    //void* buf = new char [pageHeader[rid.slotNum].second * sizeof(uint16_t)];
+    memcpy(data, buffer + pageHeader[rid.slotNum].first, pageHeader[rid.slotNum].second * sizeof(uint16_t));
 }
 
 unsigned DataPage::getFreeSpaceSize() {
     return PAGE_SIZE - var[RECORD_OFFSET_FROM_BEGIN] - var[HEADER_OFFSET_FROM_END];
 }
-
-
-
-
 

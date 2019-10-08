@@ -177,7 +177,7 @@ public:
     uint8_t* recordData;
 
     // each index size used 2 byte: uint16_t:  65535
-    const static unsigned int indexSize = 2;
+    const static uint16_t indexSize = 2;
 private:
     void convertData(const void* _data);
     
@@ -188,8 +188,8 @@ enum dataPageVar {HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM};
 class DataPage {
 public:
 
-    Record readRecord(RID);
-    RID writeRecord(Record record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
+    void readRecord(FileHandle& fileHandle, const RID& rid, void* data);
+    void writeRecord(Record record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
     unsigned getFreeSpaceSize();
 
     DataPage(void* data);
