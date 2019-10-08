@@ -154,7 +154,7 @@ public:
 
     bool isNull(int fieldNum);
     // convert Raw data to void*
-    void convertData(const void* _data);
+    
     
     // Record ID
     RID rid;
@@ -178,6 +178,8 @@ public:
 
     // each index size used 2 byte: uint16_t:  65535
     const static unsigned int indexSize = 2;
+private:
+    void convertData(const void* _data);
     
 };
 
@@ -187,7 +189,7 @@ class DataPage {
 public:
 
     Record readRecord(RID);
-    RID writeRoecord(Record record, FileHandle fileHandle, unsigned availablePage);
+    RID writeRecord(Record record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
     unsigned getFreeSpaceSize();
 
     DataPage(void* data);
