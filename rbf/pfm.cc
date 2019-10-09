@@ -1,5 +1,4 @@
 #include "pfm.h"
-#include "rbfm.h"
 #include <iostream>
 PagedFileManager *PagedFileManager::_pf_manager = nullptr;
 
@@ -149,7 +148,7 @@ void HiddenPage::readHiddenPage(std::fstream& file) {
     var[READ_PAGE_COUNTER] = ((unsigned*)buffer)[READ_PAGE_COUNTER];
     var[WRITE_PAGE_COUNTER] = ((unsigned*)buffer)[WRITE_PAGE_COUNTER];
     var[APPEND_PAGE_COUNTER] = ((unsigned*)buffer)[APPEND_PAGE_COUNTER];
-    var[PAGE_NUM] = ((unsigned*)buffer)[PAGE_SIZE];
+    var[PAGE_NUM] = ((unsigned*)buffer)[PAGE_NUM];
     delete[] buffer;
 }
 
@@ -160,11 +159,6 @@ void HiddenPage::writeHiddenPage(std::fstream& file) {
     file.seekp(0, std::ios::beg);
     file.write(buffer, PAGE_SIZE);
 
-    char* buf = new char[sizeof(unsigned) * 4];
-    file.seekg(0, std::ios::beg);
-    file.read(buf, sizeof(unsigned) * 4);
-
     delete[] buffer;
-    delete[] buf;
 }
 
