@@ -95,17 +95,17 @@ RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescr
     RID fakeRid = {0,0};
     Record record(recordDescriptor,data,fakeRid);
 
-
+    // std::cout << "BYTE OFFSET " << Record::indexSize * (1 + recordDescriptor.size()) <<std::endl;
     // for(int i = 0 ; i < recordDescriptor.size() ; i++) {
     //     std::cout << "TYPE :" << recordDescriptor[i].type << ' ';
-    //     std::cout << "INDEX " << record.indexData[i] - record.indicatorSize << ' ';
+    //     std::cout << "INDEX " << record.indexData[i] << ' ';
     //     std::cout <<std::endl;
     // }
 
     uint16_t byteOffset = Record::indexSize * (1 + recordDescriptor.size());
     for(int i =  0 ; i < recordDescriptor.size() ; i++) {
         
-        std::cout << recordDescriptor[i].name << ' ';
+        std::cout << recordDescriptor[i].name << ": ";
         if(record.isNull(i)) {
             std::cout << "NULL ";
         }
@@ -114,34 +114,16 @@ RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescr
             const uint8_t* pos = reinterpret_cast<const uint8_t*>(data);
             pos += diff;
             
-            
             switch (recordDescriptor[i].type) {
                 case TypeInt: {
                     uint32_t intValue;
                     memcpy(&intValue, pos, 4);
-                    std::cout << static_cast<int>(intValue);
+                    std::cout << intValue;
                     break;
                 }
                 case TypeReal: {
-                    
-                    double height = 177.8;
-                    uint8_t d[4];
-                    memcpy(d,&height,sizeof(double));
-                    std::stringstream test;
-                    test << std::hex;
-                    for(int i = 0 ; i < sizeof(double) ; i++) {
-                        test << (int)(d[i]) << ' ';
-                    }
-                    std::cout << "\nHex " << test.str() << std::endl;
-                    std::stringstream ss;
-                    ss << std::hex;
-                    for(int i = 0 ; i < sizeof(double) ; i++) {
-                        ss << (int)(pos[i]) << ' ' ;
-                    }
-                    std::cout << "Hex " << ss.str() << std::endl;
-
-                    double realValue;
-                    memcpy(&realValue, pos, sizeof(double));
+                    float realValue;
+                    memcpy(&realValue, pos, sizeof(float));
                     std::cout << realValue;
                     break;
                 }
@@ -226,17 +208,18 @@ void Record::convertData(const void* _data) {
     // // treat it as byte and move to data part
     const uint8_t* pos = reinterpret_cast<const uint8_t*>(_data) + this->indicatorSize; 
     for(int i = 0 ; i < this->numOfField ; i++ ) {
-        if ((this->descriptor[i].type == TypeInt   || 
-             this->descriptor[i].type == TypeReal) && 
-             !isNull(i) ) {
-            indexData[i] = byteOffset + size;
-            pos += 4;
-            size += 4;
+        indexData[i] = byteOffset + size;
+        if ( this->descriptor[i].type == TypeInt && !isNull(i) ) {
+            pos += sizeof(int);
+            size += sizeof(int);
+        }
+        else if (this->descriptor[i].type == TypeReal && !isNull(i)) {
+            pos += sizeof(float);
+            size += sizeof(float);
         }
         else if (this->descriptor[i].type == TypeVarChar) {
             // byte to int
             uint32_t varCharSize = pos[0] | (pos[1] << 8) | (pos[2] << 16) | (pos[3] << 24);
-            indexData[i] = byteOffset + size;
             pos += (4 + varCharSize);
             size += (4 + varCharSize);
         }
