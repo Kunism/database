@@ -194,7 +194,7 @@ public:
     void writeRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
     unsigned getFreeSpaceSize();
 
-    DataPage(void* data);
+    DataPage(const void* data);
     ~DataPage();
 
     uint16_t var[DATA_PAGE_VAR_NUM];

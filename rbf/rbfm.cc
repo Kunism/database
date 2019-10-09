@@ -56,6 +56,7 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vecto
     if( record.recordSize +4 <= page.getFreeSpaceSize()) {
         page.writeRecord(record,fileHandle,lastPageNum, rid);
         record.rid = rid;
+        std::cerr << rid.pageNum << ' ' << rid.slotNum << std::endl;
         return 0;
     }
     else {
@@ -69,11 +70,11 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vecto
             }
         }
     }
-    void* buf = new char [PAGE_SIZE];
-    unsigned var[3] = {sizeof(unsigned) * 3, 0, 0};
-    memcpy((char*)buf + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
-    DataPage newPage(buf);
-    newPage.writeRecord(record,fileHandle,lastPageNum+1,rid);
+    // void* buf = new char [PAGE_SIZE];
+    // unsigned var[3] = {sizeof(unsigned) * 3, 0, 0};
+    // memcpy((char*)buf + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+    // DataPage newPage(buf);
+    // newPage.writeRecord(record,fileHandle,lastPageNum+1,rid);
     return 0;
 }
 
@@ -238,7 +239,7 @@ void Record::convertData(const void* _data) {
                          
 }
 
-DataPage::DataPage(void* data) {
+DataPage::DataPage(const void* data) {
     memcpy(&var, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
 
 //    char* varBuffer = new char [sizeof(unsigned) * DATA_PAGE_VAR_NUM];
@@ -253,7 +254,7 @@ DataPage::DataPage(void* data) {
     memcpy(page, data, PAGE_SIZE);
     
     pageHeader = new std::pair<uint16_t , uint16_t> [var[SLOT_NUM]];
-    memcpy(&pageHeader, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM - 
+    memcpy(pageHeader, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM - 
                         sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM],
                         sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM]);
 
@@ -261,8 +262,8 @@ DataPage::DataPage(void* data) {
 }
 
 DataPage::~DataPage() {
-    // delete[] pageHeader;
-    // delete[] page;
+    delete[] pageHeader;
+    delete[] page;
 
     // TODO: find the share ptr
 
