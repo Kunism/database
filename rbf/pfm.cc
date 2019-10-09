@@ -62,7 +62,7 @@ FileHandle::FileHandle() {
 FileHandle::~FileHandle() = default;
 
 RC FileHandle::readPage(PageNum pageNum, void *data) {
-    if (pageNum <= hiddenPage->var[PAGE_NUM]) {
+    if (pageNum < hiddenPage->var[PAGE_NUM]) {
         file.seekg((PAGE_OFFSET + pageNum) * PAGE_SIZE);
         file.read( reinterpret_cast<char*>(data) , PAGE_SIZE);
         hiddenPage->var[READ_PAGE_COUNTER]++;
@@ -74,7 +74,7 @@ RC FileHandle::readPage(PageNum pageNum, void *data) {
 }
 
 RC FileHandle::writePage(PageNum pageNum, const void *data) {
-    if (pageNum <= hiddenPage->var[PAGE_NUM]) {
+    if (pageNum < hiddenPage->var[PAGE_NUM]) {
         char* buffer = new char [PAGE_SIZE];
         std::memcpy(buffer,data, PAGE_SIZE);
         file.seekp((PAGE_OFFSET + pageNum) * PAGE_SIZE);
