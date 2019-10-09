@@ -322,10 +322,10 @@ void DataPage::readRecord(FileHandle& fileHandle, const RID& rid, void* data) {
 //    char* buffer = new char [];
 //    fileHandle.readPage(rid.pageNum - 1, buffer);
     //void* buf = new char [pageHeader[rid.slotNum].second * sizeof(uint16_t)];
-    void* indexPos = reinterpret_cast<uint8_t*>(page) + PAGE_SIZE -                 // end of PAGE file 
+    void* indexPos = reinterpret_cast<uint8_t*>(page) + PAGE_SIZE -                 // end of PAGE file
                      sizeof(unsigned) * DATA_PAGE_VAR_NUM  -                        // metadata
                      (rid.slotNum + 1 ) * sizeof(std::pair<unsigned, unsigned>);    // No. i index Offset;
-    // get position of head 
+    // get position of head
     std::pair<uint16_t,uint16_t>* indexPair = reinterpret_cast<std::pair<uint16_t,uint16_t>*>(indexPos);
     uint16_t indexValue = indexPair->first;
     uint16_t lenValue = indexPair->second;
@@ -340,6 +340,21 @@ void DataPage::readRecord(FileHandle& fileHandle, const RID& rid, void* data) {
     memcpy((char*)data+indicatorSize, dataPos, lenValue-Record::indexSize * (1+numOfField));
 
 //     memcpy(data, (char*)page + pageHeader[rid.slotNum].first, pageHeader[rid.slotNum].second * sizeof(uint16_t));
+
+// --------------
+//    uint16_t N, nullIndicatorLength, indexLength, dataLength, recordLength;
+//
+//    memcpy(&N, (char*)page + pageHeader[rid.slotNum].first, sizeof(uint16_t));
+//    recordLength = sizeof(uint16_t) * pageHeader[rid.slotNum].second;
+//    indexLength = sizeof(uint16_t) * N;
+//    nullIndicatorLength = ceil((double)N / 8);
+//    dataLength = recordLength - indexLength - nullIndicatorLength - sizeof(uint16_t);
+//    std::cout << N << std::endl;
+//    char* buffer = new char [recordLength];
+//    memcpy(buffer, (char*)page + pageHeader[rid.slotNum].first + sizeof(uint16_t), nullIndicatorLength);
+//    memcpy(buffer + nullIndicatorLength, (char*)page + pageHeader[rid.slotNum].first + sizeof(uint16_t) + nullIndicatorLength + indexLength, dataLength);
+//
+//    memcpy(data, buffer, recordLength);
 }
 
 unsigned DataPage::getFreeSpaceSize() {
