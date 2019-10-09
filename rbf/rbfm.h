@@ -197,7 +197,7 @@ public:
     DataPage(void* data);
     ~DataPage();
 
-    unsigned var[DATA_PAGE_VAR_NUM];
+    uint16_t var[DATA_PAGE_VAR_NUM];
     std::pair<uint16_t,uint16_t>* pageHeader;
 
 
