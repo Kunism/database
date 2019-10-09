@@ -3,6 +3,8 @@
 #include "rbfm.h"
 #include "pfm.h"
 
+#include <sstream>
+
 RecordBasedFileManager *RecordBasedFileManager::_rbf_manager = nullptr;
 
 RecordBasedFileManager &RecordBasedFileManager::instance() {
@@ -93,36 +95,62 @@ RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescr
     RID fakeRid = {0,0};
     Record record(recordDescriptor,data,fakeRid);
 
-    // std::cerr << data <<std::endl;
-    // std::cerr << recordDescriptor.size() <<std::endl;
-    for(int i =  0 ; i < recordDescriptor.size() ; i++) {
-        // std::cerr << "No. " <<  i << std::endl;
-        std::cout << recordDescriptor[i].name << ' ';
 
+    // for(int i = 0 ; i < recordDescriptor.size() ; i++) {
+    //     std::cout << "TYPE :" << recordDescriptor[i].type << ' ';
+    //     std::cout << "INDEX " << record.indexData[i] - record.indicatorSize << ' ';
+    //     std::cout <<std::endl;
+    // }
+
+    uint16_t byteOffset = Record::indexSize * (1 + recordDescriptor.size());
+    for(int i =  0 ; i < recordDescriptor.size() ; i++) {
+        
+        std::cout << recordDescriptor[i].name << ' ';
         if(record.isNull(i)) {
             std::cout << "NULL ";
         }
         else {
-            uint16_t byteOffset = Record::indexSize + record.indicatorSize + Record::indexSize * record.numOfField;
             uint16_t diff = record.indexData[i] - byteOffset;
             const uint8_t* pos = reinterpret_cast<const uint8_t*>(data);
             pos += diff;
             
-            // std::cout << pos << std::endl;
-            uint32_t value = pos[0] | (pos[1] << 8) | (pos[2] << 16) | (pos[3] << 24);
+            
             switch (recordDescriptor[i].type) {
                 case TypeInt: {
-                    std::cout << static_cast<int>(value);
+                    uint32_t intValue;
+                    memcpy(&intValue, pos, 4);
+                    std::cout << static_cast<int>(intValue);
                     break;
                 }
                 case TypeReal: {
-                    std::cout << static_cast<double>(value);
+                    
+                    double height = 177.8;
+                    uint8_t d[4];
+                    memcpy(d,&height,sizeof(double));
+                    std::stringstream test;
+                    test << std::hex;
+                    for(int i = 0 ; i < sizeof(double) ; i++) {
+                        test << (int)(d[i]) << ' ';
+                    }
+                    std::cout << "\nHex " << test.str() << std::endl;
+                    std::stringstream ss;
+                    ss << std::hex;
+                    for(int i = 0 ; i < sizeof(double) ; i++) {
+                        ss << (int)(pos[i]) << ' ' ;
+                    }
+                    std::cout << "Hex " << ss.str() << std::endl;
+
+                    double realValue;
+                    memcpy(&realValue, pos, sizeof(double));
+                    std::cout << realValue;
                     break;
                 }
                 case TypeVarChar: {
-                    char* s = new char [static_cast<int>(value) + 1];
-                    memcpy(s,pos+4,static_cast<int>(value));
-                    s[static_cast<int>(value)] = '\0';
+                    uint32_t sizeValue;
+                    memcpy(&sizeValue, pos, 4);
+                    char* s = new char [static_cast<int>(sizeValue) + 1];
+                    memcpy(s,pos+4,static_cast<int>(sizeValue));
+                    s[static_cast<int>(sizeValue)] = '\0';
                     std::cout << s;
                     break;
                 }
@@ -133,7 +161,6 @@ RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescr
         } else {
             std::cout << std::endl;
         }
-
     }
 
     return 0;
@@ -202,16 +229,16 @@ void Record::convertData(const void* _data) {
         if ((this->descriptor[i].type == TypeInt   || 
              this->descriptor[i].type == TypeReal) && 
              !isNull(i) ) {
+            indexData[i] = byteOffset + size;
             pos += 4;
             size += 4;
-            indexData[i] = byteOffset + size;
         }
         else if (this->descriptor[i].type == TypeVarChar) {
             // byte to int
             uint32_t varCharSize = pos[0] | (pos[1] << 8) | (pos[2] << 16) | (pos[3] << 24);
+            indexData[i] = byteOffset + size;
             pos += (4 + varCharSize);
             size += (4 + varCharSize);
-            indexData[i] = byteOffset + size;
         }
     }
     this->recordData = new uint8_t [size];
