@@ -191,7 +191,7 @@ public:
 
     void readRecord(FileHandle& fileHandle, const RID& rid, void* data);
 
-    void writeRecord(Record record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
+    void writeRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
     unsigned getFreeSpaceSize();
 
     DataPage(void* data);
@@ -199,6 +199,10 @@ public:
 
     unsigned var[DATA_PAGE_VAR_NUM];
     std::pair<uint16_t,uint16_t>* pageHeader;
+
+
+    DataPage& operator=(const DataPage &dataPage);
+    DataPage(const DataPage& d);
 
 private:
     void* page;
