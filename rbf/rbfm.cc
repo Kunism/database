@@ -76,9 +76,7 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
     void* pageData = new uint8_t [PAGE_SIZE];
     if(fileHandle.readPage(rid.pageNum,pageData) == 0) {
         DataPage dataPage(pageData);
-        std::cerr<< "PASS 1 " << std::endl;
         dataPage.readRecord(fileHandle, rid, data);
-        std::cerr<< "PASS 2 " << std::endl;
         //memcpy(data,record.recordData,record.dataSize);
         return 0;
     }
@@ -197,20 +195,16 @@ Record::~Record() {
 
 //TypeInt = 0, TypeReal, TypeVarChar
 void Record::convertData(const void* _data) {
-    uint16_t size = 1;
+    uint16_t size = 0;
     uint16_t byteOffset = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField; 
 
-    std::cerr << "CONVERT: size 1 " << size << std::endl;
+    // std::cerr << "CONVERT: size 1 " << size << std::endl;
     
     // // treat it as byte and move to data part
-    const uint8_t* pos = reinterpret_cast<const uint8_t*>(_data) + this->indicatorSize; 
-    std::cerr << "CONVERT: btyes: " <<std::endl;
-    for(int i = 0 ; i < 4 ; i++) {
-        std::cerr << (int)pos[i] <<std::endl;
-    }
+    const uint8_t* pos = reinterpret_cast<const uint8_t*>(_data) + (uint8_t)this->indicatorSize; 
     
     for(int i = 0 ; i < this->numOfField ; i++ ) {
-        std::cerr << "CONVERT: size 3 " << size << std::endl;
+        // std::cerr << "CONVERT: size 3 " << size << std::endl;
         indexData[i] = byteOffset + size;
         if ( this->descriptor[i].type == TypeInt && !isNull(i) ) {
             pos += sizeof(int);
@@ -220,18 +214,18 @@ void Record::convertData(const void* _data) {
             pos += sizeof(float);
             size += sizeof(float);
         }
-        else if (this->descriptor[i].type == TypeVarChar) {
+        else if (this->descriptor[i].type == TypeVarChar && !isNull(i)) {
             // byte to int
             // uint32_t varCharSize = pos[0] | (pos[1] << 8) | (pos[2] << 16) | (pos[3] << 24);
             uint32_t varCharSize; 
             memcpy(&varCharSize, pos, sizeof(uint32_t));
-            std::cerr << "CONVERT: var char size: " << varCharSize <<std::endl;
+            // std::cerr << "CONVERT: var char size: " << varCharSize <<std::endl;
             pos += (4 + varCharSize);
             size += (4 + varCharSize);
         }
     }
 
-    std::cerr << "CONVERT: SIZE: " << size <<std::endl;
+    // std::cerr << "CONVERT: SIZE: " << size <<std::endl;
     this->recordData = new uint8_t [size];
     memcpy(recordData,(char*)_data+this->indicatorSize,size);
     this->dataSize = size;
@@ -307,14 +301,13 @@ void DataPage::writeRecord(Record &record, FileHandle &fileHandle, unsigned avai
 
     fileHandle.writePage(availablePage, page);
     std::cout << "availalepage: " << availablePage << std::endl;
-    
 }
 
 void DataPage::readRecord(FileHandle& fileHandle, const RID& rid, void* data) {
 
     void* indexPos = reinterpret_cast<uint8_t*>(page) + PAGE_SIZE -                 // end of PAGE file
                      sizeof(unsigned) * DATA_PAGE_VAR_NUM  -                        // metadata
-                     (rid.slotNum +1) * sizeof(std::pair<uint16_t, uint16_t>);    // No. i index Offset;
+                     (rid.slotNum +1) * sizeof(std::pair<uint16_t, uint16_t>);      // No. i index Offset;
 
     // get position of head
     std::pair<uint16_t,uint16_t> indexPair = reinterpret_cast<std::pair<uint16_t,uint16_t>*>(indexPos)[0];
@@ -325,15 +318,16 @@ void DataPage::readRecord(FileHandle& fileHandle, const RID& rid, void* data) {
     uint8_t* recordPos =  reinterpret_cast<uint8_t*>(page) + indexValue;
     uint16_t numOfField = recordPos[1] << 8 | recordPos[0];
     uint8_t* nullPos = recordPos + Record::indexSize;
-    uint8_t* dataPos = nullPos + Record::indexSize * numOfField;
     uint16_t indicatorSize = ceil(static_cast<double>(numOfField)/CHAR_BIT);
+    uint8_t* dataPos = nullPos + indicatorSize + Record::indexSize * numOfField;
 
-    std::cerr << "RID: " << rid.pageNum << ' ' << rid.slotNum << std::endl;
-    std::cerr << "RECORD INDEX: " << indexValue << std::endl;
-    std::cerr << "RECORD SIZE: " << lenValue << std::endl;
-    std::cerr << "# of Field: " << numOfField << std::endl;
-    std::cerr << "Null indicator: " << indicatorSize << std::endl;
-
+    // std::cerr << "RID: " << rid.pageNum << ' ' << rid.slotNum << std::endl;
+    // std::cerr << "RECORD INDEX: " << indexValue << std::endl;
+    // std::cerr << "RECORD SIZE: " << lenValue << std::endl;
+    // std::cerr << "# of Field: " << numOfField << std::endl;
+    // std::cerr << "Null indicator: " << indicatorSize << std::endl;
+    // std::cerr << "Null MAST: " << (int)nullPos[0] << std::endl;
+    
     memcpy(data, nullPos, indicatorSize);
     memcpy((char*)data+indicatorSize, dataPos, lenValue-Record::indexSize * (1+numOfField));
 
