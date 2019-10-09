@@ -81,6 +81,7 @@ RC FileHandle::writePage(PageNum pageNum, const void *data) {
         file.seekp((PAGE_OFFSET + pageNum) * PAGE_SIZE);
         file.write( buffer, PAGE_SIZE);
         hiddenPage->var[WRITE_PAGE_COUNTER]++;
+        delete[] buffer;
         return 0;
     }
     else {
@@ -95,6 +96,7 @@ RC FileHandle::appendPage(const void *data) {
     file.write(buffer, PAGE_SIZE);
     hiddenPage->var[APPEND_PAGE_COUNTER]++;
     hiddenPage->var[PAGE_NUM]++;
+    delete[] buffer;
     return 0;
 }
 
@@ -123,6 +125,7 @@ RC FileHandle::openFile(const std::string &fileName) {
 
 RC FileHandle::closeFile() {
     hiddenPage->writeHiddenPage(file);
+    delete(hiddenPage);
     file.close();
     return 0;
 }
@@ -147,18 +150,21 @@ void HiddenPage::readHiddenPage(std::fstream& file) {
     var[WRITE_PAGE_COUNTER] = ((unsigned*)buffer)[WRITE_PAGE_COUNTER];
     var[APPEND_PAGE_COUNTER] = ((unsigned*)buffer)[APPEND_PAGE_COUNTER];
     var[PAGE_NUM] = ((unsigned*)buffer)[PAGE_SIZE];
+    delete[] buffer;
 }
 
 void HiddenPage::writeHiddenPage(std::fstream& file) {
 
     char* buffer = new char [PAGE_SIZE];
-    memcpy(buffer, (char*)var, sizeof(unsigned) * HIDDEN_PAGE_VAR_NUM);
+    memcpy(buffer, var, sizeof(unsigned) * HIDDEN_PAGE_VAR_NUM);
     file.seekp(0, std::ios::beg);
     file.write(buffer, PAGE_SIZE);
 
     char* buf = new char[sizeof(unsigned) * 4];
-    file.seekg(0, std::ios_base::beg);
+    file.seekg(0, std::ios::beg);
     file.read(buf, sizeof(unsigned) * 4);
 
+    delete[] buffer;
+    delete[] buf;
 }
 
