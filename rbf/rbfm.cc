@@ -244,8 +244,9 @@ DataPage::DataPage(void* data) {
 //    delete[](varBuffer);
 
     pageHeader = new std::pair<uint16_t , uint16_t> [var[SLOT_NUM]];
-    memcpy(&pageHeader, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM - sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM],
-            sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM]);
+    memcpy(&pageHeader, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM - 
+                        sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM],
+                        sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM]);
 
 //    char* headerBuffer = new char [sizeof(std::pair<unsigned, unsigned>) * var[SLOT_NUM]];
 //    memcpy(headerBuffer, (char*)data, sizeof(std::pair<unsigned, unsigned>) * var[SLOT_NUM]);
@@ -256,6 +257,7 @@ DataPage::DataPage(void* data) {
 
 DataPage::~DataPage() {
     delete[] pageHeader;
+    delete[] page;
 
 }
 
@@ -265,7 +267,7 @@ void DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned avail
 
     unsigned offset = 0;
     char* newRecordContent = new char [record.recordSize];
-
+    // prepare for record
     memcpy(newRecordContent + offset, &record.numOfField, record.indexSize);
     offset += record.indexSize;
 
@@ -278,9 +280,8 @@ void DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned avail
     memcpy(newRecordContent + offset, record.recordData, record.dataSize);
     offset += record.dataSize;
 
-
+    // write record
     memcpy((char*)page + var[RECORD_OFFSET_FROM_BEGIN], newRecordContent, record.recordSize);
-    var[RECORD_OFFSET_FROM_BEGIN] += record.recordSize;
 
 //    memcpy((char*)page + PAGE_SIZE - var[HEADER_OFFSET_FROM_END] - sizeof(std::pair<uint16_t, uint16_t>),
 //           pageHeader + var[SLOT_NUM] - 1,
@@ -288,37 +289,45 @@ void DataPage::writeRecord(Record record, FileHandle &fileHandle, unsigned avail
 
     int index = var[RECORD_OFFSET_FROM_BEGIN];
     int len = offset;
-
     newRecordHeader = {index,len};
 
+    // write index,length
     memcpy((char*)page + PAGE_SIZE - var[HEADER_OFFSET_FROM_END] - sizeof(std::pair<uint16_t, uint16_t>), &newRecordHeader, sizeof(std::pair<uint16_t, uint16_t>));
-    var[RECORD_OFFSET_FROM_BEGIN] += len;
+
+    // update header
+    var[RECORD_OFFSET_FROM_BEGIN] += record.recordSize;
     var[HEADER_OFFSET_FROM_END] -= sizeof(std::pair<uint16_t, uint16_t>);
+    var[SLOT_NUM]++;
+
+    // write header
+    memcpy((char*)page + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, &var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+
+    //TODO: update header in memory
 
     fileHandle.writePage(availablePage, page);
     std::cout << "availalepage: " << availablePage << std::endl;
-    var[SLOT_NUM]++;
     rid = {availablePage,var[SLOT_NUM]};
 }
 
 void DataPage::readRecord(FileHandle& fileHandle, const RID& rid, void* data) {
 //    char* buffer = new char [];
 //    fileHandle.readPage(rid.pageNum - 1, buffer);
-    //void* buf = new char [pageHeader[rid.slotNum].second * sizeof(uint16_t)];
+    // void* buf = new char [pageHeader[rid.slotNum].second * sizeof(uint16_t)];
     void* indexPos = reinterpret_cast<uint8_t*>(page) + PAGE_SIZE -                 // end of PAGE file
                      sizeof(unsigned) * DATA_PAGE_VAR_NUM  -                        // metadata
                      (rid.slotNum + 1 ) * sizeof(std::pair<unsigned, unsigned>);    // No. i index Offset;
+
+
     // get position of head
-    std::pair<uint16_t,uint16_t>* indexPair = reinterpret_cast<std::pair<uint16_t,uint16_t>*>(indexPos);
-    uint16_t indexValue = indexPair->first;
-    uint16_t lenValue = indexPair->second;
+    std::pair<uint16_t,uint16_t> indexPair = reinterpret_cast<std::pair<uint16_t,uint16_t>*>(indexPos)[0];
+    uint16_t indexValue = indexPair.first;
+    uint16_t lenValue = indexPair.second;
     // interpret index
     uint8_t* recordPos =  reinterpret_cast<uint8_t*>(page) + indexValue;
     uint16_t numOfField = recordPos[1] << 8 | recordPos[0];
     uint8_t* nullPos = recordPos + Record::indexSize;
     uint8_t* dataPos = nullPos + Record::indexSize * numOfField;
     uint16_t indicatorSize = ceil(static_cast<double>(numOfField)/CHAR_BIT);
-
     memcpy(data, nullPos, indicatorSize);
     memcpy((char*)data+indicatorSize, dataPos, lenValue-Record::indexSize * (1+numOfField));
 
