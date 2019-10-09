@@ -53,7 +53,9 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vecto
     void* pageData = new uint8_t [PAGE_SIZE];
     fileHandle.readPage(lastPageNum,pageData);
     DataPage page(pageData);
+
     if( record.recordSize +4 <= page.getFreeSpaceSize()) {
+        std::cerr << "Record size: " << record.recordSize << "\tWrite on Page: "<< lastPageNum << std::endl;
         page.writeRecord(record,fileHandle,lastPageNum, rid);
         record.rid = rid;
         std::cerr << rid.pageNum << ' ' << rid.slotNum << std::endl;
@@ -64,11 +66,20 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vecto
             fileHandle.readPage(i,pageData);
             DataPage temp(pageData);
             if( record.recordSize +4<= temp.getFreeSpaceSize()) {
-                temp.writeRecord(record,fileHandle,lastPageNum, rid);
+                std::cerr << "Record size: " << record.recordSize << "\tWrite on Page: "<< i << std::endl;
+                temp.writeRecord(record,fileHandle, i, rid);
                 record.rid = rid;
                 return 0;
             }
         }
+        void* buffer = new char [PAGE_SIZE];
+        unsigned var[3] = {sizeof(unsigned) * 3, 0, 0};
+        memcpy((char*)buffer + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+        fileHandle.appendPage(buffer);
+        DataPage newPage(buffer);
+        newPage.writeRecord(record, fileHandle, lastPageNum + 1, rid);
+        record.rid = rid;
+        return 0;
     }
     // void* buf = new char [PAGE_SIZE];
     // unsigned var[3] = {sizeof(unsigned) * 3, 0, 0};
@@ -80,6 +91,7 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vecto
 
 RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,const RID &rid, void *data) {
     void* pageData = new uint8_t [PAGE_SIZE];
+    std::cerr << "ReadRecord in Page: " << rid.pageNum << std::endl;
     if(fileHandle.readPage(rid.pageNum,pageData) == 0) {
         DataPage dataPage(pageData);
         dataPage.readRecord(fileHandle, rid, data);
