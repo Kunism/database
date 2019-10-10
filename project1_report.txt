@@ -1,13 +1,20 @@
 1. Basic information
-Student ID : 
-Student Name : 
-OS (bit) :
-gcc version :
+Student ID : 92968380, 66927079
+Student Name : Cheng-Liang Hsieh, Po-Wei Huang
+OS (bit) : CentOS Linux 7 x86_64
+gcc version : GCC - 5.4
 
 
 2. Internal Record Format
 - Show your record format design and describe how your design satisfies O(1) field access. If not, just mention that you haven't implemented this feature.
 - Describe how you store a VarChar field.
+
+# of Fields: 2 bytes, a number representing the field number in a record.
+Null Bit Indicator:  Ceil((# of Fields) / 8) bytes, a bit sequence denotes which field is null.
+Index pointer: (# of Fields) * 2 bytes, a list of offset from the beginning of a record to the corresponding field.
+Actual Binary Data: Uncertainty bytes, data field in a record.
+
+In order to satisfy O(1) field access, we insert index pointers between null-field-indicator and actual data. Index pointers store a sequence of uint16_t variable which denotes the offset from the beginning of a record to the corresponding data field. So we can use the offset to calculate the position of our target field and retrieve the data in O(1).
 
 
 3. Page Format
@@ -35,11 +42,19 @@ Free space end field: It indicate the offset between the end of free space and t
 Records are stored from the begin of a page. Record 1 was stored right behind Record 0, and so on. The slot(Record) index were stored in at the of page. Slot 1 was stored before Slot 0, and so on. Free space of a page would remain in the middle.
 
 
-
 4. Implementation Detail
-In project 1, we create another 3 classes--HiddenPage, DataPage, and Record. 
+
+In project 1, we create another 3 classes -- HiddenPage, DataPage, and Record.
+
+HiddenPage::readHiddenPage: Read all information in the hidden page to the memory when the file is opened.
+HiddenPage::writeHiddenPage: Write all updated information from the memory to the file.
+
+DataPage::readRecord: Get a record from the page and change its format to null-fields-indicator + actual data.
+DataPage::writeRecord: Change original record into our record format and write it on the page.
+DataPage::getFreeSpaceSize: Get the remaining size on the page.
+
+Record::isNull: Check if the ith field in a record is null.
 
 
 5. Other (optional)
 - Freely use this section to tell us about things that are related to the project 1, but not related to the other sections (optional)
-
