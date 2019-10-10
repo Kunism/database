@@ -14,7 +14,9 @@ Null Bit Indicator:  Ceil((# of Fields) / 8) bytes, a bit sequence denotes which
 Index pointer: (# of Fields) * 2 bytes, a list of offset from the beginning of a record to the corresponding field.
 Actual Binary Data: Uncertainty bytes, data field in a record.
 
-In order to satisfy O(1) field access, we insert index pointers between null-field-indicator and actual data. Index pointers store a sequence of uint16_t variable which denotes the offset from the beginning of a record to the corresponding data field. So we can use the offset to calculate the position of our target field and retrieve the data in O(1).
+In order to satisfy O(1) field access, we insert index pointers between null-field-indicator and actual data.
+Index pointers store a sequence of uint16_t variable which denotes the offset from the beginning of a record to the corresponding data field.
+So we can use the offset to calculate the position of our target field and retrieve the data in O(1).
 
 
 3. Page Format
@@ -39,7 +41,9 @@ Free space begin field: It indicates the offset between the begin of a page and 
 Free space end field: It indicate the offset between the end of free space and the end of the page.
 # of slots: It stores number of records which have been stored. 
 
-Records are stored from the begin of a page. Record 1 was stored right behind Record 0, and so on. The slot(Record) index were stored in at the of page. Slot 1 was stored before Slot 0, and so on. Free space of a page would remain in the middle.
+Records are stored from the begin of a page. Record 1 was stored right behind Record 0, and so on.
+The slot(Record) index were stored in at the of page. Slot 1 was stored before Slot 0, and so on.
+Free space of a page would remain in the middle.
 
 
 4. Implementation Detail
