@@ -11,11 +11,33 @@ gcc version :
 
 
 3. Page Format
-- Show your page format design
+
++-------------------+--------------------------------+
+|      record 0     |            record 1            |
++----------+--------+--------------------------------+
+| record 1 |        ^                                |
++----------+ <------|----------------------------    |
+|          ^        |___                        |    |
++          |____        |                       |    |
+|               |       |                       |    |
++          +--------+--------+-------+-------+-------+
+|          | index  | index  | # of  | free  | free  |
+|          +--------+--------+ slots | space | space |
+|          | length | length |       | end   | begin |
++----------+--------+--------+-------+-------+-------+
+	       ^  slot1    slot 0    2        |
+	       |______________________________|	
+
+Free space begin field: It indicates the offset between the begin of a page and the first byte of free space.
+Free space end field: It indicate the offset between the end of free space and the end of the page.
+# of slots: It stores number of records which have been stored. 
+
+Records are stored from the begin of a page. Record 1 was stored right behind Record 0, and so on. The slot(Record) index were stored in at the of page. Slot 1 was stored before Slot 0, and so on. Free space of a page would remain in the middle.
+
 
 
 4. Implementation Detail
-- Other implementation details goes here.
+In project 1, we create another 3 classes--HiddenPage, DataPage, and Record. 
 
 
 5. Other (optional)
