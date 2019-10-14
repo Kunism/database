@@ -72,6 +72,7 @@ protected:
 
 private:
     static RelationManager *_relation_manager;
+
 };
 
 #endif
