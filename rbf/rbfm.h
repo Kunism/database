@@ -154,32 +154,30 @@ public:
     ~Record();
     bool isNull(int fieldNum);
     // convert Raw data to void*
-    
-    
+    const uint8_t* getRecord() const;
+
     // Record ID
     RID rid;
-    // total rocord size in bytes (size + null part + index part + data part)
-    uint16_t recordSize;
     // number of fields = descriptor.size();
     uint16_t numOfField; 
-    // null indicator size (bytes) 
-    uint16_t indicatorSize;
-    // data part size
-    uint16_t dataSize;
+    // total rocord size in bytes (size + null part + index part + data part)
+    uint16_t recordSize;
     std::vector<Attribute> descriptor;
-    
-    
-    // null indicator
-    uint8_t* nullData;
-    // index begin
+
     uint16_t* indexData;
-    // data begin
-    uint8_t* recordData;
+
 
     // each index size used 2 byte: uint16_t:  65535
     const static uint16_t indexSize = 2;
+
 private:
     void convertData(const void* _data);
+    // use Record::getRecord to access
+    uint8_t* recordHead;
+
+    // null indicator size (bytes) 
+    const uint8_t* nullData;
+    uint16_t indicatorSize;
     
 };
 
