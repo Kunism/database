@@ -139,12 +139,6 @@ RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescr
 
 }
 
-RC RecordBasedFileManager::writeRecordFromTombstone(FileHandle &fileHandle,
-        const std::vector<Attribute> &recordDescriptor, const void *data,
-        RID &rid) (FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,const void *data, RID &rid) {
-
-}
-
 uint32_t RecordBasedFileManager::getNextAvailablePageNum(Record& record, FileHandle& fileHandle, const uint32_t& pageFrom) {
 
     //  Loop all pages to find a page with enough space to relocate record, return the page number
@@ -182,25 +176,22 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
                                         const std::vector<Attribute> &recordDescriptor,
                                         const void *data, const RID &rid) {
 
-    Record newRecord(recordDescriptor,data, rid);
-
     char* buffer = new char [PAGE_SIZE];
     fileHandle.readPage(rid.pageNum, buffer);
     DataPage page(buffer);
 
+    Record newRecord(recordDescriptor,data, rid);
     std::pair<uint16_t, uint16_t> indexPair = page.getIndexPair(rid.slotNum);
 
-    //  Space enough to update new record directly
-    if(indexPair.second >= newRecord.recordSize) {
-        //  TODO: replace record
-        //  TODO: move other records forward
-    }
+    uint16_t index = indexPair.first;
+    uint16_t length = indexPair.second;
 
-    //  Space enough to update, but need to rearrange
-    else if((indexPair.second + page.getFreeSpaceSize()) >= newRecord.recordSize) {
-        //  TODO: move other records backward
-        //  TODO: replace record
-    }
+    int16_t diff = newRecord.recordSize - indexPair.second;
+    if (diff <= page.getFreeSpaceSize())
+    {
+        page.shiftRecords(indexPair.first+indexPair.second, diff);
+        // page.writeRecord();
+    } 
 
     //  Space is not enough to update, only enough to put a tombstone
     else if(indexPair.second >= sizeof(Tombstone)) {
@@ -252,11 +243,11 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle, const std::vector<Attrib
     return -1;
 }
 
-RC RecordBasedFileManager::writeRecordFromTombstone(FileHandle& fileHandle, uint32_t availablePageNum, uint16_t offsetFromBegin, const Tombstone& tombstone) {
+RC RecordBasedFileManager::writeRecordFromTombstone(Record& record, FileHandle& fileHandle, uint32_t availablePageNum, uint16_t offsetFromBegin, const Tombstone& tombstone) {
     void* buffer = new char [PAGE_SIZE];
     fileHandle.readPage(availablePageNum, buffer);
     DataPage page(buffer);
-    page.writeRecordFromTombstone(fileHandle, data, recordSize, offsetFromBegin);
+    //page.writeRecordFromTombstone(fileHandle, data, recordSize, offsetFromBegin);
 }
 
 Record::Record(const std::vector<Attribute> &_descriptor, const void* _data, const RID &_rid) {
@@ -265,9 +256,8 @@ Record::Record(const std::vector<Attribute> &_descriptor, const void* _data, con
     this->numOfField = _descriptor.size();
     this->indicatorSize = std::ceil((double)descriptor.size() /CHAR_BIT);
     //TODO: need to store rid?
+    this->nullData = reinterpret_cast<const uint8_t*>(_data);
     this->indexData = new uint16_t [this->numOfField];
-    this->nullData = new uint8_t [indicatorSize];
-    memcpy(nullData, _data, indicatorSize);
     convertData(_data);
 }
 
@@ -275,13 +265,13 @@ bool Record::isNull(int fieldNum) {
     int byteOffset = fieldNum / CHAR_BIT;
     int bitOffset = fieldNum % CHAR_BIT;
 
-    return reinterpret_cast<uint8_t*>(this->nullData)[byteOffset] >> (7 - bitOffset) & 1;
+    return this->nullData[byteOffset] >> (7 - bitOffset) & 1;
 }
 
 Record::~Record() {
-    delete[] this->indexData;
-    delete[] this->nullData;
-    delete[] this->recordData;
+     delete[] recordHead;
+    // delete[] this->nullData;
+    // delete[] this->recordData;
 }
 
 
@@ -289,7 +279,7 @@ Record::~Record() {
 void Record::convertData(const void* _data) {
     uint16_t size = 0;
     uint16_t byteOffset = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField;
-    
+
     // // treat it as byte and move to data part
     const uint8_t* pos = reinterpret_cast<const uint8_t*>(_data) + (uint8_t)this->indicatorSize; 
     
@@ -312,13 +302,32 @@ void Record::convertData(const void* _data) {
             size += (4 + varCharSize);
         }
     }
+    //calculate the total record size;
+    this->recordSize = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField + size;
+    this->recordHead = new uint8_t [this->recordSize];
+    
+    uint16_t offset = 0;
+    // num of fields
+    memcpy(recordHead + offset, &this->numOfField, Record::indexSize);
+    offset += Record::indexSize;
+    // null indicator part
+    memcpy(recordHead + offset, _data, this->indicatorSize);
+    offset += this->indicatorSize;
+    // indexing part
+    memcpy(recordHead + offset, indexData, Record::indexSize * this->numOfField);
+    offset += Record::indexSize * this->numOfField;
+    // content part
+    memcpy(recordHead + offset, reinterpret_cast<const uint8_t*>(_data)+this->indicatorSize, size);
+    offset += size;
 
-    this->recordData = new uint8_t [size];
-    memcpy(recordData,(char*)_data+this->indicatorSize,size);
-    this->dataSize = size;
-    this->recordSize = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField + this->dataSize;
-                         
+    delete[] indexData; 
+    this->nullData = recordHead + Record::indexSize;
+    this->indexData = reinterpret_cast<uint16_t*>(recordHead + Record::indexSize + this->indicatorSize);
 }
+
+const uint8_t* Record::getRecord() const {
+    return this->recordHead;
+} 
 
 DataPage::DataPage(const void* data) {
     memcpy(&var, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
@@ -340,29 +349,13 @@ DataPage::~DataPage() {
 
 // encode record
 void DataPage::writeRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid ) {
-    std::pair<uint16_t ,uint16_t> newRecordHeader;
-
-    uint16_t offset = 0;
-    char* newRecordContent = new char [record.recordSize];
-    // prepare for record
-    memcpy(newRecordContent + offset, &record.numOfField, record.indexSize);
-    offset += record.indexSize;
-
-    memcpy(newRecordContent + offset, record.nullData, record.indicatorSize);
-    offset += record.indicatorSize;
-
-    memcpy(newRecordContent + offset, record.indexData, record.indexSize * record.numOfField);
-    offset += record.indexSize * record.numOfField;
-
-    memcpy(newRecordContent + offset, record.recordData, record.dataSize);
-    offset += record.dataSize;
 
     // write record
-    memcpy((char*)page + var[RECORD_OFFSET_FROM_BEGIN], newRecordContent, record.recordSize);
-
-    newRecordHeader = {var[RECORD_OFFSET_FROM_BEGIN], offset};
+    memcpy((char*)page + var[RECORD_OFFSET_FROM_BEGIN], record.getRecord(), record.recordSize);
 
     // write index,length
+    std::pair<uint16_t ,uint16_t> newRecordHeader;
+    newRecordHeader = {var[RECORD_OFFSET_FROM_BEGIN], record.recordSize};
     memcpy((char*)page + PAGE_SIZE - var[HEADER_OFFSET_FROM_END] - sizeof(std::pair<uint16_t, uint16_t>), &newRecordHeader, sizeof(std::pair<uint16_t, uint16_t>));
 
     // update header
