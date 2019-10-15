@@ -192,17 +192,22 @@ public:
     ~DataPage();
 
     void readRecord(FileHandle& fileHandle, const RID& rid, void* data);
-
     void writeRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
+
     void shiftRecords(uint16_t startPos, int16_t diff);
     
+
+    void updateRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, const RID &rid);
+
     unsigned getFreeSpaceSize();
+    uint16_t getRecordLength(const RID& rid);
+    uint32_t  getNextAvailablePageNum(Record& record, FileHandle& fileHandle, const RID& rid);
 
     std::pair<uint16_t,uint16_t> getIndexPair(uint16_t index);
 
     //HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM
     uint16_t var[DATA_PAGE_VAR_NUM];
-    std::pair<uint16_t,uint16_t>* pageHeader;
+    std::pair<uint16_t,uint16_t>* pageHeader;   //  TODO: no use
 
 
     DataPage& operator=(const DataPage &dataPage);
@@ -213,4 +218,10 @@ private:
 
 };
 
+class Tombstone {
+public:
+    Tombstone();
+    ~Tombstone();
+private:
+};
 #endif

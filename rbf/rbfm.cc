@@ -183,6 +183,8 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     else if(page.getRecordLength(newRid) >= sizeof(Tombstone)) {
         //  TODO: replace old record to tombstone
         //  TODO: move other records forward
+
+        // create tombstone(flag bits + page num + slot num)
     }
 
     //  Space is not enough to update, need to rearrange free space for a tombstone
@@ -393,6 +395,29 @@ uint16_t DataPage::getRecordLength(const RID &rid) {
     std::pair<uint16_t, uint16_t> targetSlot;
     memcpy(&targetSlot, (char*)page + PAGE_SIZE - sizeof(var) - sizeof(std::pair<uint16_t, uint16_t>) * (rid.slotNum + 1), sizeof(std::pair<uint16_t, uint16_t>));
     return targetSlot.second;
+}
+
+uint32_t DataPage::getNextAvailablePageNum(Record& record, FileHandle& fileHandle, const RID& rid) {
+
+    //  Loop all pages to find a page with enough space to relocate record, return the page number
+    for(uint32_t i = 0; i < fileHandle.getNumberOfPages(); i++) {
+        void* pageData = new char[PAGE_SIZE];
+        fileHandle.readPage((rid.pageNum + i) % fileHandle.getNumberOfPages(), pageData);
+        DataPage page(pageData);
+        if(record.recordSize <= page.getFreeSpaceSize()) {
+            delete[] pageData;
+            return (rid.pageNum + i) % fileHandle.getNumberOfPages();
+        }
+        delete[] pageData;
+    }
+
+    //  All pages are full, append new blank page and return page number
+    void* buf = new char [PAGE_SIZE];
+    unsigned var[3] = {sizeof(unsigned) * 3, 0, 0};
+    memcpy((char*)buf + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+    fileHandle.appendPage(buf);
+
+    return fileHandle.getNumberOfPages()-1;
 }
 
 DataPage::DataPage(const DataPage& datapage) {
