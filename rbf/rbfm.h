@@ -150,7 +150,7 @@ private:
 
 class Record {
 public:
-    Record(const std::vector<Attribute> &_descriptor, const void* _data,const RID &_rid);
+    Record(const std::vector<Attribute> &_descriptor, const void* _data, const RID &_rid);
     ~Record();
     bool isNull(int fieldNum);
     // convert Raw data to void*

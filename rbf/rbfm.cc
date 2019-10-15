@@ -152,17 +152,52 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vecto
 RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, 
                                         const std::vector<Attribute> &recordDescriptor,
                                         const void *data, const RID &rid) {
+
     Record newRecord(recordDescriptor,data, rid);
-    void* pageData = new uint8_t [PAGE_SIZE];
-    fileHandle.readPage(rid.pageNum,pageData);
+   
+
     DataPage page(pageData);
 
     std::pair<uint16_t, uint16_t> indexPair = page.getIndexPair(rid.slotNum);
 
-    // newRecord.recordSize  - index. <= page.getFreeSpaceSize
-   
-    // uint16_t startPos = 
-    // int16_t diff = 
+
+    char* buffer = new char [PAGE_SIZE];
+    fileHandle.readPage(rid.pageNum, buffer);
+    DataPage page(buffer);
+
+
+
+    //  Space enough to update new record directly
+    if(page.getRecordLength(newRid) >= newRecord.recordSize) {
+        //  TODO: replace record
+        //  TODO: move other records forward
+    }
+
+    //  Space enough to update, but need to rearrange
+    else if((page.getRecordLength(newRid) + page.getFreeSpaceSize()) >= newRecord.recordSize) {
+        //  TODO: move other records backward
+        //  TODO: replace record
+    }
+
+    //  Space is not enough to update, only enough to put a tombstone
+    else if(page.getRecordLength(newRid) >= sizeof(Tombstone)) {
+        //  TODO: replace old record to tombstone
+        //  TODO: move other records forward
+    }
+
+    //  Space is not enough to update, need to rearrange free space for a tombstone
+    else if((page.getRecordLength(newRid) + page.getFreeSpaceSize()) >= sizeof(Tombstone)) {
+        //  TODO: move other records backward
+        //  TODO: repace record to tombstone
+    }
+
+    //  No space for even a tombstone
+    else {
+        //  TODO: keep replace existing records to tombstones until there is enough space for a new tombstone
+    }
+
+    delete[] buffer;
+
     return -1;
     
 
@@ -352,6 +387,13 @@ std::pair<uint16_t,uint16_t> DataPage::getIndexPair(const uint16_t index) {
     return reinterpret_cast<std::pair<uint16_t,uint16_t>*>(indexPos)[0];
 }
 
+
+
+uint16_t DataPage::getRecordLength(const RID &rid) {
+    std::pair<uint16_t, uint16_t> targetSlot;
+    memcpy(&targetSlot, (char*)page + PAGE_SIZE - sizeof(var) - sizeof(std::pair<uint16_t, uint16_t>) * (rid.slotNum + 1), sizeof(std::pair<uint16_t, uint16_t>));
+    return targetSlot.second;
+}
 
 DataPage::DataPage(const DataPage& datapage) {
 }
