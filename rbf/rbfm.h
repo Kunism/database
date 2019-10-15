@@ -150,7 +150,7 @@ private:
 
 class Record {
 public:
-    Record(const std::vector<Attribute> &_descriptor, const void* _data, RID &_rid);
+    Record(const std::vector<Attribute> &_descriptor, const void* _data,const RID &_rid);
     ~Record();
     bool isNull(int fieldNum);
     // convert Raw data to void*
@@ -188,15 +188,19 @@ enum dataPageVar {HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM};
 class DataPage {
 public:
 
+    DataPage(const void* data);
+    ~DataPage();
 
     void readRecord(FileHandle& fileHandle, const RID& rid, void* data);
 
     void writeRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
+    void shiftRecords(uint16_t startPos, int16_t diff);
+    
     unsigned getFreeSpaceSize();
 
-    DataPage(const void* data);
-    ~DataPage();
+    std::pair<uint16_t,uint16_t> getIndexPair(uint16_t index);
 
+    //HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM
     uint16_t var[DATA_PAGE_VAR_NUM];
     std::pair<uint16_t,uint16_t>* pageHeader;
 
