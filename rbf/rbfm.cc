@@ -144,6 +144,29 @@ RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescr
 
 }
 
+uint32_t RecordBasedFileManager::getNextAvailablePageNum(Record& record, FileHandle& fileHandle, const uint32_t& pageFrom) {
+
+    //  Loop all pages to find a page with enough space to relocate record, return the page number
+    for(uint32_t i = 0; i < fileHandle.getNumberOfPages() - 1; i++) {
+        void* pageData = new char[PAGE_SIZE];
+        fileHandle.readPage((pageFrom + i) % fileHandle.getNumberOfPages(), pageData);
+        DataPage page(pageData);
+        if(record.recordSize <= page.getFreeSpaceSize()) {
+            delete[] pageData;
+            return (pageFrom + i) % fileHandle.getNumberOfPages();
+        }
+        delete[] pageData;
+    }
+
+    //  All pages are full, append new blank page and return page number
+    void* buf = new char [PAGE_SIZE];
+    unsigned var[3] = {sizeof(unsigned) * 3, 0, 0};
+    memcpy((char*)buf + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+    fileHandle.appendPage(buf);
+
+    return fileHandle.getNumberOfPages()-1;
+}
+
 //////////////////////////////////////////////////////////////
 // PROJECT 1 TO HERE                                        //
 //////////////////////////////////////////////////////////////
@@ -174,12 +197,26 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         page.shiftRecords(indexPair.first+indexPair.second, diff);
         // page.writeRecord();
     } 
+
     //  Space is not enough to update, only enough to put a tombstone
     else if(indexPair.second >= sizeof(Tombstone)) {
         //  TODO: replace old record to tombstone
         //  TODO: move other records forward
 
         // create tombstone(flag bits + page num + slot num)
+
+        char* availablePage = new char [PAGE_SIZE];
+        uint32_t availablePageNum = getNextAvailablePageNum(newRecord, fileHandle, rid.pageNum + 1);
+        fileHandle.readPage(availablePageNum, availablePage);
+        uint16_t offsetFromBegin;
+        memcpy(&offsetFromBegin, availablePage + PAGE_SIZE - sizeof(uint16_t) * 2, sizeof(uint16_t));
+        Tombstone tombstone = {0x80, availablePageNum, offsetFromBegin};
+        //  TODO: put tombstone
+        //  TODO: shift
+
+
+        writeRecordFromTombstone(newRecord, fileHandle, availablePageNum, offsetFromBegin, tombstone);
+        delete[] availablePage;
     }
 
     //  Space is not enough to update, need to rearrange free space for a tombstone
@@ -192,8 +229,6 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     else {
         //  TODO: keep replace existing records to tombstones until there is enough space for a new tombstone
     }
-
-
 
     delete[] buffer;
 
@@ -211,6 +246,13 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle, const std::vector<Attrib
                                 const std::string &conditionAttribute, const CompOp compOp, const void *value,
                                 const std::vector<std::string> &attributeNames, RBFM_ScanIterator &rbfm_ScanIterator) {
     return -1;
+}
+
+RC RecordBasedFileManager::writeRecordFromTombstone(Record& record, FileHandle& fileHandle, uint32_t availablePageNum, uint16_t offsetFromBegin, const Tombstone& tombstone) {
+    void* buffer = new char [PAGE_SIZE];
+    fileHandle.readPage(availablePageNum, buffer);
+    DataPage page(buffer);
+    //page.writeRecordFromTombstone(fileHandle, data, recordSize, offsetFromBegin);
 }
 
 Record::Record(const std::vector<Attribute> &_descriptor, const void* _data, const RID &_rid) {
@@ -232,7 +274,7 @@ bool Record::isNull(int fieldNum) {
 }
 
 Record::~Record() {
-    // delete[] recordHead;
+     delete[] recordHead;
     // delete[] this->nullData;
     // delete[] this->recordData;
 }
@@ -370,6 +412,19 @@ void DataPage::shiftRecords(uint16_t startPos, int16_t diff) {
     memmove(reinterpret_cast<uint8_t*>(startPos) + diff, reinterpret_cast<uint8_t*>(startPos), size);
 }
 
+void DataPage::writeRecordFromTombstone(FileHandle& fileHandle, const char* data, uint16_t recordize, uint16_t offsetFromBegin) {
+
+    //  Past record
+    memcpy((char*)page + offsetFromBegin, data, recordize);
+
+    //  Update Record offset in var
+    var[RECORD_OFFSET_FROM_BEGIN] += recordize;
+
+    //  Write var
+    memcpy((char*)page + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, &var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+}
+
+
 unsigned DataPage::getFreeSpaceSize() {
     return PAGE_SIZE - var[RECORD_OFFSET_FROM_BEGIN] - var[HEADER_OFFSET_FROM_END];
 }
@@ -380,37 +435,6 @@ std::pair<uint16_t,uint16_t> DataPage::getIndexPair(const uint16_t index) {
                      (index +1) * sizeof(std::pair<uint16_t, uint16_t>);            // No. i index Offset;
 
     return reinterpret_cast<std::pair<uint16_t,uint16_t>*>(indexPos)[0];
-}
-
-
-
-// uint16_t DataPage::getRecordLength(const RID &rid) {
-//     std::pair<uint16_t, uint16_t> targetSlot;
-//     memcpy(&targetSlot, (char*)page + PAGE_SIZE - sizeof(var) - sizeof(std::pair<uint16_t, uint16_t>) * (rid.slotNum + 1), sizeof(std::pair<uint16_t, uint16_t>));
-//     return targetSlot.second;
-// }
-
-uint32_t DataPage::getNextAvailablePageNum(Record& record, FileHandle& fileHandle, const RID& rid) {
-
-    //  Loop all pages to find a page with enough space to relocate record, return the page number
-    for(uint32_t i = 0; i < fileHandle.getNumberOfPages(); i++) {
-        void* pageData = new char[PAGE_SIZE];
-        fileHandle.readPage((rid.pageNum + i) % fileHandle.getNumberOfPages(), pageData);
-        DataPage page(pageData);
-        if(record.recordSize <= page.getFreeSpaceSize()) {
-            delete[] pageData;
-            return (rid.pageNum + i) % fileHandle.getNumberOfPages();
-        }
-        delete[] pageData;
-    }
-
-    //  All pages are full, append new blank page and return page number
-    void* buf = new char [PAGE_SIZE];
-    unsigned var[3] = {sizeof(unsigned) * 3, 0, 0};
-    memcpy((char*)buf + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
-    fileHandle.appendPage(buf);
-
-    return fileHandle.getNumberOfPages()-1;
 }
 
 DataPage::DataPage(const DataPage& datapage) {

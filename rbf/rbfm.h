@@ -12,6 +12,7 @@ static const uint16_t DELETED_MASK = 0x8000; // 1000 0000 ...
 static const uint16_t TOMB_MASK = 0x4000;    // 0100 0000 ...
 
 class Record;
+class Tombstone;
 
 // Record ID
 typedef struct {
@@ -138,6 +139,9 @@ public:
             const std::vector<std::string> &attributeNames, // a list of projected attributes
             RBFM_ScanIterator &rbfm_ScanIterator);
 
+    RC writeRecordFromTombstone(Record& record, FileHandle& fileHandle, uint32_t availablePageNum, uint16_t offsetFromBegin, const Tombstone& tombstone);
+    uint32_t getNextAvailablePageNum(Record& record, FileHandle& fileHandle, const uint32_t& pageFrom);
+
 public:
 
 protected:
@@ -197,16 +201,13 @@ public:
 
     void readRecord(FileHandle& fileHandle, const RID& rid, void* data);
     void writeRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
-
+    void writeRecordFromTombstone(FileHandle& fileHandle, const char* data, uint16_t recordSize, uint16_t offsetFromBegin);
     void shiftRecords(uint16_t startPos, int16_t diff);
     
 
     void updateRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, const RID &rid);
 
     unsigned getFreeSpaceSize();
-    uint16_t getRecordLength(const RID& rid);
-    uint32_t  getNextAvailablePageNum(Record& record, FileHandle& fileHandle, const RID& rid);
-
     std::pair<uint16_t,uint16_t> getIndexPair(uint16_t index);
 
     //HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM
@@ -222,10 +223,9 @@ private:
 
 };
 
-class Tombstone {
-public:
-    Tombstone();
-    ~Tombstone();
-private:
+struct Tombstone {
+    uint8_t flag;
+    uint32_t pageNum;
+    uint16_t offsetFromBegin;
 };
 #endif
