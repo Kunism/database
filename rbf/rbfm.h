@@ -205,7 +205,7 @@ public:
     void shiftRecords(uint16_t startPos, int16_t diff);
     
 
-    void updateRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, const RID &rid);
+    void updateRecord(Record &record, FileHandle &fileHandle, const RID &rid);
 
     unsigned getFreeSpaceSize();
     std::pair<uint16_t,uint16_t> getIndexPair(uint16_t index);
