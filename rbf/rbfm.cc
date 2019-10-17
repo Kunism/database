@@ -79,9 +79,14 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vecto
 }
 
 RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,const RID &rid, void *data) {
+
+    // TODO do DELTED_MASK && TOMB_MASK
+
     void* pageData = new uint8_t [PAGE_SIZE];
     if(fileHandle.readPage(rid.pageNum,pageData) == 0) {
         DataPage dataPage(pageData);
+        // auto pair = dataPage.getIndexPair(rid.slotNum);
+        // check whether need to jump;
         dataPage.readRecord(fileHandle, rid, data);
         return 0;
     }
@@ -191,7 +196,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     if (recordsDiff <= page.getFreeSpaceSize())
     {
         page.shiftRecords(indexPair.first+indexPair.second, recordsDiff);
-        // page.writeRecord();
+        page.updateRecord(newRecord,fileHandle,rid);
     } 
 
     else if(tombstoneDiff <= page.getFreeSpaceSize()) {
@@ -303,7 +308,7 @@ void Record::convertData(const void* _data) {
         }
     }
     //calculate the total record size;
-    this->recordSize = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField + size;
+    this->recordSize = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField + size + Record::paddingSize;
     this->recordHead = new uint8_t [this->recordSize];
     
     uint16_t offset = 0;
@@ -367,24 +372,18 @@ void DataPage::writeRecord(Record &record, FileHandle &fileHandle, unsigned avai
     memcpy((char*)page + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, &var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
     // write page
     fileHandle.writePage(availablePage, page);
+    // std::cerr << "DataPage: writeRecord size : " << record.recordSize << std::endl;
 }
 // Endoe data in page -> Record();
 // Decode data in page
 void DataPage::readRecord(FileHandle& fileHandle, const RID& rid, void* data) {
 
-    // void* indexPos = reinterpret_cast<uint8_t*>(page) + PAGE_SIZE -                 // end of PAGE file
-    //                  sizeof(unsigned) * DATA_PAGE_VAR_NUM  -                        // metadata
-    //                  (rid.slotNum +1) * sizeof(std::pair<uint16_t, uint16_t>);      // No. i index Offset;
-
-    // // get position of head
-    // std::pair<uint16_t,uint16_t> indexPair = reinterpret_cast<std::pair<uint16_t,uint16_t>*>(indexPos)[0];
-    // uint16_t indexValue = indexPair.first;
-    // uint16_t lenValue = indexPair.second;
-
     std::pair<uint16_t,uint16_t> indexPair = getIndexPair(rid.slotNum);
+    if( indexPair.first & DELETED_MASK || indexPair.first & TOMB_MASK) {
+        std::cerr << "DataPage: RID should be valid" << std::endl;
+    }
     uint16_t indexValue = indexPair.first;
     uint16_t lenValue = indexPair.second;
-
     // interpret index
     uint8_t* recordPos =  reinterpret_cast<uint8_t*>(page) + indexValue;
     uint16_t numOfField = recordPos[1] << 8 | recordPos[0];
@@ -393,7 +392,7 @@ void DataPage::readRecord(FileHandle& fileHandle, const RID& rid, void* data) {
     uint8_t* dataPos = nullPos + indicatorSize + Record::indexSize * numOfField;
     
     memcpy(data, nullPos, indicatorSize);
-    memcpy((char*)data+indicatorSize, dataPos, lenValue-Record::indexSize * (1+numOfField));
+    memcpy((char*)data+indicatorSize, dataPos, lenValue-Record::indexSize * (1+numOfField) - Record::paddingSize);
 }
 
 void DataPage::shiftRecords(uint16_t startPos, int16_t diff) {
@@ -413,6 +412,29 @@ void DataPage::shiftRecords(uint16_t startPos, int16_t diff) {
     memmove(reinterpret_cast<uint8_t*>(startPos) + diff, reinterpret_cast<uint8_t*>(startPos), size);
 }
 
+void DataPage::updateRecord(Record& newRecord, FileHandle& fileHandle, const RID& rid) {
+    
+    std::pair<uint16_t,uint16_t> indexPair = this->getIndexPair(rid.slotNum);
+    int16_t diff = newRecord.recordSize - indexPair.second;
+
+    //write Record
+    memcpy((char*)page + indexPair.first, newRecord.getRecord(), newRecord.recordSize);
+    // write index,length
+    std::pair<uint16_t ,uint16_t> newRecordHeader;
+    newRecordHeader = {indexPair.first, newRecord.recordSize};
+
+    void* indexPos = reinterpret_cast<uint8_t*>(page) + PAGE_SIZE -                 
+                     sizeof(unsigned) * DATA_PAGE_VAR_NUM  -                       
+                     (rid.slotNum +1) * sizeof(std::pair<uint16_t, uint16_t>); 
+
+    memcpy(indexPos, &newRecordHeader, sizeof(std::pair<uint16_t, uint16_t>));
+
+    var[RECORD_OFFSET_FROM_BEGIN] += diff;
+    // write header
+    memcpy((char*)page + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, &var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+    fileHandle.writePage(rid.pageNum, page);
+}
+
 void DataPage::writeRecordFromTombstone(FileHandle& fileHandle, const char* data, uint16_t recordize, uint16_t offsetFromBegin) {
 
     //  Past record
@@ -430,10 +452,10 @@ unsigned DataPage::getFreeSpaceSize() {
     return PAGE_SIZE - var[RECORD_OFFSET_FROM_BEGIN] - var[HEADER_OFFSET_FROM_END];
 }
 
-std::pair<uint16_t,uint16_t> DataPage::getIndexPair(const uint16_t index) {
+std::pair<uint16_t,uint16_t> DataPage::getIndexPair(const uint16_t slotNum) {
     void* indexPos = reinterpret_cast<uint8_t*>(page) + PAGE_SIZE -                 // end of PAGE file
                      sizeof(unsigned) * DATA_PAGE_VAR_NUM  -                        // metadata
-                     (index +1) * sizeof(std::pair<uint16_t, uint16_t>);            // No. i index Offset;
+                     (slotNum +1) * sizeof(std::pair<uint16_t, uint16_t>);          // No. i index Offset;
 
     return reinterpret_cast<std::pair<uint16_t,uint16_t>*>(indexPos)[0];
 }

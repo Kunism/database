@@ -7,6 +7,10 @@
 
 #include "pfm.h"
 
+
+static const uint16_t DELETED_MASK = 0x8000; // 1000 0000 ...
+static const uint16_t TOMB_MASK = 0x4000;    // 0100 0000 ...
+
 class Record;
 class Tombstone;
 
@@ -173,6 +177,8 @@ public:
 
     // each index size used 2 byte: uint16_t:  65535
     const static uint16_t indexSize = 2;
+    // record padding size = 1 byte;
+    const static uint16_t paddingSize = 1;
 
 private:
     void convertData(const void* _data);
@@ -199,7 +205,7 @@ public:
     void shiftRecords(uint16_t startPos, int16_t diff);
     
 
-    void updateRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, const RID &rid);
+    void updateRecord(Record &record, FileHandle &fileHandle, const RID &rid);
 
     unsigned getFreeSpaceSize();
     std::pair<uint16_t,uint16_t> getIndexPair(uint16_t index);
