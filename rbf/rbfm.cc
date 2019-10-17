@@ -186,41 +186,41 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     uint16_t index = indexPair.first;
     uint16_t length = indexPair.second;
 
-    int16_t diff = newRecord.recordSize - indexPair.second;
-    if (diff <= page.getFreeSpaceSize())
+    int16_t recordsDiff = newRecord.recordSize - indexPair.second;
+    int16_t tombstoneDiff = sizeof(Tombstone) - indexPair.second;
+    if (recordsDiff <= page.getFreeSpaceSize())
     {
-        page.shiftRecords(indexPair.first+indexPair.second, diff);
+        page.shiftRecords(indexPair.first+indexPair.second, recordsDiff);
         // page.writeRecord();
     } 
 
-    //  Space is not enough to update, only enough to put a tombstone
-    else if(indexPair.second >= sizeof(Tombstone)) {
-        //  TODO: replace old record to tombstone
-        //  TODO: move other records forward
+    else if(tombstoneDiff <= page.getFreeSpaceSize()) {
 
-        // create tombstone(flag bits + page num + slot num)
-
-        char* availablePage = new char [PAGE_SIZE];
-        uint32_t availablePageNum = getNextAvailablePageNum(newRecord, fileHandle, rid.pageNum + 1);
-        fileHandle.readPage(availablePageNum, availablePage);
-        uint16_t offsetFromBegin;
-        memcpy(&offsetFromBegin, availablePage + PAGE_SIZE - sizeof(uint16_t) * 2, sizeof(uint16_t));
-        Tombstone tombstone = {0x80, availablePageNum, offsetFromBegin};
-        //  TODO: put tombstone
-        //  TODO: shift
-
-
-        writeRecordFromTombstone(newRecord, fileHandle, availablePageNum, offsetFromBegin, tombstone);
-        delete[] availablePage;
+        page.shiftRecords(indexPair.first + indexPair.second, tombstoneDiff);
     }
 
-    //  Space is not enough to update, need to rearrange free space for a tombstone
-    else if((indexPair.second + page.getFreeSpaceSize()) >= sizeof(Tombstone)) {
-        //  TODO: move other records backward
-        //  TODO: repace record to tombstone
-    }
-
-    //  No space for even a tombstone
+//    //  Space is not enough to update, only enough to put a tombstone
+//    else if(indexPair.second >= sizeof(Tombstone)) {
+//        //  TODO: replace old record to tombstone
+//        //  TODO: move other records forward
+//
+//        // create tombstone(flag bits + page num + slot num)
+//
+//        char* availablePage = new char [PAGE_SIZE];
+//        uint32_t availablePageNum = getNextAvailablePageNum(newRecord, fileHandle, rid.pageNum + 1);
+//        fileHandle.readPage(availablePageNum, availablePage);
+//        uint16_t offsetFromBegin;
+//        memcpy(&offsetFromBegin, availablePage + PAGE_SIZE - sizeof(uint16_t) * 2, sizeof(uint16_t));
+//        Tombstone tombstone = {0x80, availablePageNum, offsetFromBegin};
+//        //  TODO: put tombstone
+//        //  TODO: shift
+//
+//
+//        writeRecordFromTombstone(newRecord, fileHandle, availablePageNum, offsetFromBegin, tombstone);
+//        delete[] availablePage;
+//    }
+//
+//    //  No space for even a tombstone
     else {
         //  TODO: keep replace existing records to tombstones until there is enough space for a new tombstone
     }
