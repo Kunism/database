@@ -547,7 +547,7 @@ void DataPage::insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, con
     //  update header::length
     std::pair<uint16_t, uint16_t> newRecordHeader = {indexPair.first, recordSize};
 
-    updateIndexPair(fileHandle, rid.pageNum, newRecordHeader, rid.slotNum);
+    updateIndexPair(fileHandle, rid.pageNum,  rid.slotNum, newRecordHeader);
     fileHandle.writePage(rid.pageNum, page);
 }
 
