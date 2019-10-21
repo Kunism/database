@@ -240,6 +240,10 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
             Tombstone tombstone = {TOMB_MASK, availablePageNum, 0};
             availablePage.writeRecordFromTombstone(fileHandle, newRecord, availablePageNum, tombstone);
 
+            initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first + indexPair.second, tombstoneDiff);
+            initPage.writeTombstone(fileHandle, rid.pageNum, tombstone, indexPair.first);
+            initPage.updateOffsetFromBegin(fileHandle, rid.pageNum, tombstoneDiff);
+            initPage.updateIndexPair(fileHandle,rid.pageNum, rid.slotNum, {indexPair.first,newRecord.recordSize});
 
         }
     }
@@ -255,6 +259,17 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         }
         else {
             //  tombstone
+            uint32_t availablePageNum = getNextAvailablePageNum(newRecord, fileHandle, tombstone.pageNum);
+
+            char* availablePageBuffer = new char [PAGE_SIZE];
+            fileHandle.readPage(availablePageNum, availablePageBuffer);
+            DataPage availablePage(availablePageBuffer);
+
+            availablePage.writeRecordFromTombstone(fileHandle, newRecord, availablePageNum, tombstone);
+
+            initPage.writeTombstone(fileHandle, rid.pageNum, tombstone, indexPair.first);
+            initPage.updateIndexPair(fileHandle, rid.pageNum, rid.slotNum, {indexPair.first, newRecord.recordSize});
+
         }
     }
 
@@ -563,6 +578,11 @@ void DataPage::insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, con
 void DataPage::readTombstone(Tombstone &tombstone, const RID &rid) {
     std::pair<uint16_t,uint16_t> indexPair = this->getIndexPair(rid.slotNum);
     memcpy(&tombstone, (char*)page + indexPair.first, sizeof(Tombstone));
+}
+
+void DataPage::writeTombstone(FileHandle &fileHandle, uint32_t pageNum, Tombstone &tombstone, const uint16_t offsetFromBegin) {
+    memcpy((char*)page + offsetFromBegin, &tombstone, sizeof(Tombstone));
+    fileHandle.writePage(pageNum, page);
 }
 
 void DataPage::writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum, Tombstone &tombstone) {

@@ -215,6 +215,7 @@ public:
     
     void insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid, const uint16_t recordSize);
     void readTombstone(Tombstone &tombstone, const RID &rid);
+    void writeTombstone(FileHandle &fileHandle, uint32_t pageNum, Tombstone &tombstone, const uint16_t offsetFromBegin);
     unsigned getFreeSpaceSize();
     bool isRecord(FileHandle &fileHandle, const RID &rid);
     std::pair<uint16_t,uint16_t> getIndexPair(uint16_t index);
