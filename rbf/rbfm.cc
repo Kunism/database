@@ -224,6 +224,15 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         }
         else {
             //  tombstone
+            uint32_t availablePageNum = getNextAvailablePageNum(newRecord, fileHandle, rid.pageNum);
+            char* availablePageBuffer = new char [PAGE_SIZE];
+            fileHandle.readPage(availablePageNum, availablePageBuffer);
+            DataPage availablePage(availablePageBuffer);
+
+            Tombstone tombstone = {TOMB_MASK, availablePageNum, 0};
+            availablePage.writeRecordFromTombstone(fileHandle, newRecord, availablePageNum, tombstone);
+
+
         }
     }
     else {
