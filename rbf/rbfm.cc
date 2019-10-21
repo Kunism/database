@@ -225,7 +225,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         //  No tombstone
         Tombstone tombstone = {TOMB_MASK, availablePageNum, 0};
         initPage.insertTombstone(tombstone, fileHandle, rid);
-        initPage.writeRecordFromTombstone(fileHandle, newRecord, newPageNum);
+        //initPage.writeRecordFromTombstone(fileHandle, newRecord, newPageNum);
     }
 
 
