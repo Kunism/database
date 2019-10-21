@@ -190,14 +190,22 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vecto
         DataPage recordPage(recordPageBuffer);
 
         recordPage.shiftRecords(fileHandle,tombstone.pageNum, tombstone.offsetFromBegin + indexPair.second, -indexPair.second);
+        recordPage.shiftIndexes(fileHandle,tombstone.pageNum, tombstone.offsetFromBegin, -indexPair.second);
+        recordPage.updateOffsetFromBegin(fileHandle,tombstone.pageNum, -indexPair.second);
+
+
         initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first + sizeof(Tombstone), -sizeof(Tombstone));
-        initPage.updateRecord(Record(0), fileHandle, rid);
+        initPage.shiftIndexes(fileHandle,rid.pageNum, indexPair.first, -sizeof(Tombstone));
+        initPage.updateOffsetFromBegin(fileHandle, rid.pageNum, -sizeof(Tombstone));
+        initPage.updateIndexPair(fileHandle, rid.pageNum, rid.slotNum, {0,0});
 
         delete[] recordPageBuffer;
     }
     else {
         initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first+indexPair.second, -indexPair.second); 
-        initPage.updateRecord(Record(0),fileHandle,rid);
+        initPage.shiftIndexes(fileHandle, rid.pageNum, indexPair.first, -indexPair.second);
+        initPage.updateOffsetFromBegin(fileHandle, rid.pageNum, -indexPair.second);
+        initPage.updateIndexPair(fileHandle,rid.pageNum, rid.slotNum, {0,0});
     }
     
     delete[] buffer;
@@ -276,7 +284,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     //  update date on page pointed by recordPtr
     if(recordsDiff <= recordPage.getFreeSpaceSize()) {
         recordPage.shiftRecords(fileHandle, recordPtr.first, recordPtr.second + oldRecordSize, recordsDiff);
-        recordPage.updateRecord(newRecord,fileHandle,rid);
+        // recordPage.updateRecord(newRecord,fileHandle,rid);
         // recordPage.updateIndexPair
     }
 
@@ -507,7 +515,7 @@ void DataPage::updateOffsetFromBegin(FileHandle &fileHandle, uint32_t pageNum, i
 
 
 // write Record
-void DataPage::updateRecord(const Record& newRecord, FileHandle& fileHandle, const RID& rid) {
+void DataPage::updateRecord(FileHandle& fileHandle, const Record& newRecord,  const RID& rid) {
     
     std::pair<uint16_t,uint16_t> indexPair = this->getIndexPair(rid.slotNum);
     int16_t diff = newRecord.recordSize - indexPair.second;
@@ -525,13 +533,13 @@ void DataPage::shiftIndexes(FileHandle& fileHandle, uint32_t pageNum, uint16_t s
         std::pair<uint16_t, uint16_t> indexPair = getIndexPair(i);
         if(indexPair.first > startPos) {
             std::pair<uint16_t, uint16_t> newIndexPair = {indexPair.first+diff, indexPair.second};
-            updateIndexPair(fileHandle, pageNum, newIndexPair, i);
+            updateIndexPair(fileHandle, pageNum,  i, newIndexPair);
         }
     }
 }
 
 // this function do not write to disk
-void DataPage::updateIndexPair(FileHandle& fileHandle, uint32_t pageNum, std::pair<uint16_t,uint16_t> newIndexPair, uint16_t slotNum) {
+void DataPage::updateIndexPair(FileHandle& fileHandle, uint32_t pageNum,  uint16_t slotNum, std::pair<uint16_t,uint16_t> newIndexPair) {
     void* indexPos = reinterpret_cast<uint8_t*>(page) + PAGE_SIZE - 
                      sizeof(unsigned) * DATA_PAGE_VAR_NUM  -        
                      (slotNum +1) * sizeof(std::pair<uint16_t, uint16_t>);
@@ -548,7 +556,7 @@ void DataPage::insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, con
     //  update header::length
     std::pair<uint16_t, uint16_t> newRecordHeader = {indexPair.first, recordSize};
 
-    updateIndexPair(fileHandle, rid.pageNum, newRecordHeader, rid.slotNum);
+    updateIndexPair(fileHandle, rid.pageNum,  rid.slotNum, newRecordHeader);
     fileHandle.writePage(rid.pageNum, page);
 }
 
