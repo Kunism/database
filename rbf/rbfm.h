@@ -205,6 +205,7 @@ public:
     void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
 
     void writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum, Tombstone &tombstone);
+    void deleteRecordFromTombstone(FileHandle &fileHandle, uint32_t pageNum, Tombstone &tombstone, const int16_t tombstoneDiff);
     void shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff);
     void shiftIndexes(FileHandle& fileHandle, uint32_t pagenum, uint16_t startPos, int16_t dif);
     void deleteRecords(const RID &rid);

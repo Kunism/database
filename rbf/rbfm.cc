@@ -213,6 +213,35 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     DataPage initPage(initPageBuffer);
     std::pair<uint16_t,uint16_t> indexPair = initPage.getIndexPair(rid.slotNum);
 
+    Record newRecord(recordDescriptor,data, rid);
+    int16_t recordsDiff = newRecord.recordSize - indexPair.second;
+    int16_t tombstoneDiff = sizeof(Tombstone) - indexPair.second;
+
+
+    if(initPage.isRecord(fileHandle, rid)) {
+        if(recordsDiff <= initPage.getFreeSpaceSize()) {
+            //  update
+        }
+        else {
+            //  tombstone
+        }
+    }
+    else {
+        Tombstone tombstone;
+        initPage.readTombstone(tombstone, rid);
+        char* recordPageBuffer = new char [PAGE_SIZE];
+        fileHandle.readPage(tombstone.pageNum, recordPageBuffer);
+        DataPage recordPage(recordPageBuffer);
+
+        if(recordsDiff <= recordPage.getFreeSpaceSize() ) {
+            //  update
+        }
+        else {
+            //  tombstone
+        }
+    }
+
+/*
     //  <pageNum, offsetFromBegin>
     std::pair<uint32_t,uint16_t> recordPtr(rid.pageNum, indexPair.first);
     std::pair<uint32_t,uint16_t> tombstonePtr(rid.pageNum, indexPair.first);
@@ -248,6 +277,8 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         Tombstone tombstone = {TOMB_MASK, availablePageNum, 0};
         availablePage.writeRecordFromTombstone(fileHandle, newRecord, availablePageNum, tombstone);
 
+        recordPage.deleteRecordFromTombstone(fileHandle, recordPtr.first, tombstone, tombstoneDiff);
+
         initPage.shiftRecords(fileHandle, recordPtr.first, recordPtr.second + indexPair.second, tombstoneDiff);
         initPage.insertTombstone(tombstone, fileHandle, rid, newRecord.recordSize);
 
@@ -256,6 +287,8 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
 
     delete[] initPageBuffer;
     delete[] recordPageBuffer;
+
+    */
     return -1;
     
 
@@ -524,7 +557,11 @@ void DataPage::writeRecordFromTombstone(FileHandle& fileHandle, Record& record, 
     fileHandle.writePage(pageNum, page);
 }
 
+void DataPage::deleteRecordFromTombstone(FileHandle &fileHandle, uint32_t pageNum, Tombstone &tombstone, const int16_t tombstoneDiff) {
 
+
+
+}
 
 unsigned DataPage::getFreeSpaceSize() {
     return PAGE_SIZE - var[RECORD_OFFSET_FROM_BEGIN] - var[HEADER_OFFSET_FROM_END];
