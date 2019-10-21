@@ -211,7 +211,8 @@ public:
     void deleteRecords(const RID &rid);
 
     void updateRecord(const Record &record, FileHandle &fileHandle, const RID &rid);
-
+    void updateIndexPair(FileHandle& fileHandle, uint32_t pagenum,std::pair<uint16_t,uint16_t> newIndexPair, uint16_t slotNum);
+    void updateOffsetFromBegin(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
     void insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid, const uint16_t recordSize);
     void readTombstone(Tombstone &tombstone, const RID &rid);
     unsigned getFreeSpaceSize();
@@ -227,7 +228,6 @@ public:
     DataPage(const DataPage& d);
 
 private:
-    void updateIndexPair(std::pair<uint16_t,uint16_t> newIndexPair, uint16_t slotNum);
     void* page;
 
 };
