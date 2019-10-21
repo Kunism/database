@@ -205,13 +205,14 @@ public:
     void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
 
     void writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum, Tombstone &tombstone);
+    
     void shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff);
     void shiftIndexes(FileHandle& fileHandle, uint32_t pagenum, uint16_t startPos, int16_t dif);
-    void deleteRecords(const RID &rid);
 
-    void updateRecord(const Record &record, FileHandle &fileHandle, const RID &rid);
-    void updateIndexPair(FileHandle& fileHandle, uint32_t pagenum,std::pair<uint16_t,uint16_t> newIndexPair, uint16_t slotNum);
+    void updateRecord(FileHandle &fileHandle, const Record &record, const RID &rid);
+    void updateIndexPair(FileHandle& fileHandle, uint32_t pagenum, uint16_t slotNum, std::pair<uint16_t,uint16_t> newIndexPair);
     void updateOffsetFromBegin(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
+    
     void insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid, const uint16_t recordSize);
     void readTombstone(Tombstone &tombstone, const RID &rid);
     unsigned getFreeSpaceSize();
