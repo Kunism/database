@@ -176,11 +176,31 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vecto
                                         const RID &rid) {
     uint8_t* buffer = new uint8_t [PAGE_SIZE];
     fileHandle.readPage(rid.pageNum,buffer);
-    DataPage page(buffer);
-    std::pair<uint16_t, uint16_t> indexPair = page.getIndexPair(rid.slotNum);
+    DataPage initPage(buffer);
 
-    page.shiftRecords(indexPair.first, -indexPair.second);
-    page.updateRecord(Record(0),fileHandle,rid);
+    std::pair<uint16_t, uint16_t> indexPair = initPage.getIndexPair(rid.slotNum);
+    
+    if(!initPage.isRecord(fileHandle,rid)) {
+        Tombstone tombstone;
+        initPage.readTombstone(tombstone, rid);
+        
+        
+        uint8_t* recordPageBuffer = new uint8_t [PAGE_SIZE];
+        fileHandle.readPage(tombstone.pageNum, recordPageBuffer);
+        DataPage recordPage(recordPageBuffer);
+
+        recordPage.shiftRecords(fileHandle,tombstone.pageNum, tombstone.offsetFromBegin + indexPair.second, -indexPair.second);
+        initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first + sizeof(Tombstone), -sizeof(Tombstone));
+        initPage.updateRecord(Record(0), fileHandle, rid);
+
+        delete[] recordPageBuffer;
+    }
+    else {
+        initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first+indexPair.second, -indexPair.second); 
+        initPage.updateRecord(Record(0),fileHandle,rid);
+    }
+    
+    delete[] buffer;
     return 0;
 }
 
@@ -426,8 +446,9 @@ void DataPage::readRecord(FileHandle& fileHandle, const RID& rid, void* data) {
     memcpy((char*)data+indicatorSize, dataPos, lenValue-Record::indexSize * (1+numOfField) - Record::paddingSize);
 }
 
-void DataPage::shiftRecords(uint16_t startPos, int16_t diff) {
-    // startPos - this->var[]
+// shift startPos - this->var[] with diff bytes
+// update var[RECORD_OFFSET_FROM_BEGIN]
+void DataPage::shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff) {
     int16_t size = var[RECORD_OFFSET_FROM_BEGIN] - startPos;
     if( startPos < 0) {
         std::cerr << "shiftRecords: shift Record with out of bound [ startPos ]" << std::endl; 
@@ -441,8 +462,16 @@ void DataPage::shiftRecords(uint16_t startPos, int16_t diff) {
 
     // This method guarantee correct behavior for overlapping buffer.
     memmove(reinterpret_cast<uint8_t*>(startPos) + diff, reinterpret_cast<uint8_t*>(startPos), size);
+
+    // update header
+    var[RECORD_OFFSET_FROM_BEGIN] += diff;
+    // write header
+    memcpy((char*)page + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, &var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
+    fileHandle.writePage(pageNum, page);
 }
 
+// write Record
+// write indexPair
 void DataPage::updateRecord(const Record& newRecord, FileHandle& fileHandle, const RID& rid) {
     
     std::pair<uint16_t,uint16_t> indexPair = this->getIndexPair(rid.slotNum);
@@ -451,8 +480,9 @@ void DataPage::updateRecord(const Record& newRecord, FileHandle& fileHandle, con
     {
         std::cerr <<"DataPage: delete a record" << std::endl;
     }
-    //write Record
+    // write Record
     memcpy((char*)page + indexPair.first, newRecord.getRecord(), newRecord.recordSize);
+    
     // write index,length
     std::pair<uint16_t ,uint16_t> newRecordHeader;
     newRecordHeader = {indexPair.first, newRecord.recordSize};
@@ -462,10 +492,6 @@ void DataPage::updateRecord(const Record& newRecord, FileHandle& fileHandle, con
                      (rid.slotNum +1) * sizeof(std::pair<uint16_t, uint16_t>); 
 
     memcpy(indexPos, &newRecordHeader, sizeof(std::pair<uint16_t, uint16_t>));
-
-    var[RECORD_OFFSET_FROM_BEGIN] += diff;
-    // write header
-    memcpy((char*)page + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, &var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
     fileHandle.writePage(rid.pageNum, page);
 }
 
