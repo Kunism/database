@@ -204,13 +204,13 @@ public:
     void readRecord(FileHandle& fileHandle, const RID& rid, void* data);
     void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
 
-    void writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum);
+    void writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum, Tombstone &tombstone);
     void shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff);
     void deleteRecords(const RID &rid);
 
     void updateRecord(const Record &record, FileHandle &fileHandle, const RID &rid);
 
-    void insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid);
+    void insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid, const uint16_t recordSize);
     void readTombstone(Tombstone &tombstone, const RID &rid);
     unsigned getFreeSpaceSize();
     bool isRecord(FileHandle &fileHandle, const RID &rid);

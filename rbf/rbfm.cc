@@ -217,21 +217,22 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     std::pair<uint32_t,uint16_t> recordPtr(rid.pageNum, indexPair.first);
     std::pair<uint32_t,uint16_t> tombstonePtr(rid.pageNum, indexPair.first);
 
+    Record newRecord(recordDescriptor,data, rid);
+    int16_t recordsDiff = newRecord.recordSize - indexPair.second;
+    int16_t tombstoneDiff = sizeof(Tombstone) - indexPair.second;
 
     if(!initPage.isRecord(fileHandle, rid)) {
         Tombstone tombstone;
         initPage.readTombstone(tombstone, rid);
         recordPtr.first = tombstone.pageNum;
         recordPtr.second = tombstone.offsetFromBegin;
+        tombstoneDiff = 0;
     }
 
     char* recordPageBuffer = new char [PAGE_SIZE];
     fileHandle.readPage(recordPtr.first, recordPageBuffer);
     DataPage recordPage(recordPageBuffer);
 
-    Record newRecord(recordDescriptor,data, rid);
-    int16_t recordsDiff = newRecord.recordSize - indexPair.second;
-    int16_t tombstoneDiff = sizeof(Tombstone) - indexPair.second;   // TODO: change indexPair.second to record length, not tombsotne size
 
     //  update date on page pointed by recordPtr
     if(recordsDiff <= recordPage.getFreeSpaceSize()) {
@@ -241,38 +242,18 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     else {
         uint32_t availablePageNum = getNextAvailablePageNum(newRecord, fileHandle, recordPtr.first);
 
-
-        //  No tombstone
+        char* availablePageBuffer = new char [PAGE_SIZE];
+        fileHandle.readPage(availablePageNum, availablePageBuffer);
+        DataPage availablePage(availablePageBuffer);
         Tombstone tombstone = {TOMB_MASK, availablePageNum, 0};
-        initPage.insertTombstone(tombstone, fileHandle, rid);
-        //initPage.writeRecordFromTombstone(fileHandle, newRecord, newPageNum);
+        availablePage.writeRecordFromTombstone(fileHandle, newRecord, availablePageNum, tombstone);
+
+        initPage.shiftRecords(fileHandle, recordPtr.first, recordPtr.second + indexPair.second, tombstoneDiff);
+        initPage.insertTombstone(tombstone, fileHandle, rid, newRecord.recordSize);
+
+        delete[] availablePageBuffer;
     }
 
-
-/*
-    Record newRecord(recordDescriptor,data, rid);
-    std::pair<uint16_t, uint16_t> indexPair = initPage.getIndexPair(rid.slotNum);
-
-    uint16_t index = indexPair.first;
-    uint16_t length = indexPair.second;
-
-    int16_t recordsDiff = newRecord.recordSize - indexPair.second;
-    int16_t tombstoneDiff = sizeof(Tombstone) - indexPair.second;
-    if (recordsDiff <= initPage.getFreeSpaceSize())
-    {
-        initPage.shiftRecords(indexPair.first + indexPair.second, recordsDiff);
-        initPage.updateRecord(newRecord, fileHandle, rid);
-    } 
-
-    else if(tombstoneDiff <= initPage.getFreeSpaceSize()) {
-        uint32_t newPageNum = getNextAvailablePageNum(newRecord, fileHandle, rid.pageNum);
-        Tombstone tombstone = {TOMB_MASK, newPageNum, 0};
-
-        initPage.shiftRecords(indexPair.first + indexPair.second, tombstoneDiff);
-        initPage.insertTombstone(tombstone, fileHandle, rid);
-        initPage.writeRecordFromTombstone(fileHandle, newRecord, newPageNum);
-    }
-*/
     delete[] initPageBuffer;
     delete[] recordPageBuffer;
     return -1;
@@ -495,15 +476,14 @@ void DataPage::updateRecord(const Record& newRecord, FileHandle& fileHandle, con
     fileHandle.writePage(rid.pageNum, page);
 }
 
-void DataPage::insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid) {
+void DataPage::insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid, const uint16_t recordSize) {
     std::pair<uint16_t,uint16_t> indexPair = this->getIndexPair(rid.slotNum);
-    tombstone.offsetFromBegin = indexPair.first;
 
     //  write tombstone
     memcpy((char*)page + indexPair.first, &tombstone, sizeof(Tombstone));
 
     //  update header::length
-    std::pair<uint16_t, uint16_t> newRecordHeader = {indexPair.first, sizeof(Tombstone)};
+    std::pair<uint16_t, uint16_t> newRecordHeader = {indexPair.first, recordSize};
 
     void* indexPos = reinterpret_cast<uint8_t*>(page) + PAGE_SIZE -
                     sizeof(unsigned) * DATA_PAGE_VAR_NUM -
@@ -519,10 +499,13 @@ void DataPage::readTombstone(Tombstone &tombstone, const RID &rid) {
     memcpy(&tombstone, (char*)page + indexPair.first, sizeof(Tombstone));
 }
 
-void DataPage::writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum) {
+void DataPage::writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum, Tombstone &tombstone) {
 
     //  Past record
     memcpy((char*)page + var[RECORD_OFFSET_FROM_BEGIN], record.getRecord(), record.recordSize);
+
+    //  Keep record place in tombstone
+    tombstone.offsetFromBegin = var[RECORD_OFFSET_FROM_BEGIN];
 
     //  Update Record offset in var
     var[RECORD_OFFSET_FROM_BEGIN] += record.recordSize;
