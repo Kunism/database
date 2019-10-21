@@ -181,34 +181,54 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
                                         const std::vector<Attribute> &recordDescriptor,
                                         const void *data, const RID &rid) {
 
-    char* buffer = new char [PAGE_SIZE];
-    fileHandle.readPage(rid.pageNum, buffer);
-    DataPage page(buffer);
+    char* initPageBuffer = new char [PAGE_SIZE];
+    fileHandle.readPage(rid.pageNum, initPageBuffer);
+    DataPage initPage(initPageBuffer);
+    std::pair<uint16_t,uint16_t> indexPair = initPage.getIndexPair(rid.slotNum);
 
+    //  <pageNum, offsetFromBegin>
+    std::pair<uint32_t,uint16_t> recordPtr(rid.pageNum, indexPair.first);
+    std::pair<uint32_t,uint16_t> tombstonePtr(rid.pageNum, indexPair.first);
+
+
+    if(!initPage.isRecord(fileHandle, rid)) {
+        Tombstone tombstone;
+        initPage.readTombstone(tombstone, rid);
+        tombstonePtr.first = tombstone.pageNum;
+        tombstonePtr.second = tombstone.offsetFromBegin;
+    }
+
+    char* recordPageBuffer = new char [PAGE_SIZE];
+    fileHandle.readPage(tombstonePtr.first, recordPageBuffer);
+
+    DataPage recordPage();
+
+
+/*
     Record newRecord(recordDescriptor,data, rid);
-    std::pair<uint16_t, uint16_t> indexPair = page.getIndexPair(rid.slotNum);
+    std::pair<uint16_t, uint16_t> indexPair = initPage.getIndexPair(rid.slotNum);
 
     uint16_t index = indexPair.first;
     uint16_t length = indexPair.second;
 
     int16_t recordsDiff = newRecord.recordSize - indexPair.second;
     int16_t tombstoneDiff = sizeof(Tombstone) - indexPair.second;
-    if (recordsDiff <= page.getFreeSpaceSize())
+    if (recordsDiff <= initPage.getFreeSpaceSize())
     {
-        page.shiftRecords(indexPair.first+indexPair.second, recordsDiff);
-        page.updateRecord(newRecord,fileHandle,rid);
+        initPage.shiftRecords(indexPair.first + indexPair.second, recordsDiff);
+        initPage.updateRecord(newRecord, fileHandle, rid);
     } 
 
-    else if(tombstoneDiff <= page.getFreeSpaceSize()) {
+    else if(tombstoneDiff <= initPage.getFreeSpaceSize()) {
         uint32_t newPageNum = getNextAvailablePageNum(newRecord, fileHandle, rid.pageNum);
-        Tombstone tombstone = {(uint8_t)(TOMB_MASK >> 8), newPageNum, 0};
+        Tombstone tombstone = {TOMB_MASK, newPageNum, 0};
 
-        page.shiftRecords(indexPair.first + indexPair.second, tombstoneDiff);
-        page.insertTombstone(tombstone, fileHandle, rid);
-        page.writeRecordFromTombstone(fileHandle, newRecord, newPageNum);
+        initPage.shiftRecords(indexPair.first + indexPair.second, tombstoneDiff);
+        initPage.insertTombstone(tombstone, fileHandle, rid);
+        initPage.writeRecordFromTombstone(fileHandle, newRecord, newPageNum);
     }
-
-    delete[] buffer;
+*/
+    delete[] initPageBuffer;
 
     return -1;
     
@@ -231,6 +251,7 @@ RC RecordBasedFileManager::writeRecordFromTombstone(Record& record, FileHandle& 
     fileHandle.readPage(availablePageNum, buffer);
     DataPage page(buffer);
     //page.writeRecordFromTombstone(fileHandle, data, recordSize, offsetFromBegin);
+    return 0;
 }
 
 Record::Record(const std::vector<Attribute> &_descriptor, const void* _data, const RID &_rid) {
@@ -432,6 +453,11 @@ void DataPage::insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, con
     fileHandle.writePage(rid.pageNum, page);
 }
 
+void DataPage::readTombstone(Tombstone &tombstone, const RID &rid) {
+    std::pair<uint16_t,uint16_t> indexPair = this->getIndexPair(rid.slotNum);
+    memcpy(&tombstone, (char*)page + indexPair.first, sizeof(Tombstone));
+}
+
 void DataPage::writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum) {
 
     //  Past record
@@ -450,6 +476,13 @@ void DataPage::writeRecordFromTombstone(FileHandle& fileHandle, Record& record, 
 
 unsigned DataPage::getFreeSpaceSize() {
     return PAGE_SIZE - var[RECORD_OFFSET_FROM_BEGIN] - var[HEADER_OFFSET_FROM_END];
+}
+
+bool DataPage::isRecord(FileHandle &fileHandle, const RID &rid) {
+    std::pair<uint16_t,uint16_t> indexPair = getIndexPair(rid.slotNum);
+    uint16_t tombstoneTag;
+    memcpy(&tombstoneTag, (char*)page + indexPair.first, sizeof(uint16_t));
+    return tombstoneTag != TOMB_MASK;
 }
 
 std::pair<uint16_t,uint16_t> DataPage::getIndexPair(const uint16_t slotNum) {
