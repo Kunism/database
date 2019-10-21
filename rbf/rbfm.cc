@@ -273,7 +273,8 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
             DataPage availablePage(availablePageBuffer);
 
             availablePage.writeRecordFromTombstone(fileHandle, newRecord, availablePageNum, tombstone);
-
+            recordPage.shiftRecords(fileHandle, tombstone.pageNum, tombstone.offsetFromBegin + indexPair.second, -indexPair.second);
+            recordPage.shiftIndexes(fileHandle, tombstone.pageNum, tombstone.offsetFromBegin + indexPair.second, -indexPair.second);
             initPage.writeTombstone(fileHandle, rid.pageNum, tombstone, indexPair.first);
             initPage.updateIndexPair(fileHandle, rid.pageNum, rid.slotNum, {indexPair.first, newRecord.recordSize});
 
