@@ -201,14 +201,26 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     if(!initPage.isRecord(fileHandle, rid)) {
         Tombstone tombstone;
         initPage.readTombstone(tombstone, rid);
-        tombstonePtr.first = tombstone.pageNum;
-        tombstonePtr.second = tombstone.offsetFromBegin;
+        recordPtr.first = tombstone.pageNum;
+        recordPtr.second = tombstone.offsetFromBegin;
     }
 
     char* recordPageBuffer = new char [PAGE_SIZE];
     fileHandle.readPage(tombstonePtr.first, recordPageBuffer);
+    DataPage recordPage(recordPageBuffer);
 
-    DataPage recordPage();
+    Record newRecord(recordDescriptor,data, rid);
+    int16_t recordsDiff = newRecord.recordSize - indexPair.second;
+    int16_t tombstoneDiff = sizeof(Tombstone) - indexPair.second;   // TODO: change indexPair.second to record length, not tombsotne size
+
+    //  update date on page pointed by recordPtr
+    if(recordsDiff <= recordPage.getFreeSpaceSize()) {
+
+    }
+
+    else {
+
+    }
 
 
 /*
@@ -236,7 +248,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     }
 */
     delete[] initPageBuffer;
-
+    delete[] recordPageBuffer;
     return -1;
     
 

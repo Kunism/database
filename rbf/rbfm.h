@@ -125,7 +125,7 @@ public:
     // Assume the RID does not change after an update
     RC updateRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor, const void *data,
                     const RID &rid);
-    RC findRecord(FileHandle &fileHandle, );
+    //RC findRecord(FileHandle &fileHandle, );
     // Read an attribute given its name and the rid.
     RC readAttribute(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor, const RID &rid,
                      const std::string &attributeName, void *data);
