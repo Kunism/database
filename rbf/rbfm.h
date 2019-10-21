@@ -158,6 +158,7 @@ private:
 
 class Record {
 public:
+    Record(int none);
     Record(const std::vector<Attribute> &_descriptor, const void* _data, const RID &_rid);
     ~Record();
     bool isNull(int fieldNum);
@@ -200,12 +201,12 @@ public:
     ~DataPage();
 
     void readRecord(FileHandle& fileHandle, const RID& rid, void* data);
-    void writeRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
+    void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
     void writeRecordFromTombstone(FileHandle& fileHandle, const char* data, uint16_t recordSize, uint16_t offsetFromBegin);
     void shiftRecords(uint16_t startPos, int16_t diff);
-    
+    void deleteRecords(const RID &rid);
 
-    void updateRecord(Record &record, FileHandle &fileHandle, const RID &rid);
+    void updateRecord(const Record &record, FileHandle &fileHandle, const RID &rid);
 
     unsigned getFreeSpaceSize();
     std::pair<uint16_t,uint16_t> getIndexPair(uint16_t index);
