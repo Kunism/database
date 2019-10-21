@@ -206,6 +206,7 @@ public:
 
     void writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum);
     void shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff);
+    void shiftIndexes(FileHandle& fileHandle, uint32_t pagenum, uint16_t startPos, int16_t dif);
     void deleteRecords(const RID &rid);
 
     void updateRecord(const Record &record, FileHandle &fileHandle, const RID &rid);
@@ -225,6 +226,7 @@ public:
     DataPage(const DataPage& d);
 
 private:
+    void updateIndexPair(std::pair<uint16_t,uint16_t> newIndexPair, uint16_t slotNum);
     void* page;
 
 };
