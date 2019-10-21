@@ -174,7 +174,14 @@ uint32_t RecordBasedFileManager::getNextAvailablePageNum(Record& record, FileHan
 
 RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                         const RID &rid) {
-    return -1;
+    uint8_t* buffer = new uint8_t [PAGE_SIZE];
+    fileHandle.readPage(rid.pageNum,buffer);
+    DataPage page(buffer);
+    std::pair<uint16_t, uint16_t> indexPair = page.getIndexPair(rid.slotNum);
+
+    page.shiftRecords(indexPair.first, -indexPair.second);
+    page.updateRecord(Record(0),fileHandle,rid);
+    return 0;
 }
 
 RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, 
@@ -252,6 +259,13 @@ RC RecordBasedFileManager::writeRecordFromTombstone(Record& record, FileHandle& 
     DataPage page(buffer);
     //page.writeRecordFromTombstone(fileHandle, data, recordSize, offsetFromBegin);
     return 0;
+}
+
+Record::Record(int none)
+:descriptor{}, numOfField(0),indicatorSize(0), nullData(nullptr),indexData(nullptr)
+{
+    this->recordSize = 0;
+    this->recordHead = new uint8_t (1);
 }
 
 Record::Record(const std::vector<Attribute> &_descriptor, const void* _data, const RID &_rid) {
@@ -352,7 +366,7 @@ DataPage::~DataPage() {
 }
 
 // encode record
-void DataPage::writeRecord(Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid ) {
+void DataPage::writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid ) {
 
     // write record
     memcpy((char*)page + var[RECORD_OFFSET_FROM_BEGIN], record.getRecord(), record.recordSize);
@@ -411,11 +425,14 @@ void DataPage::shiftRecords(uint16_t startPos, int16_t diff) {
     memmove(reinterpret_cast<uint8_t*>(startPos) + diff, reinterpret_cast<uint8_t*>(startPos), size);
 }
 
-void DataPage::updateRecord(Record& newRecord, FileHandle& fileHandle, const RID& rid) {
+void DataPage::updateRecord(const Record& newRecord, FileHandle& fileHandle, const RID& rid) {
     
     std::pair<uint16_t,uint16_t> indexPair = this->getIndexPair(rid.slotNum);
     int16_t diff = newRecord.recordSize - indexPair.second;
-
+    if( newRecord.recordSize == 0)
+    {
+        std::cerr <<"DataPage: delete a record" << std::endl;
+    }
     //write Record
     memcpy((char*)page + indexPair.first, newRecord.getRecord(), newRecord.recordSize);
     // write index,length
