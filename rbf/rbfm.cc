@@ -225,10 +225,17 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     int16_t recordsDiff = newRecord.recordSize - indexPair.second;
     int16_t tombstoneDiff = sizeof(Tombstone) - indexPair.second;
 
+    // recordPage.shiftRecords(fileHandle, recordPtr.first, recordPtr.second + oldRecordSize, recordsDiff);
+    //     // recordPage.updateRecord(newRecord,fileHandle,rid);
+    //     // recordPage.updateIndexPair
 
     if(initPage.isRecord(fileHandle, rid)) {
         if(recordsDiff <= initPage.getFreeSpaceSize()) {
-            //  update
+            initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first, recordsDiff);
+            initPage.shiftIndexes(fileHandle, rid.pageNum, indexPair.first, recordsDiff);
+            initPage.updateRecord(fileHandle, newRecord, rid);
+            initPage.updateOffsetFromBegin(fileHandle, rid.pageNum, recordsDiff);
+            initPage.updateIndexPair(fileHandle, rid.pageNum, rid.slotNum, {indexPair.first, newRecord.recordSize});
         }
         else {
             //  tombstone
