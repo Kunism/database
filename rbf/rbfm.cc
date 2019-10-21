@@ -206,7 +206,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     }
 
     char* recordPageBuffer = new char [PAGE_SIZE];
-    fileHandle.readPage(tombstonePtr.first, recordPageBuffer);
+    fileHandle.readPage(recordPtr.first, recordPageBuffer);
     DataPage recordPage(recordPageBuffer);
 
     Record newRecord(recordDescriptor,data, rid);
@@ -219,7 +219,13 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     }
 
     else {
+        uint32_t availablePageNum = getNextAvailablePageNum(newRecord, fileHandle, recordPtr.first);
 
+
+        //  No tombstone
+        Tombstone tombstone = {TOMB_MASK, availablePageNum, 0};
+        initPage.insertTombstone(tombstone, fileHandle, rid);
+        initPage.writeRecordFromTombstone(fileHandle, newRecord, newPageNum);
     }
 
 
