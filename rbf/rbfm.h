@@ -209,7 +209,7 @@ public:
     void shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff);
     void shiftIndexes(FileHandle& fileHandle, uint32_t pagenum, uint16_t startPos, int16_t dif);
 
-    void updateRecord(FileHandle &fileHandle, const Record &record, const RID &rid);
+    void updateRecord(FileHandle &fileHandle, const Record &record, uint32_t pagenum, uint16_t offset);
     void updateIndexPair(FileHandle& fileHandle, uint32_t pagenum, uint16_t slotNum, std::pair<uint16_t,uint16_t> newIndexPair);
     void updateOffsetFromBegin(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
     
