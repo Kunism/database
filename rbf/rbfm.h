@@ -174,8 +174,6 @@ public:
     uint16_t numOfField; 
     // total rocord size in bytes (size + null part + index part + data part)
     uint16_t recordSize;
-    std::vector<Attribute> descriptor;
-
     uint16_t* indexData;
 
 
@@ -185,7 +183,7 @@ public:
     const static uint16_t paddingSize = 1;
 
 private:
-    void convertData(const void* _data);
+    void convertData(const std::vector<Attribute> &descriptor,const void* _data);
     // use Record::getRecord to access
     uint8_t* recordHead;
 

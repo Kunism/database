@@ -179,7 +179,6 @@ uint32_t RecordBasedFileManager::getPageNumWithEmptySlot(uint16_t insertSize, Fi
         uint8_t* pageBuffer = new uint8_t [PAGE_SIZE];
         fileHandle.readPage(i,pageBuffer);
         DataPage page(pageBuffer);
-        std::cerr << "PAGE SCAN: " << page.var[SLOT_NUM] << ' ' <<  page.var[RECORD_NUM] <<std::endl;
         if(page.var[SLOT_NUM] > page.var[RECORD_NUM]  && insertSize <= page.getFreeSpaceSize()) {
             delete[] pageBuffer;
             return i;
@@ -330,6 +329,8 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vect
 
     //  Get Record
     std::pair<uint16_t,uint16_t> indexPair = page.getIndexPair(rid.slotNum);
+    
+    
     void* recordBuffer = new char [indexPair.second];
     readRecord(fileHandle, recordDescriptor, rid, recordBuffer);
     Record record(recordDescriptor, recordBuffer, rid);
@@ -356,7 +357,7 @@ RC RecordBasedFileManager::writeRecordFromTombstone(Record& record, FileHandle& 
 
 
 Record::Record(int none)
-:descriptor{}, numOfField(0),indicatorSize(0), nullData(nullptr),indexData(nullptr)
+:numOfField(0),indicatorSize(0), nullData(nullptr),indexData(nullptr)
 {
     this->recordSize = 0;
     this->recordHead = new uint8_t (1);
@@ -364,13 +365,12 @@ Record::Record(int none)
 
 Record::Record(const std::vector<Attribute> &_descriptor, const void* _data, const RID &_rid) {
     
-    this->descriptor = _descriptor;
     this->numOfField = _descriptor.size();
-    this->indicatorSize = std::ceil((double)descriptor.size() /CHAR_BIT);
+    this->indicatorSize = std::ceil( static_cast<double>(_descriptor.size()) /CHAR_BIT);
     //TODO: need to store rid?
     this->nullData = reinterpret_cast<const uint8_t*>(_data);
     this->indexData = new uint16_t [this->numOfField];
-    convertData(_data);
+    convertData(_descriptor,_data);
 }
 
 bool Record::isNull(int fieldNum) {
@@ -413,7 +413,7 @@ Record::~Record() {
 
 
 //TypeInt = 0, TypeReal, TypeVarChar
-void Record::convertData(const void* _data) {
+void Record::convertData(const std::vector<Attribute> &descriptor, const void* _data) {
     uint16_t size = 0;
     uint16_t byteOffset = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField;
 
@@ -423,15 +423,15 @@ void Record::convertData(const void* _data) {
     for(int i = 0 ; i < this->numOfField ; i++ ) {
 
         indexData[i] = byteOffset + size;
-        if ( this->descriptor[i].type == TypeInt && !isNull(i) ) {
+        if ( descriptor[i].type == TypeInt && !isNull(i) ) {
             pos += sizeof(int);
             size += sizeof(int);
         }
-        else if (this->descriptor[i].type == TypeReal && !isNull(i)) {
+        else if (descriptor[i].type == TypeReal && !isNull(i)) {
             pos += sizeof(float);
             size += sizeof(float);
         }
-        else if (this->descriptor[i].type == TypeVarChar && !isNull(i)) {
+        else if (descriptor[i].type == TypeVarChar && !isNull(i)) {
             // byte to int
             uint32_t varCharSize; 
             memcpy(&varCharSize, pos, sizeof(uint32_t));
