@@ -384,17 +384,17 @@ void Record::getAttribute(const std::string attrName, const std::vector<Attribut
     for(int i = 0; i < recordDescriptor.size(); i++) {
         if(!isNull(i)) {
             if(recordDescriptor[i].name == attrName) {
-                uint32_t attrSize = 0;
                 if(recordDescriptor[i].type == TypeInt) {
-                    attrSize = sizeof(int);
+                    memcpy(attr, recordHead + indexData[i], sizeof(int));
                 }
                 else if(recordDescriptor[i].type == TypeReal) {
-                    attrSize = sizeof(float);
+                    memcpy(attr, recordHead + indexData[i], sizeof(float));
                 }
                 else if(recordDescriptor[i].type == TypeVarChar) {
+                    uint32_t attrSize = 0;
                     memcpy(&attrSize, recordHead + indexData[i], sizeof(uint32_t));
+                    memcpy(attr, recordHead + indexData[i] + sizeof(uint32_t), attrSize);
                 }
-                memcpy(attr, recordHead + indexData[i] + sizeof(uint32_t), attrSize);
                 return;
             }
         }
