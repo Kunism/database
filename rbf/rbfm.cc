@@ -381,24 +381,29 @@ bool Record::isNull(int fieldNum) {
 }
 
 void Record::getAttribute(const std::string attrName, const std::vector<Attribute> &recordDescriptor, void *attr) {
+    uint8_t nullIndicator;
     for(int i = 0; i < recordDescriptor.size(); i++) {
         if(!isNull(i)) {
             if(recordDescriptor[i].name == attrName) {
+                nullIndicator = 0;
+                memcpy(attr, &nullIndicator, sizeof(uint8_t));
                 if(recordDescriptor[i].type == TypeInt) {
-                    memcpy(attr, recordHead + indexData[i], sizeof(int));
+                    memcpy((char*)attr + sizeof(uint8_t), recordHead + indexData[i], sizeof(int));
                 }
                 else if(recordDescriptor[i].type == TypeReal) {
-                    memcpy(attr, recordHead + indexData[i], sizeof(float));
+                    memcpy((char*)attr + sizeof(uint8_t), recordHead + indexData[i], sizeof(float));
                 }
                 else if(recordDescriptor[i].type == TypeVarChar) {
                     uint32_t attrSize = 0;
                     memcpy(&attrSize, recordHead + indexData[i], sizeof(uint32_t));
-                    memcpy(attr, recordHead + indexData[i] + sizeof(uint32_t), attrSize);
+                    memcpy((char*)attr + sizeof(uint8_t), recordHead + indexData[i] + sizeof(uint32_t), attrSize);
                 }
                 return;
             }
         }
     }
+    nullIndicator = 128;
+    memcpy(attr, &nullIndicator, sizeof(uint8_t));
 }
 
 Record::~Record() {
