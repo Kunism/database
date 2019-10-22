@@ -60,6 +60,7 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vecto
         page.updateRecord(fileHandle,record,availablePageNum, page.var[RECORD_OFFSET_FROM_BEGIN]);
         page.updateIndexPair(fileHandle,availablePageNum,slotNum, {page.var[RECORD_OFFSET_FROM_BEGIN], record.recordSize});
         page.updateOffsetFromBegin(fileHandle,availablePageNum,record.recordSize);
+        page.updateRecordNum(fileHandle, availablePageNum, +1);
         rid = {availablePageNum, slotNum};
     }
     else {
@@ -232,7 +233,7 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vecto
     std::cerr <<"RBFM: delete: " <<std::endl;
     std::cerr <<"FROM " << initPage.var[RECORD_NUM] ;
     // initPage.var[RECORD_NUM]--;
-    initPage.decreaseRecordNum(fileHandle,rid.pageNum);
+    initPage.updateRecordNum(fileHandle,rid.pageNum, -1);
     std::cerr <<" TO " << initPage.var[RECORD_NUM] <<std::endl;
     
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -613,9 +614,9 @@ void DataPage::writeTombstone(FileHandle &fileHandle, uint32_t pageNum, Tombston
     memcpy((char*)page + offsetFromBegin, &tombstone, sizeof(Tombstone));
     fileHandle.writePage(pageNum, page);
 }
-
-void DataPage::decreaseRecordNum(FileHandle &fileHandle, uint32_t pageNum) {
-    var[RECORD_NUM]--;
+// TODO update record num with arbitary value;
+void DataPage::updateRecordNum(FileHandle &fileHandle, uint32_t pageNum, int16_t diff) {
+    var[RECORD_NUM] = var[RECORD_NUM] + diff;
     memcpy(reinterpret_cast<uint8_t*>(page) + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
     fileHandle.writePage(pageNum,page);
 }

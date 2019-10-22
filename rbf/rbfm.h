@@ -212,7 +212,7 @@ public:
     void updateRecord(FileHandle &fileHandle, const Record &record, uint32_t pagenum, uint16_t offset);
     void updateIndexPair(FileHandle& fileHandle, uint32_t pagenum, uint16_t slotNum, std::pair<uint16_t,uint16_t> newIndexPair);
     void updateOffsetFromBegin(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
-    void decreaseRecordNum(FileHandle &fileHandle, uint32_t pageNum);
+    void updateRecordNum(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
     
     
     void insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid, const uint16_t recordSize);
