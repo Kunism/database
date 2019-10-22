@@ -141,6 +141,7 @@ RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescr
                     memcpy(s,pos+4,static_cast<int>(sizeValue));
                     s[static_cast<int>(sizeValue)] = '\0';
                     std::cout << s;
+                    delete[] s;
                     break;
                 }
             }
@@ -315,8 +316,12 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
             initPage.writeTombstone(fileHandle, rid.pageNum, tombstone, indexPair.first);
             initPage.updateIndexPair(fileHandle, rid.pageNum, rid.slotNum, {indexPair.first, newRecord.recordSize});
 
+            delete[] availablePageBuffer;
         }
+        delete[] recordPageBuffer;
     }
+    delete[] initPageBuffer;
+
     return 0;
 
 }
@@ -330,14 +335,17 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vect
 
     //  Get Record
     std::pair<uint16_t,uint16_t> indexPair = page.getIndexPair(rid.slotNum);
-    
-    
+
+
     void* recordBuffer = new char [indexPair.second];
     readRecord(fileHandle, recordDescriptor, rid, recordBuffer);
     Record record(recordDescriptor, recordBuffer, rid);
 
     //  Get Attribute
     record.getAttribute(attributeName, recordDescriptor, data);
+
+    delete[] pageBuffer;
+    delete[] recordBuffer;
     return 0;
 }
 
@@ -352,6 +360,7 @@ RC RecordBasedFileManager::writeRecordFromTombstone(Record& record, FileHandle& 
     fileHandle.readPage(availablePageNum, buffer);
     DataPage page(buffer);
     //page.writeRecordFromTombstone(fileHandle, data, recordSize, offsetFromBegin);
+    delete[] buffer;
     return 0;
 }
 
@@ -382,24 +391,29 @@ bool Record::isNull(int fieldNum) {
 }
 
 void Record::getAttribute(const std::string attrName, const std::vector<Attribute> &recordDescriptor, void *attr) {
+    uint8_t nullIndicator;
     for(int i = 0; i < recordDescriptor.size(); i++) {
         if(!isNull(i)) {
             if(recordDescriptor[i].name == attrName) {
-                uint32_t attrSize = 0;
+                nullIndicator = 0;
+                memcpy(attr, &nullIndicator, sizeof(uint8_t));
                 if(recordDescriptor[i].type == TypeInt) {
-                    attrSize = sizeof(int);
+                    memcpy((char*)attr + sizeof(uint8_t), recordHead + indexData[i], sizeof(int));
                 }
                 else if(recordDescriptor[i].type == TypeReal) {
-                    attrSize = sizeof(float);
+                    memcpy((char*)attr + sizeof(uint8_t), recordHead + indexData[i], sizeof(float));
                 }
                 else if(recordDescriptor[i].type == TypeVarChar) {
+                    uint32_t attrSize = 0;
                     memcpy(&attrSize, recordHead + indexData[i], sizeof(uint32_t));
+                    memcpy((char*)attr + sizeof(uint8_t), recordHead + indexData[i] + sizeof(uint32_t), attrSize);
                 }
-                memcpy(attr, recordHead + indexData[i] + sizeof(uint32_t), attrSize);
                 return;
             }
         }
     }
+    nullIndicator = 128;
+    memcpy(attr, &nullIndicator, sizeof(uint8_t));
 }
 
 Record::~Record() {
