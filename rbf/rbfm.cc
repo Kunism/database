@@ -336,7 +336,7 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vect
     Record record(recordDescriptor, recordBuffer, rid);
 
     //  Get Attribute
-    record.getAttribute(attributeName, data);
+    record.getAttribute(attributeName, recordDescriptor, data);
     return 0;
 }
 
@@ -380,27 +380,23 @@ bool Record::isNull(int fieldNum) {
     return this->nullData[byteOffset] >> (7 - bitOffset) & 1;
 }
 
-void Record::getAttribute(const std::string attrName, void *attr) {
-    uint16_t indexOffset = 0;
-
-    for(int i = 0; i < descriptor.size(); i++) {
+void Record::getAttribute(const std::string attrName, const std::vector<Attribute> &recordDescriptor, void *attr) {
+    for(int i = 0; i < recordDescriptor.size(); i++) {
         if(!isNull(i)) {
-            if(descriptor[i].name == attrName) {
-
+            if(recordDescriptor[i].name == attrName) {
                 uint32_t attrSize = 0;
-                if(descriptor[i].type == TypeInt) {
+                if(recordDescriptor[i].type == TypeInt) {
                     attrSize = sizeof(int);
                 }
-                else if(descriptor[i].type == TypeReal) {
+                else if(recordDescriptor[i].type == TypeReal) {
                     attrSize = sizeof(float);
                 }
-                else if(descriptor[i].type == TypeVarChar) {
-                    memcpy(&attrSize, recordHead + indexData[indexOffset], sizeof(uint32_t));
+                else if(recordDescriptor[i].type == TypeVarChar) {
+                    memcpy(&attrSize, recordHead + indexData[i], sizeof(uint32_t));
                 }
-                memcpy(attr, recordHead + indexData[indexOffset] + sizeof(uint32_t), attrSize);
+                memcpy(attr, recordHead + indexData[i] + sizeof(uint32_t), attrSize);
                 return;
             }
-            indexOffset++;
         }
     }
 }
