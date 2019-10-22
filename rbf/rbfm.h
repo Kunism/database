@@ -141,8 +141,9 @@ public:
 
     RC writeRecordFromTombstone(Record& record, FileHandle& fileHandle, uint32_t availablePageNum, uint16_t offsetFromBegin, const Tombstone& tombstone);
 
-    uint32_t getNextAvailablePageNum(Record& record, FileHandle& fileHandle, const uint32_t& pageFrom);
-
+    uint32_t getNextAvailablePageNum(uint16_t insertSize, FileHandle& fileHandle, const uint32_t& pageFrom);
+    uint32_t getPageNumWithEmptySlot(uint16_t insertSize, FileHandle& fileHandle);
+    void appendPage(FileHandle &fileHandle);
 public:
 
 protected:
@@ -193,7 +194,7 @@ private:
     
 };
 
-enum dataPageVar {HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM};
+enum dataPageVar {HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM, RECORD_NUM};
 
 class DataPage {
 public:
@@ -201,20 +202,23 @@ public:
     DataPage(const void* data);
     ~DataPage();
 
-    void readRecord(FileHandle& fileHandle, const RID& rid, void* data);
+    void readRecord(FileHandle& fileHandle, uint16_t offset, uint16_t recordSize, void* data);
     void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
 
     void writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum, Tombstone &tombstone);
     void deleteRecordFromTombstone(FileHandle &fileHandle, uint32_t pageNum, Tombstone &tombstone, const int16_t tombstoneDiff);
     void shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff);
-    void shiftIndexes(FileHandle& fileHandle, uint32_t pagenum, uint16_t startPos, int16_t dif);
+    void shiftIndexes(FileHandle& fileHandle, uint32_t pagenum, uint16_t startPos, int16_t diff);
 
     void updateRecord(FileHandle &fileHandle, const Record &record, uint32_t pagenum, uint16_t offset);
     void updateIndexPair(FileHandle& fileHandle, uint32_t pagenum, uint16_t slotNum, std::pair<uint16_t,uint16_t> newIndexPair);
     void updateOffsetFromBegin(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
+    void decreaseRecordNum(FileHandle &fileHandle, uint32_t pageNum);
+    
     
     void insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid, const uint16_t recordSize);
     void readTombstone(Tombstone &tombstone, const RID &rid);
+    uint16_t findEmptySlot();
     void writeTombstone(FileHandle &fileHandle, uint32_t pageNum, Tombstone &tombstone, const uint16_t offsetFromBegin);
     unsigned getFreeSpaceSize();
     bool isRecord(FileHandle &fileHandle, const RID &rid);

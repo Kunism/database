@@ -19,7 +19,7 @@ class FileHandle;
 class HiddenPage;
 
 #define HIDDEN_PAGE_VAR_NUM 4
-#define DATA_PAGE_VAR_NUM 3
+#define DATA_PAGE_VAR_NUM 4
 
 class PagedFileManager {
 public:
