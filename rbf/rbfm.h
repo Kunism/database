@@ -164,6 +164,7 @@ public:
     Record(const std::vector<Attribute> &_descriptor, const void* _data, const RID &_rid);
     ~Record();
     bool isNull(int fieldNum);
+    void getAttribute(const std::string attrName, void* attr);
     // convert Raw data to void*
     const uint8_t* getRecord() const;
 
