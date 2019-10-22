@@ -284,65 +284,26 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
 
         }
     }
-
-/*
-    //  <pageNum, offsetFromBegin>
-    std::pair<uint32_t,uint16_t> recordPtr(rid.pageNum, indexPair.first);
-    std::pair<uint32_t,uint16_t> tombstonePtr(rid.pageNum, indexPair.first);
-
-    Record newRecord(recordDescriptor,data, rid);
-    int16_t recordsDiff = newRecord.recordSize - indexPair.second;
-    int16_t tombstoneDiff = sizeof(Tombstone) - indexPair.second;
-    uint16_t oldRecordSize = indexPair.second;
-
-    if(!initPage.isRecord(fileHandle, rid)) {
-        Tombstone tombstone;
-        initPage.readTombstone(tombstone, rid);
-        recordPtr.first = tombstone.pageNum;
-        recordPtr.second = tombstone.offsetFromBegin;
-        tombstoneDiff = 0;
-    }
-
-    char* recordPageBuffer = new char [PAGE_SIZE];
-    fileHandle.readPage(recordPtr.first, recordPageBuffer);
-    DataPage recordPage(recordPageBuffer);
-
-
-    //  update date on page pointed by recordPtr
-    if(recordsDiff <= recordPage.getFreeSpaceSize()) {
-        recordPage.shiftRecords(fileHandle, recordPtr.first, recordPtr.second + oldRecordSize, recordsDiff);
-        // recordPage.updateRecord(newRecord,fileHandle,rid);
-        // recordPage.updateIndexPair
-    }
-
-    else {
-        uint32_t availablePageNum = getNextAvailablePageNum(newRecord, fileHandle, recordPtr.first);
-
-        char* availablePageBuffer = new char [PAGE_SIZE];
-        fileHandle.readPage(availablePageNum, availablePageBuffer);
-        DataPage availablePage(availablePageBuffer);
-        Tombstone tombstone = {TOMB_MASK, availablePageNum, 0};
-        availablePage.writeRecordFromTombstone(fileHandle, newRecord, availablePageNum, tombstone);
-
-        recordPage.deleteRecordFromTombstone(fileHandle, recordPtr.first, tombstone, tombstoneDiff);
-
-        initPage.shiftRecords(fileHandle, recordPtr.first, recordPtr.second + indexPair.second, tombstoneDiff);
-        initPage.insertTombstone(tombstone, fileHandle, rid, newRecord.recordSize);
-
-        delete[] availablePageBuffer;
-    }
-
-    delete[] initPageBuffer;
-    delete[] recordPageBuffer;
-
-    */
     return 0;
 
 }
 
 RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                          const RID &rid, const std::string &attributeName, void *data) {
-    return -1;
+    //  Get page
+    char* pageBuffer = new char [PAGE_SIZE];
+    fileHandle.readPage(rid.pageNum, pageBuffer);
+    DataPage page(pageBuffer);
+
+    //  Get Record
+    std::pair<uint16_t,uint16_t> indexPair = page.getIndexPair(rid.slotNum);
+    void* recordBuffer = new char [indexPair.second];
+    readRecord(fileHandle, recordDescriptor, rid, recordBuffer);
+    Record record(recordDescriptor, recordBuffer, rid);
+
+    //  Get Attribute
+    record.getAttribute(attributeName, data);
+    return 0;
 }
 
 RC RecordBasedFileManager::scan(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
@@ -382,6 +343,31 @@ bool Record::isNull(int fieldNum) {
     int bitOffset = fieldNum % CHAR_BIT;
 
     return this->nullData[byteOffset] >> (7 - bitOffset) & 1;
+}
+
+void Record::getAttribute(const std::string attrName, void *attr) {
+    uint16_t indexOffset = 0;
+
+    for(int i = 0; i < descriptor.size(); i++) {
+        if(!isNull(i)) {
+            if(descriptor[i].name == attrName) {
+
+                uint32_t attrSize = 0;
+                if(descriptor[i].type == TypeInt) {
+                    attrSize = sizeof(int);
+                }
+                else if(descriptor[i].type == TypeReal) {
+                    attrSize = sizeof(float);
+                }
+                else if(descriptor[i].type == TypeVarChar) {
+                    memcpy(&attrSize, recordHead + indexData[indexOffset], sizeof(uint32_t));
+                }
+                memcpy(attr, recordHead + indexData[indexOffset] + sizeof(uint32_t), attrSize);
+                return;
+            }
+            indexOffset++;
+        }
+    }
 }
 
 Record::~Record() {
