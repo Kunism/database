@@ -139,7 +139,7 @@ public:
             const std::vector<std::string> &attributeNames, // a list of projected attributes
             RBFM_ScanIterator &rbfm_ScanIterator);
 
-    RC writeRecordFromTombstone(Record& record, FileHandle& fileHandle, uint32_t availablePageNum, uint16_t offsetFromBegin, const Tombstone& tombstone);
+    RC writeRecordFromTombstone(Record& record, FileHandle& fileHandle, const Tombstone& tombstone);
 
     uint32_t getNextAvailablePageNum(uint16_t insertSize, FileHandle& fileHandle, const uint32_t& pageFrom);
     uint32_t getPageNumWithEmptySlot(uint16_t insertSize, FileHandle& fileHandle);
@@ -204,17 +204,21 @@ public:
     void readRecord(FileHandle& fileHandle, uint16_t offset, uint16_t recordSize, void* data);
     void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
 
-    void writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum, Tombstone &tombstone);
+    void writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum);
     void deleteRecordFromTombstone(FileHandle &fileHandle, uint32_t pageNum, Tombstone &tombstone, const int16_t tombstoneDiff);
     void shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff);
     void shiftIndexes(FileHandle& fileHandle, uint32_t pagenum, uint16_t startPos, int16_t diff);
 
+    void insertIndexPair(FileHandle &fileHandle, uint32_t pageNum, std::pair<uint16_t, uint16_t> indexPair);
     void updateRecord(FileHandle &fileHandle, const Record &record, uint32_t pagenum, uint16_t offset);
     void updateIndexPair(FileHandle& fileHandle, uint32_t pagenum, uint16_t slotNum, std::pair<uint16_t,uint16_t> newIndexPair);
+
+    //  Update VAR
+    void updateOffsetFromEnd(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
     void updateOffsetFromBegin(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
+    void updateSlotNum(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
     void updateRecordNum(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
-    
-    
+
     void insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid, const uint16_t recordSize);
     void readTombstone(Tombstone &tombstone, const RID &rid);
     uint16_t findEmptySlot();
@@ -239,6 +243,6 @@ private:
 struct Tombstone {
     uint16_t flag;
     uint32_t pageNum;
-    uint16_t offsetFromBegin;
+    uint16_t slotNum;
 };
 #endif
