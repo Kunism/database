@@ -211,16 +211,19 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vecto
         uint8_t* recordPageBuffer = new uint8_t [PAGE_SIZE];
         fileHandle.readPage(tombstone.pageNum, recordPageBuffer);
         DataPage recordPage(recordPageBuffer);
+        std::pair<uint16_t,uint16_t> recordPageIndexPair = recordPage.getIndexPair(tombstone.slotNum);
 
-        recordPage.shiftRecords(fileHandle,tombstone.pageNum, tombstone.offsetFromBegin + indexPair.second, -indexPair.second);
-        recordPage.shiftIndexes(fileHandle,tombstone.pageNum, tombstone.offsetFromBegin, -indexPair.second);
+        recordPage.shiftRecords(fileHandle,tombstone.pageNum, recordPageIndexPair.first + indexPair.second, -indexPair.second);
+        recordPage.shiftIndexes(fileHandle,tombstone.pageNum, recordPageIndexPair.first, -indexPair.second);
         recordPage.updateOffsetFromBegin(fileHandle,tombstone.pageNum, -indexPair.second);
-
+        recordPage.updateIndexPair(fileHandle, tombstone.pageNum, tombstone.slotNum, {0,0});
+        recordPage.updateRecordNum(fileHandle, tombstone.pageNum, -1);
 
         initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first + sizeof(Tombstone), -sizeof(Tombstone));
         initPage.shiftIndexes(fileHandle,rid.pageNum, indexPair.first, -sizeof(Tombstone));
         initPage.updateOffsetFromBegin(fileHandle, rid.pageNum, -sizeof(Tombstone));
         initPage.updateIndexPair(fileHandle, rid.pageNum, rid.slotNum, {0,0});
+        initPage.updateRecordNum(fileHandle,rid.pageNum, -1);
 
         delete[] recordPageBuffer;
     }
@@ -229,15 +232,9 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vecto
         initPage.shiftIndexes(fileHandle, rid.pageNum, indexPair.first, -indexPair.second);
         initPage.updateOffsetFromBegin(fileHandle, rid.pageNum, -indexPair.second);
         initPage.updateIndexPair(fileHandle,rid.pageNum, rid.slotNum, {0,0});
+        initPage.updateRecordNum(fileHandle,rid.pageNum, -1);
     }
-    ///////////////////////////////////////////////////////////////////////////////////////
-    std::cerr <<"RBFM: delete: " <<std::endl;
-    std::cerr <<"FROM " << initPage.var[RECORD_NUM] ;
-    // initPage.var[RECORD_NUM]--;
-    initPage.updateRecordNum(fileHandle,rid.pageNum, -1);
-    std::cerr <<" TO " << initPage.var[RECORD_NUM] <<std::endl;
-    
-    ///////////////////////////////////////////////////////////////////////////////////////
+   
     delete[] buffer;
     return 0;
 }
