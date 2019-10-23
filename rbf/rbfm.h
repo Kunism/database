@@ -219,7 +219,7 @@ public:
     void updateSlotNum(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
     void updateRecordNum(FileHandle &fileHandle, uint32_t pageNum, int16_t diff);
 
-    void insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid, const uint16_t recordSize);
+    // void insertTombstone(Tombstone &tombstone, FileHandle &fileHandle, const RID &rid, const uint16_t recordSize);
     void readTombstone(Tombstone &tombstone, const RID &rid);
     uint16_t findEmptySlot();
     void writeTombstone(FileHandle &fileHandle, uint32_t pageNum, Tombstone &tombstone, const uint16_t offsetFromBegin);
