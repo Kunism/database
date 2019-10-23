@@ -93,8 +93,8 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
             void* recordPageBuffer = new uint8_t [PAGE_SIZE];  
             fileHandle.readPage(tombstone.pageNum, recordPageBuffer);
             DataPage recordPage(recordPageBuffer);
-            
-            recordPage.readRecord(fileHandle,tombstone.offsetFromBegin,indexPair.second,data);
+            std::pair<uint16_t, uint16_t> recordPageIndexPair = recordPage.getIndexPair(tombstone.slotNum);
+            recordPage.readRecord(fileHandle, recordPageIndexPair.first, indexPair.second, data);
             return 0;
         }
         else {
@@ -371,7 +371,7 @@ RC RecordBasedFileManager::writeRecordFromTombstone(Record& record, FileHandle& 
     void* buffer = new char [PAGE_SIZE];
     fileHandle.readPage(tombstone.pageNum, buffer);
     DataPage page(buffer);
-    page.insertOutsideRecord(fileHandle, data, recordSize, offsetFromBegin);
+    page.insertOutsideRecord(fileHandle, record, tombstone.pageNum);
     delete[] buffer;
     return 0;
 }
