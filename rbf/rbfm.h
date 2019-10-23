@@ -204,7 +204,7 @@ public:
     void readRecord(FileHandle& fileHandle, uint16_t offset, uint16_t recordSize, void* data);
     void writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid);
 
-    void writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum);
+    void insertOutsideRecord(FileHandle& fileHandle, Record& record, uint32_t pageNum);
     void deleteRecordFromTombstone(FileHandle &fileHandle, uint32_t pageNum, Tombstone &tombstone, const int16_t tombstoneDiff);
     void shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff);
     void shiftIndexes(FileHandle& fileHandle, uint32_t pagenum, uint16_t startPos, int16_t diff);

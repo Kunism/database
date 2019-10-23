@@ -279,7 +279,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
             DataPage availablePage(availablePageBuffer);
 
             Tombstone tombstone = {TOMB_MASK, availablePageNum, availablePage.var[SLOT_NUM]};
-            availablePage.writeRecordFromTombstone(fileHandle, newRecord, availablePageNum);
+            availablePage.insertOutsideRecord(fileHandle, newRecord, availablePageNum);
             availablePage.insertIndexPair(fileHandle, availablePageNum, {availablePage.var[RECORD_OFFSET_FROM_BEGIN], TOMB_MASK});
             availablePage.updateSlotNum(fileHandle, availablePageNum, 1);
             availablePage.updateOffsetFromBegin(fileHandle, availablePageNum, newRecord.recordSize);
@@ -298,11 +298,13 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         char* recordPageBuffer = new char [PAGE_SIZE];
         fileHandle.readPage(tombstone.pageNum, recordPageBuffer);
         DataPage recordPage(recordPageBuffer);
+        std::pair<uint16_t,uint16_t> recordPageIndexPair = recordPage.getIndexPair(tombstone.slotNum);
 
         if(recordsDiff <= recordPage.getFreeSpaceSize() ) {
-            recordPage.shiftRecords(fileHandle, tombstone.pageNum, tombstone.offsetFromBegin + indexPair.second , recordsDiff);
-            recordPage.shiftIndexes(fileHandle, tombstone.pageNum, tombstone.offsetFromBegin, recordsDiff);
-            recordPage.updateRecord(fileHandle, newRecord, tombstone.pageNum,  tombstone.offsetFromBegin);
+
+            recordPage.shiftRecords(fileHandle, tombstone.pageNum, recordPageIndexPair.first + indexPair.second , recordsDiff);
+            recordPage.shiftIndexes(fileHandle, tombstone.pageNum, recordPageIndexPair.first, recordsDiff);
+            recordPage.updateRecord(fileHandle, newRecord, tombstone.pageNum,  recordPageIndexPair.first);
             recordPage.updateOffsetFromBegin(fileHandle, tombstone.pageNum, recordsDiff);
             initPage.updateIndexPair(fileHandle, rid.pageNum, rid.slotNum, {indexPair.first, newRecord.recordSize});
         }
@@ -314,7 +316,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
             fileHandle.readPage(availablePageNum, availablePageBuffer);
             DataPage availablePage(availablePageBuffer);
 
-            availablePage.writeRecordFromTombstone(fileHandle, newRecord, availablePageNum, tombstone);
+            availablePage.insertOutsideRecord(fileHandle, newRecord, availablePageNum, tombstone);
             recordPage.shiftRecords(fileHandle, tombstone.pageNum, tombstone.offsetFromBegin + indexPair.second, -indexPair.second);
             recordPage.shiftIndexes(fileHandle, tombstone.pageNum, tombstone.offsetFromBegin + indexPair.second, -indexPair.second);
             initPage.writeTombstone(fileHandle, rid.pageNum, tombstone, indexPair.first);
@@ -363,7 +365,7 @@ RC RecordBasedFileManager::writeRecordFromTombstone(Record& record, FileHandle& 
     void* buffer = new char [PAGE_SIZE];
     fileHandle.readPage(tombstone.pageNum, buffer);
     DataPage page(buffer);
-    page.writeRecordFromTombstone(fileHandle, data, recordSize, offsetFromBegin);
+    page.insertOutsideRecord(fileHandle, data, recordSize, offsetFromBegin);
     delete[] buffer;
     return 0;
 }
@@ -578,7 +580,7 @@ void DataPage::updateOffsetFromBegin(FileHandle &fileHandle, uint32_t pageNum, i
     fileHandle.writePage(pageNum, page);
 }
 
-void DataPage::insertIndexPair(FileHandle &fileHandle, uint32_t pageNum, uint16_t, std::pair<uint16_t, uint16_t> indexPair) {
+void DataPage::insertIndexPair(FileHandle &fileHandle, uint32_t pageNum, std::pair<uint16_t, uint16_t> indexPair) {
     char* indexBegin = (char*)page + PAGE_SIZE - var[HEADER_OFFSET_FROM_END] - sizeof(std::pair<uint16_t, uint16_t>);
     memcpy(indexBegin, &indexPair, sizeof(std::pair<uint16_t, uint16_t>));
     fileHandle.writePage(pageNum, page);
@@ -668,7 +670,7 @@ uint16_t DataPage::findEmptySlot() {
     return -1;
 }
 
-void DataPage::writeRecordFromTombstone(FileHandle& fileHandle, Record& record, uint32_t pageNum) {
+void DataPage::insertOutsideRecord(FileHandle& fileHandle, Record& record, uint32_t pageNum) {
     memcpy((char*)page + var[RECORD_OFFSET_FROM_BEGIN], record.getRecord(), record.recordSize);
     fileHandle.writePage(pageNum, page);
 }
