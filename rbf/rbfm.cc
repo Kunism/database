@@ -49,6 +49,10 @@ void RecordBasedFileManager::appendPage(FileHandle &fileHandle) {
 
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,const void *data, RID &rid) {
+    if(fileHandle.getNumberOfPages() == 0) {
+        this->appendPage(fileHandle);
+    }
+
     Record record(recordDescriptor, data, rid);
     uint8_t* pageData = new uint8_t [PAGE_SIZE];
     uint32_t availablePageNum = getPageNumWithEmptySlot(record.recordSize,fileHandle);
@@ -552,7 +556,7 @@ void DataPage::readRecord(FileHandle& fileHandle, uint16_t offset, uint16_t reco
 void DataPage::shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff) {
     int16_t size = var[RECORD_OFFSET_FROM_BEGIN] - startPos;
     
-    std::cerr << startPos << ' ' << diff << ' ' << size << ' ' << var[HEADER_OFFSET_FROM_END] <<  std::endl;
+    // std::cerr <<"DataPage: shiftRecords: " <<  startPos << ' ' << diff << ' ' << size << ' ' << var[HEADER_OFFSET_FROM_END] <<  std::endl;
     if( startPos < 0) {
         std::cerr << "shiftRecords: shift Record with out of bound [ startPos ]" << std::endl; 
     }
