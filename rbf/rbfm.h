@@ -140,10 +140,15 @@ public:
             RBFM_ScanIterator &rbfm_ScanIterator);
 
     RC writeRecordFromTombstone(Record& record, FileHandle& fileHandle, const Tombstone& tombstone);
-
+   
     uint32_t getNextAvailablePageNum(uint16_t insertSize, FileHandle& fileHandle, const uint32_t& pageFrom);
     uint32_t getPageNumWithEmptySlot(uint16_t insertSize, FileHandle& fileHandle);
     void appendPage(FileHandle &fileHandle);
+
+
+    RC getAllIndex(FileHandle &fileHandle, uint32_t pageNum);
+    RC printHex(FileHandle &fileHandle, uint32_t pageNum, uint16_t offset, uint16_t size);
+    RC getAllVAR(FileHandle &fileHandle, uint32_t pageNum);
 public:
 
 protected:
@@ -235,9 +240,11 @@ public:
     DataPage& operator=(const DataPage &dataPage);
     DataPage(const DataPage& d);
 
-private:
+/////////////////////////////////////////////////////////////////////////////////////////////////
+// TODO CHANGE BACK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// private:
     void* page;
-
+/////////////////////////////////////////////////////////////////////////////////////////////////////
 };
 
 struct Tombstone {
