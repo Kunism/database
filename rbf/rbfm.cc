@@ -2,6 +2,7 @@
 #include <iostream>
 #include "rbfm.h"
 #include "pfm.h"
+#include <iomanip>
 
 void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                            const std::string &conditionAttribute, const CompOp compOp,
@@ -138,7 +139,6 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
 }
 
 
-
 RecordBasedFileManager *RecordBasedFileManager::_rbf_manager = nullptr;
 
 RecordBasedFileManager &RecordBasedFileManager::instance() {
@@ -185,6 +185,10 @@ void RecordBasedFileManager::appendPage(FileHandle &fileHandle) {
 
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,const void *data, RID &rid) {
+    if(fileHandle.getNumberOfPages() == 0) {
+        this->appendPage(fileHandle);
+    }
+
     Record record(recordDescriptor, data, rid);
     uint8_t* pageData = new uint8_t [PAGE_SIZE];
     uint32_t availablePageNum = getPageNumWithEmptySlot(record.recordSize,fileHandle);
@@ -225,7 +229,8 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
         if( !basePage.isRecord(fileHandle,rid)) {
             Tombstone tombstone;
             basePage.readTombstone(tombstone,rid);
-
+            std::cerr << "TOMBSTONE FIND " << tombstone.pageNum << " " << tombstone.slotNum  << std::endl;
+            
             void* recordPageBuffer = new uint8_t [PAGE_SIZE];  
             fileHandle.readPage(tombstone.pageNum, recordPageBuffer);
             DataPage recordPage(recordPageBuffer);
@@ -374,7 +379,52 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vecto
     delete[] buffer;
     return 0;
 }
+RC RecordBasedFileManager::getAllIndex(FileHandle &fileHandle, uint32_t pageNum) {
 
+    uint8_t* buff = new uint8_t [PAGE_SIZE];
+    memset(buff,0, PAGE_SIZE);
+    fileHandle.readPage(pageNum, buff);
+    DataPage d(buff);
+    std::cerr << "=======================================================" <<std::endl;
+    std::cerr << "Page "<< pageNum << " Index " <<std::endl;
+    for(int i = 0 ; i < d.var[SLOT_NUM] ; i++) {
+        auto p = d.getIndexPair(i);
+        std::cerr << "no." << i << " " << p.first << ' ' << p.second <<std::endl;
+    }
+    std::cerr << "=======================================================" <<std::endl;
+
+}
+
+RC RecordBasedFileManager::getAllVAR(FileHandle &fileHandle, uint32_t pageNum) {
+
+    uint8_t* buff = new uint8_t [PAGE_SIZE];
+    memset(buff,0, PAGE_SIZE);
+    fileHandle.readPage(pageNum, buff);
+    DataPage d(buff);
+    std::cerr << "=======================================================" <<std::endl;
+    std::cerr << "Page "<< pageNum << " VAR " <<std::endl;
+    
+    std::cerr << "VAR: " << d.getFreeSpaceSize() << ' ' <<  d.var[RECORD_OFFSET_FROM_BEGIN] << ' ' << d.var[HEADER_OFFSET_FROM_END] << " "  << std::endl;
+    std::cerr << "=======================================================" <<std::endl;
+
+}
+
+RC RecordBasedFileManager::printHex(FileHandle &fileHandle, uint32_t pageNum, uint16_t offset, uint16_t size) {
+    uint8_t* buff = new uint8_t [PAGE_SIZE];
+    fileHandle.readPage(pageNum, buff);
+    DataPage d(buff);
+    std::cerr << "=======================================================" <<std::endl;
+    std::cerr << "Page "<< pageNum << " HEX VIEW " <<std::endl;
+    for(int i = 0 ; i < size ; i++) {
+        if(i % 10 == 0)
+            std::cerr <<std::endl;
+        std::cerr << std::setw(4) << (int)reinterpret_cast<uint8_t*>(d.page)[i];
+    }
+    std::cerr <<std::endl;
+    std::cerr << "=======================================================" <<std::endl;
+    
+
+}
 RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, 
                                         const std::vector<Attribute> &recordDescriptor,
                                         const void *data, const RID &rid) {
@@ -394,14 +444,16 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
 
     if(initPage.isRecord(fileHandle, rid)) {
         if(recordsDiff <= initPage.getFreeSpaceSize()) {
+            // std::cerr << "IN PLACE UPDATE" << indexPair.first<< ' ' <<  indexPair.second << " " << initPage.getIndexPair(rid.pageNum).first << " " << std::endl;
             initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first + indexPair.second, recordsDiff);
             initPage.shiftIndexes(fileHandle, rid.pageNum, indexPair.first, recordsDiff);
-            initPage.updateRecord(fileHandle, newRecord, rid.pageNum, initPage.getIndexPair(rid.pageNum).first);
+            initPage.updateRecord(fileHandle, newRecord, rid.pageNum, indexPair.first);
             initPage.updateOffsetFromBegin(fileHandle, rid.pageNum, recordsDiff);
             initPage.updateIndexPair(fileHandle, rid.pageNum, rid.slotNum, {indexPair.first, newRecord.recordSize});
         }
         else {
             //  tombstone
+            std::cerr << "UpdateRecord: insert TOMBSTONE: " << std::endl;
             uint32_t availablePageNum = getNextAvailablePageNum(newRecord.recordSize, fileHandle, rid.pageNum);
             char* availablePageBuffer = new char [PAGE_SIZE];
             fileHandle.readPage(availablePageNum, availablePageBuffer);
@@ -411,6 +463,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
             availablePage.insertOutsideRecord(fileHandle, newRecord, availablePageNum);
             availablePage.insertIndexPair(fileHandle, availablePageNum, {availablePage.var[RECORD_OFFSET_FROM_BEGIN], TOMB_MASK});
             availablePage.updateOffsetFromBegin(fileHandle, availablePageNum, newRecord.recordSize);
+            availablePage.updateOffsetFromEnd(fileHandle, availablePageNum, sizeof(std::pair<uint16_t, uint16_t>));
             availablePage.updateSlotNum(fileHandle, availablePageNum, 1);
             availablePage.updateRecordNum(fileHandle, availablePageNum, 1);
 
@@ -428,9 +481,9 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         fileHandle.readPage(tombstone.pageNum, recordPageBuffer);
         DataPage recordPage(recordPageBuffer);
         std::pair<uint16_t,uint16_t> recordPageIndexPair = recordPage.getIndexPair(tombstone.slotNum);
-
-        if(recordsDiff <= recordPage.getFreeSpaceSize() ) {
-
+       
+        if(recordsDiff <= static_cast<int32_t>(recordPage.getFreeSpaceSize()) ) {
+            std::cerr << "TOMBSTOME UPDATE"  << " " << std::endl;
             recordPage.shiftRecords(fileHandle, tombstone.pageNum, recordPageIndexPair.first + indexPair.second , recordsDiff);
             recordPage.shiftIndexes(fileHandle, tombstone.pageNum, recordPageIndexPair.first, recordsDiff);
             recordPage.updateRecord(fileHandle, newRecord, tombstone.pageNum,  recordPageIndexPair.first);
@@ -439,7 +492,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         }
         else {
             //  tombstone
-
+            std::cerr << "FIND NEW TOMBSTOME UPDATE"  << " " << std::endl;
             uint32_t availablePageNum = getNextAvailablePageNum(newRecord.recordSize, fileHandle, tombstone.pageNum);
              
             uint8_t* availablePageBuffer = new uint8_t [PAGE_SIZE];
@@ -451,16 +504,15 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
             availablePage.insertIndexPair(fileHandle, availablePageNum, 
                                           {availablePage.var[RECORD_OFFSET_FROM_BEGIN], TOMB_MASK});
             availablePage.updateOffsetFromBegin(fileHandle, availablePageNum, newRecord.recordSize);
-            availablePage.updateOffsetFromEnd(fileHandle, availablePageNum, 1);
+            availablePage.updateOffsetFromEnd(fileHandle, availablePageNum, sizeof(std::pair<uint16_t, uint16_t>));
             availablePage.updateRecordNum(fileHandle, availablePageNum, 1);
             availablePage.updateSlotNum(fileHandle, availablePageNum, 1);
 
             recordPage.shiftRecords(fileHandle, tombstone.pageNum, recordPageIndexPair.first + indexPair.second, -indexPair.second);
             recordPage.shiftIndexes(fileHandle, tombstone.pageNum, recordPageIndexPair.first, -indexPair.second);
-            recordPage.updateOffsetFromBegin(fileHandle, availablePageNum, -indexPair.second);
-            recordPage.updateIndexPair(fileHandle, availablePageNum, tombstone.slotNum, {0,0});
-            recordPage.updateRecordNum(fileHandle, availablePageNum, -1);
-
+            recordPage.updateOffsetFromBegin(fileHandle, tombstone.pageNum, -indexPair.second);
+            recordPage.updateIndexPair(fileHandle, tombstone.pageNum, tombstone.slotNum, {0,0});
+            recordPage.updateRecordNum(fileHandle, tombstone.pageNum, -1);
             
             initPage.writeTombstone(fileHandle, rid.pageNum, newTombstone, indexPair.first);
             initPage.updateIndexPair(fileHandle, rid.pageNum, rid.slotNum, {indexPair.first, newRecord.recordSize});
@@ -675,6 +727,7 @@ DataPage::~DataPage() {
 void DataPage::writeRecord(const Record &record, FileHandle &fileHandle, unsigned availablePage, RID &rid ) {
 
     // write record
+    // std::cerr << "DATAPAGE: WRITE: " << availablePage << ' ' << var[RECORD_OFFSET_FROM_BEGIN] << " " << var[HEADER_OFFSET_FROM_END] <<std::endl;
     memcpy((char*)page + var[RECORD_OFFSET_FROM_BEGIN], record.getRecord(), record.recordSize);
 
     // write index,length
@@ -716,7 +769,7 @@ void DataPage::readRecord(FileHandle& fileHandle, uint16_t offset, uint16_t reco
 void DataPage::shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff) {
     int16_t size = var[RECORD_OFFSET_FROM_BEGIN] - startPos;
     
-    std::cerr << startPos << ' ' << diff << ' ' << size << ' ' << var[HEADER_OFFSET_FROM_END] <<  std::endl;
+    std::cerr <<"DataPage: shiftRecords: " <<  startPos << ' ' << diff << ' ' << size << ' ' << var[HEADER_OFFSET_FROM_END] <<  std::endl;
     if( startPos < 0) {
         std::cerr << "shiftRecords: shift Record with out of bound [ startPos ]" << std::endl; 
     }
@@ -815,7 +868,8 @@ void DataPage::updateRecordNum(FileHandle &fileHandle, uint32_t pageNum, int16_t
 }
 
 void DataPage::updateSlotNum(FileHandle &fileHandle, uint32_t pageNum, int16_t diff) {
-    var[RECORD_OFFSET_FROM_BEGIN] += diff;
+    var[SLOT_NUM] += diff;
+    // var[RECORD_OFFSET_FROM_BEGIN] += diff;
     memcpy((char*)page + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, &var, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
     fileHandle.writePage(pageNum, page);
 }

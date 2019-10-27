@@ -95,6 +95,8 @@ RC FileHandle::appendPage(const void *data) {
     file.write(buffer, PAGE_SIZE);
     hiddenPage->var[APPEND_PAGE_COUNTER]++;
     hiddenPage->var[PAGE_NUM]++;
+    // CHECK
+    hiddenPage->writeHiddenPage(file);
     delete[] buffer;
     return 0;
 }
