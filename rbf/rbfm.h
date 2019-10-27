@@ -69,9 +69,23 @@ public:
     // Never keep the results in the memory. When getNextRecord() is called,
     // a satisfying record needs to be fetched from the file.
     // "data" follows the same format as RecordBasedFileManager::insertRecord().
-    RC getNextRecord(RID &rid, void *data) { return RBFM_EOF; };
+    void init(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
+            const std::string &conditionAttribute, const CompOp compOp,
+            const std::vector<std::string> &attributeNames);
+    RC getNextRecord(RID &rid, void *data);
 
     RC close() { return -1; };
+
+private:
+    unsigned currentPageNum;
+    unsigned totalPageNum;
+    uint16_t currentSlotNum;
+    FileHandle* fileHandle;
+    std::vector<Attribute> recordDescriptor;
+    std::string conditionAttribute;
+    CompOp comOp;
+    std::vector<std::string> attributeNames;
+    bool finishScan;
 };
 
 class RecordBasedFileManager {
@@ -165,6 +179,7 @@ public:
     ~Record();
     bool isNull(int fieldNum);
     void getAttribute(const std::string attrName, const std::vector<Attribute> &recordDescriptor, void* attr);
+    uint32_t getAttributeSize(const std::string attrName, const std::vector<Attribute> &recordDescriptor);
     // convert Raw data to void*
     const uint8_t* getRecord() const;
 

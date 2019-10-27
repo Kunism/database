@@ -3,6 +3,142 @@
 #include "rbfm.h"
 #include "pfm.h"
 
+void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
+                           const std::string &conditionAttribute, const CompOp compOp,
+                           const std::vector<std::string> &attributeNames) {
+    //  TODO: file not exist?
+
+    this->fileHandle = &fileHandle;
+    this->recordDescriptor = recordDescriptor;
+    this->conditionAttribute = conditionAttribute;
+    this->comOp = compOp;
+    this->attributeNames = attributeNames;
+
+    this->totalPageNum = fileHandle.getNumberOfPages();
+    this->currentPageNum = 0;
+    this->currentSlotNum = 0;
+    this->finishScan = false;
+}
+
+RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
+
+    char* pageBuffer = new char [PAGE_SIZE];
+
+    fileHandle->readPage(currentPageNum, pageBuffer);
+    DataPage page(pageBuffer);
+    uint16_t totalSlotNum = page.var[SLOT_NUM];
+
+    if(finishScan) {
+        std::cerr << "No more records." << std::endl;
+        delete[] pageBuffer;
+        return RBFM_EOF;
+    }
+
+    std::pair<uint16_t, uint16_t> indexPair = page.getIndexPair(currentSlotNum);
+
+    if((indexPair.second != 0) && (indexPair.second != TOMB_MASK)) {
+
+        char* recordBuffer = new char [indexPair.second];
+
+        // Tombstone case: get record from other page
+        if(!page.isRecord(*fileHandle, {currentPageNum, currentSlotNum})) {
+            Tombstone tombstone;
+            page.readTombstone(tombstone, {currentPageNum, currentSlotNum});
+            char* recordPageBuffer = new char [PAGE_SIZE];
+            fileHandle->readPage(tombstone.pageNum, recordPageBuffer);
+            DataPage recordPage(recordPageBuffer);
+            std::pair<uint16_t, uint16_t> recordPageIndexPair = recordPage.getIndexPair(tombstone.slotNum);
+            recordPage.readRecord(*fileHandle, recordPageIndexPair.first, recordPageIndexPair.second, recordBuffer);
+        }
+        //  Normal record
+        else {
+            page.readRecord(*fileHandle, indexPair.first, indexPair.second, recordBuffer);
+        }
+
+        Record record(recordDescriptor, recordBuffer, {0, 0});      //  TODO: Do not need RID?
+
+        //  TODO: compare op
+        uint32_t conditionAttrSize = record.getAttributeSize(conditionAttribute, recordDescriptor);
+        char* conditionAttr = new char [sizeof(uint8_t) + conditionAttrSize];
+        record.getAttribute(conditionAttr, recordDescriptor, conditionAttr);
+
+
+
+        uint16_t nullIndicatorSize = ceil(attributeNames.size() / 8.0);
+        uint16_t dataSize = 0;
+        char* nullIndicator = new char [nullIndicatorSize];
+
+        // <nullIndicator + data, data size>
+        std::vector<std::pair<char*, uint32_t >> attrs;
+
+        //  Collect selected attribute and their size into attrs vector
+        //  If selected attribute is null, put <nullindicator, 0> into vector, nullindicator != 0
+        //  If selected attribute is not null, put <nullindicator + data, data size> into vector
+        for(int i = 0; i < attributeNames.size(); i++) {
+            uint32_t attributeSize = record.getAttributeSize(attributeNames[i], recordDescriptor);
+            char* attr = new char [sizeof(uint8_t) + attributeSize];
+            record.getAttribute(attributeNames[i], recordDescriptor, attr);
+            attrs.push_back({attr, attributeSize});
+            dataSize += attributeSize;
+            delete[] attr;
+        }
+
+        char* attrsData = new char [dataSize];
+        uint16_t dataOffset = 0;
+
+        //  If the attribute is null, shift nullindicator left 1 bit and & 1
+        //  If the attribute is not null, shift nullindicator left 1 bit and & 0, collect each attribute data into attrsData
+        for(int i = 0; i < attrs.size(); i++) {
+            uint8_t isNull;
+            memcpy(&isNull, attrs[i].first, sizeof(uint8_t));
+            if(isNull) {
+                uint16_t nullIndicatorBuffer;
+                memcpy(&nullIndicatorBuffer, nullIndicator, nullIndicatorSize);
+                nullIndicatorBuffer = (nullIndicatorBuffer << 1) & 1;
+                memcpy(nullIndicator, &nullIndicatorBuffer, nullIndicatorSize);
+            }
+            else {
+                uint16_t nullIndicatorBuffer;
+                memcpy(&nullIndicatorBuffer, nullIndicator, nullIndicatorSize);
+                nullIndicatorBuffer = (nullIndicatorBuffer << 1) & 0;
+                memcpy(nullIndicator, &nullIndicatorBuffer, nullIndicatorSize);
+
+                memcpy(attrsData + dataOffset, attrs[i].first, attrs[i].second);
+                dataOffset += attrs[i].second;
+            }
+        }
+
+        //  If the number of selected attrbute cannot devided by 8, shift nullindicator left
+        uint16_t nullIndicatorBuffer;
+        memcpy(&nullIndicatorBuffer, nullIndicator, nullIndicatorSize);
+        nullIndicatorBuffer = nullIndicatorBuffer << (nullIndicatorSize * 8 - attrs.size());
+        memcpy(nullIndicator, &nullIndicatorBuffer, nullIndicatorSize);
+
+        memcpy(data, nullIndicator, nullIndicatorSize);
+        memcpy((char*)data + nullIndicatorSize, attrsData, dataOffset);
+
+        delete[] recordBuffer;
+        delete[] nullIndicator;
+        delete[] attrsData;
+
+    }
+
+    currentSlotNum++;
+    if(currentSlotNum >= totalSlotNum) {
+        currentSlotNum = 0;
+        currentPageNum++;
+        if(currentPageNum >= totalPageNum) {
+            currentPageNum = 0;
+            finishScan = true;
+        }
+    }
+
+    delete[] pageBuffer;
+    return RBFM_EOF;
+}
+
+
+
 RecordBasedFileManager *RecordBasedFileManager::_rbf_manager = nullptr;
 
 RecordBasedFileManager &RecordBasedFileManager::instance() {
@@ -364,6 +500,11 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vect
 RC RecordBasedFileManager::scan(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
                                 const std::string &conditionAttribute, const CompOp compOp, const void *value,
                                 const std::vector<std::string> &attributeNames, RBFM_ScanIterator &rbfm_ScanIterator) {
+
+    rbfm_ScanIterator.init(fileHandle, recordDescriptor, conditionAttribute, compOp, attributeNames);
+
+
+
     return -1;
 }
 
@@ -424,8 +565,31 @@ void Record::getAttribute(const std::string attrName, const std::vector<Attribut
             }
         }
     }
-    nullIndicator = 128;
+    nullIndicator = 0x80;
     memcpy(attr, &nullIndicator, sizeof(uint8_t));
+}
+
+uint32_t Record::getAttributeSize(const std::string attrName, const std::vector<Attribute> &recordDescriptor) {
+    for(int i = 0; i < recordDescriptor.size(); i++) {
+        if(!isNull(i)) {
+            if(recordDescriptor[i].name == attrName) {
+                if(recordDescriptor[i].type == TypeInt) {
+                    return sizeof(int);
+                }
+                else if(recordDescriptor[i].type == TypeReal) {
+                    return sizeof(float);
+                }
+                else if(recordDescriptor[i].type == TypeVarChar) {
+                    uint8_t nullIndicator;
+                    memcpy(&nullIndicator, recordHead + indexData[i], sizeof(uint32_t));
+                    return nullIndicator;
+                }
+                std::cerr << "Type error" << std::endl;
+            }
+        }
+    }
+    std::cerr << "No attribute [" << attrName << "] in record" << std::endl;
+    return 0;
 }
 
 Record::~Record() {
