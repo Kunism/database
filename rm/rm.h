@@ -64,6 +64,8 @@ public:
 
     RC dropAttribute(const std::string &tableName, const std::string &attributeName);
 
+    void getRecordDescriptor(const std::string &tableName, std::vector<Attribute> &recordDescriptor);
+
 protected:
     RelationManager();                                                  // Prevent construction
     ~RelationManager();                                                 // Prevent unwanted destruction
