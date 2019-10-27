@@ -75,6 +75,7 @@ RC BTree::updateMeta(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t 
     //  ixFileHandle.fileHandle.writePage(0, buffer);
 }
 
+
 IndexManager &IndexManager::instance() {
     static IndexManager _index_manager = IndexManager();
     return _index_manager;

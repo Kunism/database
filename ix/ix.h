@@ -73,6 +73,7 @@ public:
     RC readBTree(IXFileHandle &ixFileHandle, BTree &bTree);
 
     RC writeBTree();
+
     // Initialize and IX_ScanIterator to support a range search
     RC scan(IXFileHandle &ixFileHandle,
             const Attribute &attribute,
