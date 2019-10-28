@@ -70,9 +70,11 @@ public:
     // a satisfying record needs to be fetched from the file.
     // "data" follows the same format as RecordBasedFileManager::insertRecord().
     void init(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,
-            const std::string &conditionAttribute, const CompOp compOp,
+            const std::string &conditionAttribute, const CompOp compOp, const void *value,
             const std::vector<std::string> &attributeNames);
+    void moveToNextSlot(const uint16_t totalSlotNum);
     RC getNextRecord(RID &rid, void *data);
+    RC getNextNoOpRecord();
 
     RC close() { return -1; };
 
@@ -82,9 +84,13 @@ private:
     uint16_t currentSlotNum;
     FileHandle* fileHandle;
     std::vector<Attribute> recordDescriptor;
+
     std::string conditionAttribute;
+    char* conditionValue;
+    AttrType conditionType;
+
     CompOp comOp;
-    std::vector<std::string> attributeNames;
+    std::vector<std::string> selectedAttributeNames;
     bool finishScan;
 };
 
@@ -183,6 +189,7 @@ public:
     Record(const std::vector<Attribute> &_descriptor, const void* _data, const RID &_rid);
     ~Record();
     bool isNull(int fieldNum);
+    bool isMatch(AttrType type, const char* recordValue, const char* conditionValue, const CompOp comOp);
     void getAttribute(const std::string attrName, const std::vector<Attribute> &recordDescriptor, void* attr);
     uint32_t getAttributeSize(const std::string attrName, const std::vector<Attribute> &recordDescriptor);
     // convert Raw data to void*
