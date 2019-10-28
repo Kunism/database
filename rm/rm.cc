@@ -464,18 +464,18 @@ int RelationManager::getTableCount() {
 void RelationManager::prepareString(const std::string &s, uint8_t* data) {
     uint8_t nullpart = 0;
     int size = s.size();
-    mempcpy(data, &nullpart, sizeof(uint8_t));
+    memcpy(data, &nullpart, sizeof(uint8_t));
     data+=1;
-    mempcpy(data, &size, sizeof(int));
+    memcpy(data, &size, sizeof(int));
     data+=sizeof(int);
     memcpy(data, s.c_str(), s.size());
 }
 
 void RelationManager::prepareInt(const int i, uint8_t* data) {
     uint8_t nullpart = 0;
-    mempcpy(data, &nullpart, sizeof(uint8_t));
+    memcpy(data, &nullpart, sizeof(uint8_t));
     data+=1;
-    mempcpy(data, &i, sizeof(int));
+    memcpy(data, &i, sizeof(int));
 }
 
 
