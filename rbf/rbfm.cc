@@ -30,7 +30,7 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
         }
     }
     //  Find out value length and type, save value to conditionValue
-    if(attrIndex != -1) {
+    if(attrIndex != -1 || value) {
 
         if(conditionType == TypeInt) {
             conditionValue = new char [sizeof(int)];
@@ -52,6 +52,9 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
         else {
             std::cerr << "Type error" << std::endl;
         }
+    }
+    else {
+        conditionValue = NULL;
     }
 }
 
@@ -108,16 +111,14 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
 
             recordBasedFileManager.readRecord(*fileHandle, recordDescriptor, {currentPageNum, currentSlotNum}, recordBuffer);
             rid = {currentPageNum, currentSlotNum};
-
         }
 
         else {
             recordBasedFileManager.readRecord(*fileHandle, recordDescriptor, {currentPageNum, currentSlotNum}, recordBuffer);
             rid = {currentPageNum, currentSlotNum};
-
         }
-        Record record(recordDescriptor, recordBuffer, {currentPageNum, currentSlotNum});      //  TODO: Do not need RID?
 
+        Record record(recordDescriptor, recordBuffer, {currentPageNum, currentSlotNum});      //  TODO: Do not need RID?
         delete[] recordBuffer;
 
         //  compare op
@@ -135,17 +136,9 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
 
             for(int i = 0; i < selectedAttributeNames.size(); i++) {
                 uint32_t attributeSize = record.getAttributeSize(selectedAttributeNames[i], recordDescriptor);
-                std::cerr << "attribute " << i << " size: " << attributeSize << std::endl;
                 char* attr = new char [sizeof(uint8_t) + attributeSize];
                 memset(attr, 0, sizeof(uint8_t) + attributeSize);
                 record.getAttribute(selectedAttributeNames[i], recordDescriptor, attr);
-
-                if(attributeSize == 12) {
-                    uint32_t  charL = 0;
-                    memcpy(&charL, attr + sizeof(uint8_t), sizeof(uint32_t));
-                    std::cerr << "char length: " << charL << std::endl;
-                }
-
 
                 uint8_t  isNull;
                 memcpy(&isNull, attr, sizeof(uint8_t));
@@ -165,30 +158,23 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
                 memcpy((char*)data + nullIndicatorSize + dataOffset, attr + sizeof(uint8_t), attributeSize);
                 dataOffset += attributeSize;
 
-
-                char* mydata = new char [attributeSize];
-                memset(mydata, 0, attributeSize);
-                memcpy(mydata, attr + sizeof(uint8_t), attributeSize);
-                std::cerr << "attr " << i << "'s data: " << ((int*)mydata)[0] << std::endl;
-
                 delete[] attr;
             }
 
             //  If the number of selected attrbute cannot devided by 8, shift nullindicator left
             uint8_t nullIndicatorBuffer;
             memcpy(&nullIndicatorBuffer, data, nullIndicatorSize);
-
             nullIndicatorBuffer = (nullIndicatorBuffer << (nullIndicatorSize * 8 - selectedAttributeNames.size()));
             memcpy(data, &nullIndicatorBuffer, nullIndicatorSize);
 
             moveToNextSlot(totalSlotNum);
-
         }
 
         //  Update page number and slot number
         else {
             moveToNextSlot(totalSlotNum);
         }
+        delete[] attrBuffer;
     }
     return 0;
 }
@@ -652,6 +638,10 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
         return true;
     }
 
+    if(!conditionValue) {
+        return false;
+    }
+
     if(type == TypeInt) {
         int record = 0;
         int condition = 0;
@@ -751,8 +741,6 @@ void Record::getAttribute(const std::string attrName, const std::vector<Attribut
                     memcpy(&attrSize, recordHead + indexData[i], sizeof(uint32_t));
                     memcpy((char*)attr + sizeof(uint8_t), &attrSize, sizeof(uint32_t));
                     memcpy((char*)attr + sizeof(uint8_t) + sizeof(uint32_t), recordHead + indexData[i] + sizeof(uint32_t), attrSize);
-
-                    std::cerr << "attrSize in getAttr: " << attrSize << std::endl;
                 }
                 return;
             }
@@ -775,7 +763,6 @@ uint32_t Record::getAttributeSize(const std::string attrName, const std::vector<
                 else if(recordDescriptor[i].type == TypeVarChar) {
                     uint32_t charLength;
                     memcpy(&charLength, recordHead + indexData[i], sizeof(uint32_t));
-                    std::cerr << "charLength in getAttrSize: " << charLength << std::endl;
                     return charLength + sizeof(uint32_t);
                 }
                 std::cerr << "Type error" << std::endl;
