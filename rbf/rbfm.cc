@@ -80,7 +80,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
         uint16_t totalSlotNum = page.var[SLOT_NUM];
 
         if(finishScan) {
-            std::cerr << "No more records." << std::endl;
+            std::cerr << "RBFM_ScanIterator: No more records." << std::endl;
             return RBFM_EOF;
         }
 
@@ -89,7 +89,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
         if((indexPair.second == 0) || (indexPair.second == TOMB_MASK)) {
             moveToNextSlot(totalSlotNum);
             if(finishScan) {
-                std::cerr << "No more records." << std::endl;
+                std::cerr << "RBFM_ScanIterator: No more records." << std::endl;
                 return RBFM_EOF;
             }
             else {
@@ -135,7 +135,6 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
 
             for(int i = 0; i < selectedAttributeNames.size(); i++) {
                 uint32_t attributeSize = record.getAttributeSize(selectedAttributeNames[i], recordDescriptor);
-                std::cerr << "attribute " << i << " size: " << attributeSize << std::endl;
                 char* attr = new char [sizeof(uint8_t) + attributeSize];
                 memset(attr, 0, sizeof(uint8_t) + attributeSize);
                 record.getAttribute(selectedAttributeNames[i], recordDescriptor, attr);
@@ -143,7 +142,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
                 if(attributeSize == 12) {
                     uint32_t  charL = 0;
                     memcpy(&charL, attr + sizeof(uint8_t), sizeof(uint32_t));
-                    std::cerr << "char length: " << charL << std::endl;
+                    // std::cerr << "char length: " << charL << std::endl;
                 }
 
 
@@ -169,7 +168,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
                 char* mydata = new char [attributeSize];
                 memset(mydata, 0, attributeSize);
                 memcpy(mydata, attr + sizeof(uint8_t), attributeSize);
-                std::cerr << "attr " << i << "'s data: " << ((int*)mydata)[0] << std::endl;
+                // std::cerr << "attr " << i << "'s data: " << ((int*)mydata)[0] << std::endl;
 
                 delete[] attr;
             }
@@ -240,6 +239,7 @@ void RecordBasedFileManager::appendPage(FileHandle &fileHandle) {
 
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,const void *data, RID &rid) {
+    std::cerr << "RBFM: insert reocrd! " <<std::endl;
     if(fileHandle.getNumberOfPages() == 0) {
         this->appendPage(fileHandle);
     }
@@ -464,6 +464,7 @@ RC RecordBasedFileManager::getAllVAR(FileHandle &fileHandle, uint32_t pageNum) {
 
 RC RecordBasedFileManager::printHex(FileHandle &fileHandle, uint32_t pageNum, uint16_t offset, uint16_t size) {
     uint8_t* buff = new uint8_t [PAGE_SIZE];
+    memset(buff, 0 , PAGE_SIZE);
     fileHandle.readPage(pageNum, buff);
     DataPage d(buff);
     std::cerr << "=======================================================" <<std::endl;
@@ -647,7 +648,7 @@ bool Record::isNull(int fieldNum) {
 }
 
 bool Record::isMatch(AttrType type, const char *recordValue, const char *conditionValue, const CompOp comOp) {
-
+    std::cerr << "RECORD: isMatch " <<std::endl;
     if(comOp == NO_OP) {
         return true;
     }
@@ -685,6 +686,7 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
         }
     }
     else if(type == TypeVarChar) {
+        std::cerr << "RECORD: isMatch : TYPE VARCHAR" <<std::endl;
         uint32_t recordLength = 0;
         uint32_t conditionLength = 0;
         memcpy(&recordLength, recordValue, sizeof(uint32_t));
@@ -700,9 +702,12 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
 
         //  Only test for EQ or NEQ
         //  TODO: always true ???
+        std::cerr << "RECORD: isMatch : LEN COMP" << recordHead << ' ' << conditionLength <<std::endl;
         if(recordLength == conditionLength) {
+            std::cerr << "RECORD: isMatch : SAME LEN" <<std::endl;
             bool cmp = memcmp(record, condition, recordLength);
             if(comOp == EQ_OP) {
+                std::cerr << "RECORD: isMatch : TRUE" <<std::endl;
                 delete[] record;
                 delete[] condition;
                 return !cmp;
@@ -752,7 +757,6 @@ void Record::getAttribute(const std::string attrName, const std::vector<Attribut
                     memcpy((char*)attr + sizeof(uint8_t), &attrSize, sizeof(uint32_t));
                     memcpy((char*)attr + sizeof(uint8_t) + sizeof(uint32_t), recordHead + indexData[i] + sizeof(uint32_t), attrSize);
 
-                    std::cerr << "attrSize in getAttr: " << attrSize << std::endl;
                 }
                 return;
             }
@@ -775,7 +779,6 @@ uint32_t Record::getAttributeSize(const std::string attrName, const std::vector<
                 else if(recordDescriptor[i].type == TypeVarChar) {
                     uint32_t charLength;
                     memcpy(&charLength, recordHead + indexData[i], sizeof(uint32_t));
-                    std::cerr << "charLength in getAttrSize: " << charLength << std::endl;
                     return charLength + sizeof(uint32_t);
                 }
                 std::cerr << "Type error" << std::endl;

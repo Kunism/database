@@ -168,7 +168,7 @@ RC RelationManager::createTable(const std::string &tableName, const std::vector<
         columnFile.closeFile();
         return 0;
     }
-    std::cerr << "fail" << std::endl;
+    std::cerr << "CreateTable fail" << std::endl;
     return -1;
 }
 
@@ -178,15 +178,18 @@ RC RelationManager::deleteTable(const std::string &tableName) {
     FileHandle tableFile;
     RID deleteID;
     uint8_t* data = new uint8_t [m_tableDataSize];
-    rbfm.openFile("Tables", tableFile);
-    uint8_t* value = new uint8_t [tableName.size()+ sizeof(int) + 1];
-    prepareString(tableName, value);
-    rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, value, {"tableName"},  rbfm_it);
-    rbfm_it.getNextRecord(deleteID, data);
-    rbfm.deleteRecord(tableFile, m_tablesDescriptor, deleteID);
-    rbfm.destroyFile(tableName);
-    tableFile.closeFile();
-    return 0;
+    if (rbfm.openFile("Tables", tableFile) == 0) {
+        uint8_t* value = new uint8_t [tableName.size()+ sizeof(int) + 1];
+        prepareString(tableName, value);
+        rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, value, {"tableName"},  rbfm_it);
+        rbfm_it.getNextRecord(deleteID, data);
+        rbfm.deleteRecord(tableFile, m_tablesDescriptor, deleteID);
+        rbfm.destroyFile(tableName);
+        tableFile.closeFile();
+        return 0;
+    }
+    std::cerr << "DeleteTable fail" << std::endl;
+    return -1;
 }
 
 RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attribute> &attrs) {
@@ -202,7 +205,9 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
     uint8_t* value = new uint8_t [tableName.size()+ sizeof(int) + 1];
     prepareString(tableName, value);
     rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, value, {"tableId"},  rbfm_TB_it);
-    rbfm_TB_it.getNextRecord(targetID, tableData);
+    if (rbfm_TB_it.getNextRecord(targetID, tableData) == RBFM_EOF) {
+        std::cerr << "getAttributes: find TableName fail!" << std::endl;
+    }
     memcpy(&tableID, tableData+1, sizeof(int));
     tableFile.closeFile();
 
@@ -237,10 +242,16 @@ RC RelationManager::insertTuple(const std::string &tableName, const void *data, 
     FileHandle targetFile;
     std::vector<Attribute> attrs;
     this->getAttributes(tableName,attrs);
-    rbfm.openFile(tableName, targetFile);
-    rbfm.insertRecord(targetFile, attrs, data, rid);
-    targetFile.closeFile();
-    return 0;
+    if (rbfm.openFile(tableName, targetFile) == 0) {
+        rbfm.insertRecord(targetFile, attrs, data, rid);
+        targetFile.closeFile();
+        return 0;
+    }
+    else {
+        std::cerr << "insertTuple: file open failed!! " <<std::endl;
+        return -1;
+    }
+
 }
 
 RC RelationManager::deleteTuple(const std::string &tableName, const RID &rid) {
