@@ -8,7 +8,6 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
                            const std::string &conditionAttribute, const CompOp compOp, const void *value,
                            const std::vector<std::string> &attributeNames) {
     //  TODO: file not exist?
-    std::cerr << "start init" << std::endl;
     this->fileHandle = &fileHandle;
     this->recordDescriptor = recordDescriptor;
     this->conditionAttribute = conditionAttribute;
@@ -30,25 +29,20 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
             conditionType = recordDescriptor[i].type;
         }
     }
-    std::cerr << "start find value length" << std::endl;
     //  Find out value length and type, save value to conditionValue
     if(attrIndex != -1) {
-        std::cerr << "line " << __LINE__ << std::endl;
+
         if(conditionType == TypeInt) {
-            std::cerr << "line " << __LINE__ << std::endl;
             conditionValue = new char [sizeof(int)];
             memset(conditionValue, 0, sizeof(int));
             memcpy(conditionValue, value, sizeof(int));
-            std::cerr << "line " << __LINE__ << std::endl;
         }
         else if(conditionType == TypeReal) {
-            std::cerr << "line " << __LINE__ << std::endl;
             conditionValue = new char [sizeof(float)];
             memset(conditionValue, 0, sizeof(float));
             memcpy(conditionValue, value, sizeof(float));
         }
         else if(conditionType == TypeVarChar) {
-            std::cerr << "line " << __LINE__ << std::endl;
             uint32_t attrSize = 0;
             memcpy(&attrSize, value, sizeof(uint32_t));
             conditionValue = new char [sizeof(uint32_t) + attrSize];
@@ -59,7 +53,6 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
             std::cerr << "Type error" << std::endl;
         }
     }
-    std::cerr << "end init" << std::endl;
 }
 
 void RBFM_ScanIterator::moveToNextSlot(const uint16_t totalSlotNum) {
@@ -197,9 +190,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
             moveToNextSlot(totalSlotNum);
         }
     }
-    std::cerr << "end getNextRecord" << std::endl;
-    // TODO: return what?
-    return RBFM_EOF;
+    return 0;
 }
 
 
@@ -313,7 +304,6 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
 RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescriptor, const void *data) {
     RID fakeRid = {0,0};
     Record record(recordDescriptor,data,fakeRid);
-    std::cerr << "start printRecord" << std::endl;
     uint16_t byteOffset = Record::indexSize * (1 + recordDescriptor.size());
     for(int i =  0 ; i < recordDescriptor.size() ; i++) {
         
@@ -357,7 +347,6 @@ RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescr
             std::cout << std::endl;
         }
     }
-    std::cerr << "end printRecord" << std::endl;
     return 0;
 
 }
