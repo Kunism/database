@@ -59,6 +59,12 @@ public:
             const std::vector<std::string> &attributeNames, // a list of projected attributes
             RM_ScanIterator &rm_ScanIterator);
 
+    void tableformat(int id, std::string tableName, std::string fileName, uint8_t* data);
+
+    void columnformat(int tableId, std::string columnName, AttrType columnType, int columnLength,  int collumnPos, uint8_t* data);
+
+    
+
 // Extra credit work (10 points)
     RC addAttribute(const std::string &tableName, const Attribute &attr);
 
@@ -73,8 +79,54 @@ protected:
     RelationManager &operator=(const RelationManager &);                // Prevent assignment
 
 private:
+    static const int m_tableDataSize = 112;
+    static const int m_columnDataSize = 70;  
     static RelationManager *_relation_manager;
+    std::vector<Attribute> m_tablesDescriptor{
+        {
+            "tableId",
+            TypeInt,
+            (AttrLength)4
+        },        
+        {
+            "tableName",
+            TypeVarChar,
+            (AttrLength)50,
+        },
+        {
+            "fileName",
+            TypeVarChar,
+            (AttrLength) 50
+        } 
+    };
 
+    std::vector<Attribute> m_collumnsDescriptor{
+        {
+            "tableId",
+            TypeInt,
+            (AttrLength) 4
+        },
+        {
+            "columnName",
+            TypeVarChar,
+            (AttrLength) 50
+        },
+        {
+            "columnType",
+            TypeInt,
+            (AttrLength) 4
+        },
+        {
+            "columnLength",
+            TypeInt,
+            (AttrLength) 4
+        },
+        {
+            "columnPosition",
+            TypeInt,
+            (AttrLength) 4
+        }
+    };
 };
 
 #endif

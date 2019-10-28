@@ -16,14 +16,71 @@ RelationManager::RelationManager(const RelationManager &) = default;
 RelationManager &RelationManager::operator=(const RelationManager &) = default;
 
 RC RelationManager::createCatalog() {
-    RecordBasedFileManager &recordBasedFileManager = RecordBasedFileManager::instance();
-    recordBasedFileManager.createFile("Tables");
-    recordBasedFileManager.createFile("Columns");
-    return -1;
+    //TODO init cont descriptor 
+    RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+    rbfm.createFile("Tables");
+    rbfm.createFile("Columns");
+    RID rid;
+
+    // insert Tables
+    FileHandle TableFile;
+    rbfm.openFile("Tables",TableFile);
+    uint8_t* tableData = new uint8_t [m_tableDataSize];
+    tableformat(1,"Tables","Tables",tableData);
+    rbfm.insertRecord(TableFile,m_tablesDescriptor,tableData,rid);
+    memset(tableData,0,m_tableDataSize);
+    tableformat(2,"Columns","Columns",tableData);
+    rbfm.insertRecord(TableFile,m_tablesDescriptor,tableData,rid);
+    rbfm.closeFile(TableFile);
+    
+    // insert column
+    FileHandle columnFile;
+    rbfm.openFile("Columns", columnFile);
+    uint8_t* columnData = new uint8_t [m_columnDataSize];
+    // For table's column
+    columnformat(1, "table-id", TypeInt, 4, 1, columnData);
+    rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
+    memset(columnData, 0, m_columnDataSize);
+
+    columnformat(1, "table-name", TypeVarChar, 50, 2, columnData);
+    rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
+    memset(columnData, 0, m_columnDataSize);
+
+    columnformat(1, "file-name", TypeVarChar, 50, 3, columnData);
+    rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
+    memset(columnData, 0, m_columnDataSize);
+     // For column's column
+    columnformat(2, "table-id", TypeInt, 4, 1, columnData);
+    rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
+    memset(columnData, 0, m_columnDataSize);
+
+    columnformat(2, "column-name", TypeVarChar, 50, 2, columnData);
+    rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
+    memset(columnData, 0, m_columnDataSize);
+
+    columnformat(2, "column-type", TypeInt, 4, 3, columnData);
+    rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
+    memset(columnData, 0, m_columnDataSize);
+
+    columnformat(2, "column-length", TypeInt, 4, 4, columnData);
+    rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
+    memset(columnData, 0, m_columnDataSize);
+
+    columnformat(2, "column-position", TypeInt, 4, 5, columnData);
+    rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
+    memset(columnData, 0, m_columnDataSize);
+
+
+    delete[] tableData;
+    delete[] columnData;
+    return 0;
 }
 
 RC RelationManager::deleteCatalog() {
-    return -1;
+    RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+    rbfm.destroyFile("Tables");
+    rbfm.destroyFile("Columns");
+    return 0;
 }
 
 RC RelationManager::createTable(const std::string &tableName, const std::vector<Attribute> &attrs) {
@@ -140,5 +197,37 @@ void RelationManager::getRecordDescriptor(const std::string &tableName, std::vec
 
     }
 }
+
+void RelationManager::tableformat(int id, std::string tableName, std::string fileName, uint8_t* data) {
+    int tableNameSize =  tableName.size();
+    int fileNameSize = fileName.size();
+    memcpy(data, &id, sizeof(int));
+    data+=sizeof(int);
+    memcpy(data, &tableNameSize, sizeof(int));
+    data+=sizeof(int);
+    memcpy(data, tableName.c_str() , tableNameSize);
+    data+=tableNameSize;
+    memcpy(data, &fileNameSize , sizeof(int));
+    data+=sizeof(int);
+    memcpy(data, fileName.c_str() , fileNameSize);
+}
+
+
+void RelationManager::columnformat(int tableId, std::string columnName, AttrType columnType, int columnLength,  int columnPos, uint8_t* data) {
+    int columnNameSize =  columnName.size();
+    memcpy(data, &tableId, sizeof(int));
+    data+=sizeof(int);
+    memcpy(data, &columnNameSize, sizeof(int));
+    data+=sizeof(int);
+    memcpy(data, columnName.c_str(), columnNameSize);
+    data+=columnNameSize;
+    memcpy(data, &columnType, sizeof(AttrType));
+    data+=sizeof(AttrType);
+    memcpy(data, &columnLength, sizeof(int));
+    data+=sizeof(int);
+    memcpy(data, &columnPos, sizeof(int));
+}
+
+
 
 
