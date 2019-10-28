@@ -8,7 +8,7 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
                            const std::string &conditionAttribute, const CompOp compOp, const void *value,
                            const std::vector<std::string> &attributeNames) {
     //  TODO: file not exist?
-
+    std::cerr << "start init" << std::endl;
     this->fileHandle = &fileHandle;
     this->recordDescriptor = recordDescriptor;
     this->conditionAttribute = conditionAttribute;
@@ -28,7 +28,7 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
             conditionType = recordDescriptor[i].type;
         }
     }
-
+    std::cerr << "start find value length" << std::endl;
     //  Find out value length and type, save value to conditionValue
     if(attrIndex != -1) {
         if(conditionType == TypeInt) {
@@ -66,7 +66,7 @@ void RBFM_ScanIterator::moveToNextSlot(const uint16_t totalSlotNum) {
 RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
 
     bool foundMatchRecord = false;
-
+    std::cerr << "start getNextRecord" << std::endl;
     while(!foundMatchRecord) {
         char* pageBuffer = new char [PAGE_SIZE];
 
@@ -137,6 +137,9 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
             // TODO: need initialization???
             char* nullIndicator = new char [nullIndicatorSize];
 
+            std::cerr << "nullIndicator" << std::endl;
+            std::bitset<8> x(nullIndicator[0]);
+            std::cerr << x << '\n';
 
             // <nullIndicator + data, data size>
             std::vector<std::pair<char*, uint32_t >> attrs;
@@ -173,7 +176,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
                     nullIndicatorBuffer = (nullIndicatorBuffer << 1) | 0;
                     memcpy(nullIndicator, &nullIndicatorBuffer, nullIndicatorSize);
 
-                    memcpy(attrsData + dataOffset, attrs[i].first + sizeof(u_int8_t), attrs[i].second);
+                    memcpy(attrsData + dataOffset, attrs[i].first + sizeof(uint8_t), attrs[i].second);
                     dataOffset += attrs[i].second;
                 }
             }
