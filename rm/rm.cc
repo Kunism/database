@@ -179,7 +179,9 @@ RC RelationManager::deleteTable(const std::string &tableName) {
     RID deleteID;
     uint8_t* data = new uint8_t [m_tableDataSize];
     rbfm.openFile("Tables", tableFile);
-    rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, tableName.c_str(), {"tableName"},  rbfm_it);
+    uint8_t* value = new uint8_t [tableName.size()+ sizeof(int) + 1];
+    prepareString(tableName, value);
+    rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, value, {"tableName"},  rbfm_it);
     rbfm_it.getNextRecord(deleteID, data);
     rbfm.deleteRecord(tableFile, m_tablesDescriptor, deleteID);
     rbfm.destroyFile(tableName);
@@ -197,51 +199,93 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
     FileHandle tableFile;
     FileHandle columnFile;
     rbfm.openFile("Tables", tableFile);
-    rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, tableName.c_str(), {"tableId"},  rbfm_TB_it);
+    uint8_t* value = new uint8_t [tableName.size()+ sizeof(int) + 1];
+    prepareString(tableName, value);
+    rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, value, {"tableId"},  rbfm_TB_it);
     rbfm_TB_it.getNextRecord(targetID, tableData);
     memcpy(&tableID, tableData+1, sizeof(int));
     tableFile.closeFile();
 
     RBFM_ScanIterator rbfm_Col_it;
     rbfm.openFile("Columns", columnFile);
+    uint8_t* idValue = new uint8_t [sizeof(int) + 1];
+    prepareInt(tableID, idValue);
     rbfm.scan(columnFile, m_collumnsDescriptor, "tableId", EQ_OP, &tableID, {"columnName","columnType","columnLength"}, rbfm_Col_it);
     
     RID rid;
-    Attribute buffer;
-    memset(&buffer, 0 , sizeof(buffer));
     while(rbfm_Col_it.getNextRecord(rid, columnData) != RBFM_EOF) {
         int stringSize;
         int attrType;
         int attrLength;
-        memcpy(&stringSize, columnData+1, sizeof(int));
+        columnData+=1;
+        memcpy(&stringSize, columnData, sizeof(int));
+        columnData+=sizeof(int);
         char* stringBuffer = new char [stringSize + 1];
-        memcpy(stringBuffer, columnData+5, stringSize);
+        memcpy(stringBuffer, columnData, stringSize);
+        columnData+=stringSize;
+        memcpy(&attrType, columnData, sizeof(int));
+        columnData+=sizeof(int);
+        memcpy(&attrLength, columnData, sizeof(int));
         std::string attrName(stringBuffer, stringSize);
-        memcpy(&attrType, columnData+5+stringSize, sizeof(int));
-        memcpy(&attrLength, columnData+9+stringSize, sizeof(int));
-        attrs.push_back({attrName, (AttrType)attrType, attrLength});
+        attrs.push_back({attrName, (AttrType)attrType, (AttrLength)attrLength});
     }
     return 0;
 }
 
 RC RelationManager::insertTuple(const std::string &tableName, const void *data, RID &rid) {
-    return -1;
+    RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+    FileHandle targetFile;
+    std::vector<Attribute> attrs;
+    this->getAttributes(tableName,attrs);
+    rbfm.openFile(tableName, targetFile);
+    rbfm.insertRecord(targetFile, attrs, data, rid);
+    targetFile.closeFile();
+    return 0;
 }
 
 RC RelationManager::deleteTuple(const std::string &tableName, const RID &rid) {
+    RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+    FileHandle targetFile;
+    std::vector<Attribute> attrs;
+    this->getAttributes(tableName,attrs);
+    if (rbfm.openFile(tableName, targetFile) == 0 &&
+        rbfm.deleteRecord(targetFile, attrs, rid)== 0 ) {
+        targetFile.closeFile();    
+        return 0;   
+    }
     return -1;
 }
 
 RC RelationManager::updateTuple(const std::string &tableName, const void *data, const RID &rid) {
+    RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+    FileHandle targetFile;
+    std::vector<Attribute> attrs;
+    this->getAttributes(tableName,attrs);
+    if (rbfm.openFile(tableName, targetFile) == 0 &&
+        rbfm.updateRecord(targetFile, attrs, data, rid)== 0 ) {
+        targetFile.closeFile();
+        return 0;   
+    }
     return -1;
 }
 
 RC RelationManager::readTuple(const std::string &tableName, const RID &rid, void *data) {
+    RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+    FileHandle targetFile;
+    std::vector<Attribute> attrs;
+    this->getAttributes(tableName,attrs);
+    if (rbfm.openFile(tableName, targetFile) == 0 &&
+        rbfm.readRecord(targetFile, attrs, rid, data)== 0 ) {
+        targetFile.closeFile();
+        return 0;   
+    }
     return -1;
 }
 
 RC RelationManager::printTuple(const std::vector<Attribute> &attrs, const void *data) {
-    return -1;
+    RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+    rbfm.printRecord(attrs, data);
+    return 0;
 }
 
 RC RelationManager::readAttribute(const std::string &tableName, const RID &rid, const std::string &attributeName,
@@ -405,6 +449,23 @@ int RelationManager::getTableCount() {
     return count;
 }
 
+
+void RelationManager::prepareString(const std::string &s, uint8_t* data) {
+    uint8_t nullpart = 0;
+    int size = s.size();
+    mempcpy(data, &nullpart, sizeof(uint8_t));
+    data+=1;
+    mempcpy(data, &size, sizeof(int));
+    data+=sizeof(int);
+    memcpy(data, s.c_str(), s.size());
+}
+
+void RelationManager::prepareInt(const int i, uint8_t* data) {
+    uint8_t nullpart = 0;
+    mempcpy(data, &nullpart, sizeof(uint8_t));
+    data+=1;
+    mempcpy(data, &i, sizeof(int));
+}
 
 
 

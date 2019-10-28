@@ -73,6 +73,8 @@ public:
     RC dropAttribute(const std::string &tableName, const std::string &attributeName);
 
     void getRecordDescriptor(const std::string &tableName, std::vector<Attribute> &recordDescriptor);
+    void prepareString(const std::string &s, uint8_t* data);
+    void prepareInt(const int i, uint8_t* data);
     void tableCountInit(int count);
     void addTableCount();
     int getTableCount();
