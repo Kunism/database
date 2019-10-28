@@ -93,30 +93,34 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
             }
         }
 
-        char* recordBuffer;
+        char* recordBuffer = new char [indexPair.second];
+        RecordBasedFileManager& recordBasedFileManager = RecordBasedFileManager::instance();
 
         // Tombstone case: get record from other page
         if(!page.isRecord(*fileHandle, {currentPageNum, currentSlotNum})) {
             Tombstone tombstone;
             page.readTombstone(tombstone, {currentPageNum, currentSlotNum});
-            char* recordPageBuffer = new char [PAGE_SIZE];
-            fileHandle->readPage(tombstone.pageNum, recordPageBuffer);
-            DataPage recordPage(recordPageBuffer);
-            delete[] recordPageBuffer;
 
-            std::pair<uint16_t, uint16_t> recordPageIndexPair = recordPage.getIndexPair(tombstone.slotNum);
+            recordBasedFileManager.readRecord(*fileHandle, recordDescriptor, {tombstone.pageNum, tombstone.slotNum}, recordBuffer);
+            rid = {tombstone.pageNum, tombstone.slotNum};
+//            char* recordPageBuffer = new char [PAGE_SIZE];
+//            fileHandle->readPage(tombstone.pageNum, recordPageBuffer);
+//            DataPage recordPage(recordPageBuffer);
+//            delete[] recordPageBuffer;
 
-            recordBuffer = new char [indexPair.second];
-            recordPage.readRecord(*fileHandle, recordPageIndexPair.first, indexPair.second, recordBuffer);
+//            std::pair<uint16_t, uint16_t> recordPageIndexPair = recordPage.getIndexPair(tombstone.slotNum);
+
+//            recordPage.readRecord(*fileHandle, recordPageIndexPair.first, indexPair.second, recordBuffer);
         }
 
         //  Normal record
         else {
-            recordBuffer = new char [indexPair.second];
-            page.readRecord(*fileHandle, indexPair.first, indexPair.second, recordBuffer);
+            recordBasedFileManager.readRecord(*fileHandle, recordDescriptor, {currentPageNum, currentSlotNum}, recordBuffer);
+            rid = {currentPageNum, currentSlotNum};
+//            page.readRecord(*fileHandle, indexPair.first, indexPair.second, recordBuffer);
         }
-
         Record record(recordDescriptor, recordBuffer, {0, 0});      //  TODO: Do not need RID?
+//        Record record(recordDescriptor, recordBuffer, {0, 0});      //  TODO: Do not need RID?
         delete[] recordBuffer;
 
         //  compare op
@@ -195,7 +199,6 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
             moveToNextSlot(totalSlotNum);
         }
     }
-
 
     // TODO: return what?
     return RBFM_EOF;

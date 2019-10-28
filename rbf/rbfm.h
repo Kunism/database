@@ -74,8 +74,6 @@ public:
             const std::vector<std::string> &attributeNames);
     void moveToNextSlot(const uint16_t totalSlotNum);
     RC getNextRecord(RID &rid, void *data);
-    RC getNextNoOpRecord();
-
     RC close() { return -1; };
 
 private:
