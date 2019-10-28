@@ -66,7 +66,7 @@ void RBFM_ScanIterator::moveToNextSlot(const uint16_t totalSlotNum) {
 RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
 
     bool foundMatchRecord = false;
-    std::cerr << "start getNextRecord" << std::endl;
+
     while(!foundMatchRecord) {
         char* pageBuffer = new char [PAGE_SIZE];
 
@@ -120,6 +120,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
 //            page.readRecord(*fileHandle, indexPair.first, indexPair.second, recordBuffer);
         }
         Record record(recordDescriptor, recordBuffer, {0, 0});      //  TODO: Do not need RID?
+        recordBasedFileManager.printRecord(recordDescriptor, recordBuffer);
 //        Record record(recordDescriptor, recordBuffer, {0, 0});      //  TODO: Do not need RID?
         delete[] recordBuffer;
 
@@ -131,65 +132,40 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
         if(record.isMatch(conditionType, attrBuffer + sizeof(uint8_t), conditionValue, comOp)) {
             foundMatchRecord = true;
 
-
             uint16_t nullIndicatorSize = ceil(selectedAttributeNames.size() / 8.0);
-            uint16_t dataSize = 0;
-            // TODO: need initialization???
-            char* nullIndicator = new char [nullIndicatorSize];
 
-           
-
-            // <nullIndicator + data, data size>
-            std::vector<std::pair<char*, uint32_t >> attrs;
-
-            //  Collect selected attribute and their size into attrs vector
-            //  If selected attribute is null, put <nullindicator, 0> into vector, nullindicator != 0
-            //  If selected attribute is not null, put <nullindicator + data, data size> into vector
+            uint16_t dataOffset = 0;
             for(int i = 0; i < selectedAttributeNames.size(); i++) {
                 uint32_t attributeSize = record.getAttributeSize(selectedAttributeNames[i], recordDescriptor);
                 char* attr = new char [sizeof(uint8_t) + attributeSize];
                 record.getAttribute(selectedAttributeNames[i], recordDescriptor, attr);
-                attrs.push_back({attr, attributeSize});
-                dataSize += attributeSize;
-                delete[] attr;
-            }
 
-            char* attrsData = new char [dataSize];
-            uint16_t dataOffset = 0;
-
-            //  If the attribute is null, shift nullindicator left 1 bit and & 1
-            //  If the attribute is not null, shift nullindicator left 1 bit and & 0, collect each attribute data into attrsData
-            for(int i = 0; i < attrs.size(); i++) {
-                uint8_t isNull;
-                memcpy(&isNull, attrs[i].first, sizeof(uint8_t));
+                uint8_t  isNull;
+                memcpy(&isNull, attr, sizeof(uint8_t));
                 if(isNull) {
-                    uint16_t nullIndicatorBuffer;
-                    memcpy(&nullIndicatorBuffer, nullIndicator, nullIndicatorSize);
-                    nullIndicatorBuffer = (nullIndicatorBuffer << 1) | 1;
-                    memcpy(nullIndicator, &nullIndicatorBuffer, nullIndicatorSize);
+                    uint8_t nullIndicatorBuffer;
+                    memcpy(&nullIndicatorBuffer, data, nullIndicatorSize);
+                    nullIndicatorBuffer = (nullIndicatorBuffer << 1 ) | 1;
+                    memcpy(data, &nullIndicatorBuffer, nullIndicatorSize);
                 }
                 else {
-                    uint16_t nullIndicatorBuffer;
-                    memcpy(&nullIndicatorBuffer, nullIndicator, nullIndicatorSize);
+                    uint8_t nullIndicatorBuffer;
+                    memcpy(&nullIndicatorBuffer, data, nullIndicatorSize);
                     nullIndicatorBuffer = (nullIndicatorBuffer << 1) | 0;
-                    memcpy(nullIndicator, &nullIndicatorBuffer, nullIndicatorSize);
-
-                    memcpy(attrsData + dataOffset, attrs[i].first + sizeof(uint8_t), attrs[i].second);
-                    dataOffset += attrs[i].second;
+                    memcpy(data, &nullIndicatorBuffer, nullIndicatorSize);
                 }
+
+                memcpy((char*)data + nullIndicatorSize + dataOffset, attr + sizeof(uint8_t), attributeSize);
+                dataOffset += attributeSize;
+
+                delete[] attr;
             }
 
             //  If the number of selected attrbute cannot devided by 8, shift nullindicator left
             uint16_t nullIndicatorBuffer;
-            memcpy(&nullIndicatorBuffer, nullIndicator, nullIndicatorSize);
-            nullIndicatorBuffer = nullIndicatorBuffer << (nullIndicatorSize * 8 - attrs.size());
-            memcpy(nullIndicator, &nullIndicatorBuffer, nullIndicatorSize);
-
-            memcpy(data, nullIndicator, nullIndicatorSize);
-            memcpy((char*)data + nullIndicatorSize, attrsData, dataOffset);
-
-            delete[] nullIndicator;
-            delete[] attrsData;
+            memcpy(&nullIndicatorBuffer, data, nullIndicatorSize);
+            nullIndicatorBuffer = nullIndicatorBuffer << (nullIndicatorSize * 8 - selectedAttributeNames.size());
+            memcpy(data, &nullIndicatorBuffer, nullIndicatorSize);
 
             moveToNextSlot(totalSlotNum);
 
@@ -784,9 +760,9 @@ uint32_t Record::getAttributeSize(const std::string attrName, const std::vector<
                     return sizeof(float);
                 }
                 else if(recordDescriptor[i].type == TypeVarChar) {
-                    uint8_t nullIndicator;
+                    uint32_t nullIndicator;
                     memcpy(&nullIndicator, recordHead + indexData[i], sizeof(uint32_t));
-                    return nullIndicator;
+                    return nullIndicator + sizeof(uint32_t);
                 }
                 std::cerr << "Type error" << std::endl;
             }
