@@ -61,7 +61,9 @@ public:
 
     void tableformat(int id, std::string tableName, std::string fileName, uint8_t* data);
 
-    void columnformat(int tableId, std::string columnName, AttrType columnType, int columnLength,  int collumnPos, uint8_t* data);
+    void columnformat(int tableId, Attribute attribute, int columnPos, uint8_t* data);
+
+
 
     
 
@@ -71,6 +73,9 @@ public:
     RC dropAttribute(const std::string &tableName, const std::string &attributeName);
 
     void getRecordDescriptor(const std::string &tableName, std::vector<Attribute> &recordDescriptor);
+    void tableCountInit(int count);
+    void addTableCount();
+    int getTableCount();
 
 protected:
     RelationManager();                                                  // Prevent construction
@@ -79,54 +84,14 @@ protected:
     RelationManager &operator=(const RelationManager &);                // Prevent assignment
 
 private:
-    static const int m_tableDataSize = 112;
-    static const int m_columnDataSize = 70;  
-    static RelationManager *_relation_manager;
-    std::vector<Attribute> m_tablesDescriptor{
-        {
-            "tableId",
-            TypeInt,
-            (AttrLength)4
-        },        
-        {
-            "tableName",
-            TypeVarChar,
-            (AttrLength)50,
-        },
-        {
-            "fileName",
-            TypeVarChar,
-            (AttrLength) 50
-        } 
-    };
 
-    std::vector<Attribute> m_collumnsDescriptor{
-        {
-            "tableId",
-            TypeInt,
-            (AttrLength) 4
-        },
-        {
-            "columnName",
-            TypeVarChar,
-            (AttrLength) 50
-        },
-        {
-            "columnType",
-            TypeInt,
-            (AttrLength) 4
-        },
-        {
-            "columnLength",
-            TypeInt,
-            (AttrLength) 4
-        },
-        {
-            "columnPosition",
-            TypeInt,
-            (AttrLength) 4
-        }
-    };
+
+    static const int m_tableDataSize = 112 + 1;
+    static const int m_columnDataSize = 70 + 1;  
+    static RelationManager *_relation_manager;
+    static const std::vector<Attribute> m_tablesDescriptor;
+
+    static const std::vector<Attribute> m_collumnsDescriptor;
 };
 
 #endif
