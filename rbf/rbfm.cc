@@ -836,7 +836,7 @@ const uint8_t* Record::getRecord() const {
 DataPage::DataPage(const void* data) {
     memcpy(&var, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
 
-    page = new char [PAGE_SIZE];
+    page = new uint8_t [PAGE_SIZE];
     memcpy(page, data, PAGE_SIZE);
     
     pageHeader = new std::pair<uint16_t , uint16_t> [var[SLOT_NUM]];
@@ -898,7 +898,7 @@ void DataPage::readRecord(FileHandle& fileHandle, uint16_t offset, uint16_t reco
 void DataPage::shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff) {
     int16_t size = var[RECORD_OFFSET_FROM_BEGIN] - startPos;
     
-    std::cerr <<"DataPage: shiftRecords: " <<  startPos << ' ' << diff << ' ' << size << ' ' << var[HEADER_OFFSET_FROM_END] <<  std::endl;
+    // std::cerr <<"DataPage: shiftRecords: " <<  startPos << ' ' << diff << ' ' << size << ' ' << var[HEADER_OFFSET_FROM_END] <<  std::endl;
     if( startPos < 0) {
         std::cerr << "shiftRecords: shift Record with out of bound [ startPos ]" << std::endl; 
     }

@@ -148,8 +148,12 @@ RC RelationManager::createTable(const std::string &tableName, const std::vector<
 
         uint8_t* tableData = new uint8_t [m_tableDataSize];
         uint8_t* columnData = new uint8_t [m_columnDataSize];
+        memset(tableData, 0, m_tableDataSize);
+        memset(columnData, 0, m_columnDataSize);
+
         int tableID = getTableCount() + 1;
         this->addTableCount();
+
         //write table
         tableformat(tableID, tableName, tableName, tableData);
         rbfm.insertRecord(tableFile, m_tablesDescriptor, tableData, rid);
@@ -325,6 +329,8 @@ void RelationManager::getRecordDescriptor(const std::string &tableName, std::vec
 void RelationManager::tableformat(int id, std::string tableName, std::string fileName, uint8_t* data) {
     int tableNameSize =  tableName.size();
     int fileNameSize = fileName.size();
+    uint8_t nullpart = 0;
+    memcpy(data, &nullpart, sizeof(uint8_t));
     data+=1;
     memcpy(data, &id, sizeof(int));
     data+=sizeof(int);
@@ -344,6 +350,8 @@ void RelationManager::columnformat(int tableId, Attribute attribute, int columnP
     AttrType columnType = attribute.type; 
     int columnLength = attribute.length;
     int columnNameSize =  columnName.size();
+    uint8_t nullpart = 0;
+    memcpy(data, &nullpart, sizeof(uint8_t));
     data+=1;
     memcpy(data, &tableId, sizeof(int));
     data+=sizeof(int);
