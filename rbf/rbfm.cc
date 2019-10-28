@@ -137,9 +137,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
             // TODO: need initialization???
             char* nullIndicator = new char [nullIndicatorSize];
 
-            std::cerr << "nullIndicator" << std::endl;
-            std::bitset<8> x(nullIndicator[0]);
-            std::cerr << x << '\n';
+           
 
             // <nullIndicator + data, data size>
             std::vector<std::pair<char*, uint32_t >> attrs;
@@ -914,8 +912,9 @@ void DataPage::readRecord(FileHandle& fileHandle, uint16_t offset, uint16_t reco
     uint16_t indicatorSize = ceil(static_cast<double>(numOfField)/CHAR_BIT);
     uint8_t* dataPos = nullPos + indicatorSize + Record::indexSize * numOfField;
     
+    
     memcpy(data, nullPos, indicatorSize);
-    memcpy((char*)data+indicatorSize, dataPos, lenValue-Record::indexSize * (1+numOfField) - Record::paddingSize);
+    memcpy((char*)data+indicatorSize, dataPos, lenValue-indicatorSize - Record::indexSize * (1+numOfField) - Record::paddingSize);
 }
 
 // shift startPos - this->var[] with diff bytes
