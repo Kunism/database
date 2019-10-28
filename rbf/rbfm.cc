@@ -20,8 +20,10 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
     this->currentSlotNum = 0;
     this->finishScan = false;
 
-    //  Find out attrIndex
+    // Default
     int16_t attrIndex = -1;
+
+    //  Find out attrIndex
     for(int i = 0; i < recordDescriptor.size(); i++) {
         if(conditionAttribute == recordDescriptor[i].name) {
             attrIndex = i;
@@ -31,24 +33,33 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
     std::cerr << "start find value length" << std::endl;
     //  Find out value length and type, save value to conditionValue
     if(attrIndex != -1) {
+        std::cerr << "line " << __LINE__ << std::endl;
         if(conditionType == TypeInt) {
+            std::cerr << "line " << __LINE__ << std::endl;
             conditionValue = new char [sizeof(int)];
+            memset(conditionValue, 0, sizeof(int));
             memcpy(conditionValue, value, sizeof(int));
+            std::cerr << "line " << __LINE__ << std::endl;
         }
         else if(conditionType == TypeReal) {
+            std::cerr << "line " << __LINE__ << std::endl;
             conditionValue = new char [sizeof(float)];
+            memset(conditionValue, 0, sizeof(float));
             memcpy(conditionValue, value, sizeof(float));
         }
         else if(conditionType == TypeVarChar) {
+            std::cerr << "line " << __LINE__ << std::endl;
             uint32_t attrSize = 0;
             memcpy(&attrSize, value, sizeof(uint32_t));
             conditionValue = new char [sizeof(uint32_t) + attrSize];
+            memset(conditionValue, 0, sizeof(uint32_t) + attrSize);
             memcpy(conditionValue, value, sizeof(uint32_t) + attrSize);
         }
         else {
             std::cerr << "Type error" << std::endl;
         }
     }
+    std::cerr << "end init" << std::endl;
 }
 
 void RBFM_ScanIterator::moveToNextSlot(const uint16_t totalSlotNum) {
@@ -94,6 +105,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
         }
 
         char* recordBuffer = new char [indexPair.second];
+        memset(recordBuffer, 0, indexPair.second);
         RecordBasedFileManager& recordBasedFileManager = RecordBasedFileManager::instance();
 
         // Tombstone case: get record from other page
@@ -101,44 +113,46 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
             Tombstone tombstone;
             page.readTombstone(tombstone, {currentPageNum, currentSlotNum});
 
-            recordBasedFileManager.readRecord(*fileHandle, recordDescriptor, {tombstone.pageNum, tombstone.slotNum}, recordBuffer);
-            rid = {tombstone.pageNum, tombstone.slotNum};
-//            char* recordPageBuffer = new char [PAGE_SIZE];
-//            fileHandle->readPage(tombstone.pageNum, recordPageBuffer);
-//            DataPage recordPage(recordPageBuffer);
-//            delete[] recordPageBuffer;
+            recordBasedFileManager.readRecord(*fileHandle, recordDescriptor, {currentPageNum, currentSlotNum}, recordBuffer);
+            rid = {currentPageNum, currentSlotNum};
 
-//            std::pair<uint16_t, uint16_t> recordPageIndexPair = recordPage.getIndexPair(tombstone.slotNum);
-
-//            recordPage.readRecord(*fileHandle, recordPageIndexPair.first, indexPair.second, recordBuffer);
         }
 
-        //  Normal record
         else {
             recordBasedFileManager.readRecord(*fileHandle, recordDescriptor, {currentPageNum, currentSlotNum}, recordBuffer);
             rid = {currentPageNum, currentSlotNum};
-//            page.readRecord(*fileHandle, indexPair.first, indexPair.second, recordBuffer);
+
         }
-        Record record(recordDescriptor, recordBuffer, {0, 0});      //  TODO: Do not need RID?
-        recordBasedFileManager.printRecord(recordDescriptor, recordBuffer);
-//        Record record(recordDescriptor, recordBuffer, {0, 0});      //  TODO: Do not need RID?
+        Record record(recordDescriptor, recordBuffer, {currentPageNum, currentSlotNum});      //  TODO: Do not need RID?
+
         delete[] recordBuffer;
 
         //  compare op
         uint32_t attrSize = record.getAttributeSize(conditionAttribute, recordDescriptor);
+
         char* attrBuffer = new char [sizeof(uint8_t) + attrSize];
+        memset(attrBuffer, 0, sizeof(uint8_t) + attrSize);
         record.getAttribute(conditionAttribute, recordDescriptor, attrBuffer);
 
         if(record.isMatch(conditionType, attrBuffer + sizeof(uint8_t), conditionValue, comOp)) {
             foundMatchRecord = true;
 
             uint16_t nullIndicatorSize = ceil(selectedAttributeNames.size() / 8.0);
-
             uint16_t dataOffset = 0;
+
             for(int i = 0; i < selectedAttributeNames.size(); i++) {
                 uint32_t attributeSize = record.getAttributeSize(selectedAttributeNames[i], recordDescriptor);
+                std::cerr << "attribute " << i << " size: " << attributeSize << std::endl;
                 char* attr = new char [sizeof(uint8_t) + attributeSize];
+                memset(attr, 0, sizeof(uint8_t) + attributeSize);
                 record.getAttribute(selectedAttributeNames[i], recordDescriptor, attr);
+
+                if(attributeSize == 12) {
+                    uint32_t  charL = 0;
+                    memcpy(&charL, attr + sizeof(uint8_t), sizeof(uint32_t));
+                    std::cerr << "char length: " << charL << std::endl;
+                }
+
 
                 uint8_t  isNull;
                 memcpy(&isNull, attr, sizeof(uint8_t));
@@ -158,13 +172,20 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
                 memcpy((char*)data + nullIndicatorSize + dataOffset, attr + sizeof(uint8_t), attributeSize);
                 dataOffset += attributeSize;
 
+
+                char* mydata = new char [attributeSize];
+                memset(mydata, 0, attributeSize);
+                memcpy(mydata, attr + sizeof(uint8_t), attributeSize);
+                std::cerr << "attr " << i << "'s data: " << ((int*)mydata)[0] << std::endl;
+
                 delete[] attr;
             }
 
             //  If the number of selected attrbute cannot devided by 8, shift nullindicator left
-            uint16_t nullIndicatorBuffer;
+            uint8_t nullIndicatorBuffer;
             memcpy(&nullIndicatorBuffer, data, nullIndicatorSize);
-            nullIndicatorBuffer = nullIndicatorBuffer << (nullIndicatorSize * 8 - selectedAttributeNames.size());
+
+            nullIndicatorBuffer = (nullIndicatorBuffer << (nullIndicatorSize * 8 - selectedAttributeNames.size()));
             memcpy(data, &nullIndicatorBuffer, nullIndicatorSize);
 
             moveToNextSlot(totalSlotNum);
@@ -176,7 +197,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
             moveToNextSlot(totalSlotNum);
         }
     }
-
+    std::cerr << "end getNextRecord" << std::endl;
     // TODO: return what?
     return RBFM_EOF;
 }
@@ -292,7 +313,7 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
 RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescriptor, const void *data) {
     RID fakeRid = {0,0};
     Record record(recordDescriptor,data,fakeRid);
-
+    std::cerr << "start printRecord" << std::endl;
     uint16_t byteOffset = Record::indexSize * (1 + recordDescriptor.size());
     for(int i =  0 ; i < recordDescriptor.size() ; i++) {
         
@@ -336,7 +357,7 @@ RC RecordBasedFileManager::printRecord(const std::vector<Attribute> &recordDescr
             std::cout << std::endl;
         }
     }
-
+    std::cerr << "end printRecord" << std::endl;
     return 0;
 
 }
@@ -739,7 +760,10 @@ void Record::getAttribute(const std::string attrName, const std::vector<Attribut
                 else if(recordDescriptor[i].type == TypeVarChar) {
                     uint32_t attrSize = 0;
                     memcpy(&attrSize, recordHead + indexData[i], sizeof(uint32_t));
-                    memcpy((char*)attr + sizeof(uint8_t), recordHead + indexData[i] + sizeof(uint32_t), attrSize);
+                    memcpy((char*)attr + sizeof(uint8_t), &attrSize, sizeof(uint32_t));
+                    memcpy((char*)attr + sizeof(uint8_t) + sizeof(uint32_t), recordHead + indexData[i] + sizeof(uint32_t), attrSize);
+
+                    std::cerr << "attrSize in getAttr: " << attrSize << std::endl;
                 }
                 return;
             }
@@ -760,9 +784,10 @@ uint32_t Record::getAttributeSize(const std::string attrName, const std::vector<
                     return sizeof(float);
                 }
                 else if(recordDescriptor[i].type == TypeVarChar) {
-                    uint32_t nullIndicator;
-                    memcpy(&nullIndicator, recordHead + indexData[i], sizeof(uint32_t));
-                    return nullIndicator + sizeof(uint32_t);
+                    uint32_t charLength;
+                    memcpy(&charLength, recordHead + indexData[i], sizeof(uint32_t));
+                    std::cerr << "charLength in getAttrSize: " << charLength << std::endl;
+                    return charLength + sizeof(uint32_t);
                 }
                 std::cerr << "Type error" << std::endl;
             }
