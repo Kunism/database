@@ -21,6 +21,7 @@ public:
     RC close() { return -1; };
 
     RBFM_ScanIterator rbfmScanIterator;
+    FileHandle fileHandle;
 };
 
 // Relation Manager
