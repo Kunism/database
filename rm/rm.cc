@@ -200,11 +200,11 @@ RC RelationManager::deleteTable(const std::string &tableName) {
 }
 
 RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attribute> &attrs) {
-    uint8_t* tableData = new uint8_t [m_tableDataSize];
-    uint8_t* columnData = new uint8_t [m_columnDataSize];
+    uint8_t* tableData = new uint8_t [m_tableDataSize+100];
+    uint8_t* columnData = new uint8_t [m_columnDataSize+100];
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
     RBFM_ScanIterator rbfm_TB_it;
-    int tableID;
+    int tableID = 87;
     RID targetID;
     FileHandle tableFile;
     FileHandle columnFile;
@@ -217,15 +217,16 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
     }
     memcpy(&tableID, tableData+1, sizeof(int));
     // std::cerr << tableID << std::endl;
-    tableFile.closeFile();
+    // tableFile.closeFile();
     
 
     RBFM_ScanIterator rbfm_Col_it;
-    rbfm.openFile("Columns", columnFile);
+    if (rbfm.openFile("Columns", columnFile) != 0) {
+        std::cerr << "OPEN FILE FAILED FUCK!!" <<std::endl;
+    }
     uint8_t* idValue = new uint8_t [sizeof(int) + 1];
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // tableID = 2;
-    std::cerr << tableID <<std::endl;
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     prepareInt(tableID, idValue);
@@ -233,29 +234,22 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
     
     RID rid;
     while(rbfm_Col_it.getNextRecord(rid, columnData) != RBFM_EOF) {
-        // std:: cerr << "FIND ONE " <<std::endl; 
         int stringSize;
         int attrType;
         int attrLength;
-        columnData+=1;
-        memcpy(&stringSize, columnData, sizeof(int));
-        columnData+=sizeof(int);
-        char* stringBuffer = new char [stringSize + 1];
-        memcpy(stringBuffer, columnData, stringSize);
-        columnData+=stringSize;
-        memcpy(&attrType, columnData, sizeof(int));
-        columnData+=sizeof(int);
-        memcpy(&attrLength, columnData, sizeof(int));
+        memcpy(&stringSize, columnData+1, sizeof(int));
+        char* stringBuffer = new char [stringSize + 100];
+        memcpy(stringBuffer, columnData+5, stringSize);
+        memcpy(&attrType, columnData+stringSize+5, sizeof(int));
+        memcpy(&attrLength, columnData+stringSize+9, sizeof(int));
         std::string attrName(stringBuffer, stringSize);
         attrs.push_back({attrName, (AttrType)attrType, (AttrLength)attrLength});
         delete[] stringBuffer;
     }
 
-    // for(auto i : attrs) {
-    //     std::cerr << i.name << ' ' << i.type  << " " << i.length <<std::endl;
-    // }
-
-    // columnFile.closeFile();
+    delete[] columnData;
+    delete[] tableData;
+    columnFile.closeFile();
     return 0;
 }
 
@@ -312,6 +306,7 @@ RC RelationManager::readTuple(const std::string &tableName, const RID &rid, void
         targetFile.closeFile();
         return 0;   
     }
+    std::cerr << "CANNOT OPEN FILE" <<std::endl;
     return -1;
 }
 
@@ -345,13 +340,16 @@ RC RelationManager::scan(const std::string &tableName,
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
     std::vector<Attribute> attrs;
     this->getAttributes(tableName,attrs);
+    
+    RC rc;
+    rc = rbfm.openFile(tableName, rm_ScanIterator.fileHandle);
+    if( rc != 0) {
+        std::cerr << "scan open file failed!" << std::endl;
+        return -1;
+    }
 
-     if (rbfm.openFile(tableName, rm_ScanIterator.fileHandle) == 0 &&
-         rbfm.scan(rm_ScanIterator.fileHandle, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfmScanIterator) == 0 ) {
-
-         return 0;
-     }
-     return -1;
+    rc = rbfm.scan(rm_ScanIterator.fileHandle, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfmScanIterator);
+    return 0;
 }
 
 // Extra credit work
