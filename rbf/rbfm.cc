@@ -693,7 +693,7 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
 
         //  Only test for EQ or NEQ
         //  TODO: always true ???
-        std::cerr << "RECORD: isMatch : LEN COMP" << recordHead << ' ' << conditionLength <<std::endl;
+        std::cerr << "RECORD: isMatch : LEN COMP" << recordLength << " v.s " << conditionLength <<std::endl;
         if(recordLength == conditionLength) {
             std::cerr << "RECORD: isMatch : SAME LEN" <<std::endl;
             bool cmp = memcmp(record, condition, recordLength);

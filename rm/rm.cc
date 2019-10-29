@@ -301,6 +301,15 @@ RC RelationManager::printTuple(const std::vector<Attribute> &attrs, const void *
 
 RC RelationManager::readAttribute(const std::string &tableName, const RID &rid, const std::string &attributeName,
                                   void *data) {
+    RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+    FileHandle targetFile;
+    std::vector<Attribute> attrs;
+    this->getAttributes(tableName,attrs);
+    if (rbfm.openFile(tableName, targetFile) == 0 && 
+        rbfm.readAttribute(targetFile, attrs, rid, attributeName, data) == 0 ) {
+        targetFile.closeFile();
+        return 0;   
+    }
     return -1;
 }
 
@@ -311,14 +320,16 @@ RC RelationManager::scan(const std::string &tableName,
                          const std::vector<std::string> &attributeNames,
                          RM_ScanIterator &rm_ScanIterator) {
 
-    RecordBasedFileManager &recordBasedFileManager = RecordBasedFileManager::instance();
-
-    //  TODO: get filePath by tableName
-    //  TODO: create FileHandle by open filePath
-    //  TODO: rbfm.scan(fileHandle)
-    //recordBasedFileManager.openFile()
-    //recordBasedFileManager.scan();
-    return -1;
+    RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+    FileHandle targetFile;
+    std::vector<Attribute> attrs;
+    this->getAttributes(tableName,attrs);
+    // if (rbfm.openFile(tableName, targetFile) == 0 && 
+    //     rbfm.scan(targetFile, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator) == 0 ) {
+    //     targetFile.closeFile();
+    //     return 0;   
+    // }
+    // return -1;
 }
 
 // Extra credit work
@@ -462,19 +473,13 @@ int RelationManager::getTableCount() {
 
 
 void RelationManager::prepareString(const std::string &s, uint8_t* data) {
-    uint8_t nullpart = 0;
     int size = s.size();
-    memcpy(data, &nullpart, sizeof(uint8_t));
-    data+=1;
     memcpy(data, &size, sizeof(int));
     data+=sizeof(int);
     memcpy(data, s.c_str(), s.size());
 }
 
 void RelationManager::prepareInt(const int i, uint8_t* data) {
-    uint8_t nullpart = 0;
-    memcpy(data, &nullpart, sizeof(uint8_t));
-    data+=1;
     memcpy(data, &i, sizeof(int));
 }
 
