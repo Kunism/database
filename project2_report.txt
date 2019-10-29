@@ -1,35 +1,92 @@
 1. Basic information
-Team number (e.g., 01):
-#1 Student ID:
-#1 Student Name:
-#2 Student ID:
-#2 Student Name:
-OS (bit):
-gcc version:
+Team number (e.g., 01): 11
+#1 Student ID: 92968380
+#1 Student Name: Cheng-Liang Hsieh
+#2 Student ID: 66927079
+#2 Student Name: Po-Wei Huang
+OS (bit): CentOS Linux 7 x86_64
+gcc version: GCC - 5.4
 
 
 2. Meta-data
 - Show your meta-data design (Tables and Columns table) and information about each column.
 
+Tables
+------------------------------------
+|table-id | table-name | file-name |
+------------------------------------
+
+Columns
+-------------------------------------------------------------------------
+|table-id | column-name | column-type | column-length | column-position |
+-------------------------------------------------------------------------
+
 
 3. Internal Record Format
-- Show your record format design and describe how your design satisfies O(1) field access. If not, just mention that your team hasn't implemented this feature.
+- Show your record format design and describe how your design satisfies O(1) field access. If not, just mention that
+your team hasn't implemented this feature.
+
+# of Fields: 2 bytes, a number representing the field number in a record.
+Null Bit Indicator:  Ceil((# of Fields) / 8) bytes, a bit sequence denotes which field is null.
+Index pointer: (# of Fields) * 2 bytes, a list of offset from the beginning of a record to the corresponding field.
+Actual Binary Data: Uncertainty bytes, data field in a record.
+
+In order to satisfy O(1) field access, we insert index pointers between null-field-indicator and actual data.
+Index pointers store a sequence of uint16_t variable which denotes the offset from the beginning of a record to the
+corresponding data field. So we can use the offset to calculate the position of our target field and retrieve the data
+in O(1).
+
 
 - Describe how you store a VarChar field.
 
+We put a 4 bytes integer in front of the VarChar, which indicates the length of a varchar.
+
+
 - Describe how you deal with an update and delete.
 
+First, we use some padding bytes to make sure every single record is larger than a tombstone. Second, we use the
+design B mentioned in class to handle the situation that there is no free space for updated record. Third, we design a
+shift function to support data movement with a page. With these three main methods, we can update any record in the
+file. Further more, we can consider delete as "update to NULL".
 
 4. Page Format
 - Show your page format design.
 
++-------------------+--------------------------------+
+|      record 0     |            record 1            |
++----------+--------+--------------------------------+
+| record 1 |        ^                                |
++----------+ <------|----------------------------    |
+|          ^        |___                        |    |
++          |____        |                       |    |
+|               |       |                       |    |
++          +--------+--------+-------+-------+-------+
+|          | index  | index  | # of  | free  | free  |
+|          +--------+--------+ slots | space | space |
+|          | length | length |       | end   | begin |
++----------+--------+--------+-------+-------+-------+
+	       ^  slot1    slot 0    2        |
+	       |______________________________|
+
+Free space begin field: It indicates the offset between the begin of a page and the first byte of free space.
+Free space end field: It indicate the offset between the end of free space and the end of the page.
+# of slots: It stores number of records which have been stored.
+
+Records are stored from the begin of a page. Record 1 was stored right behind Record 0, and so on.
+The slot(Record) index were stored in at the of page. Slot 1 was stored before Slot 0, and so on.
+Free space of a page would remain in the middle.
+
 - Describe how you deal with an update and delete.
 
-- Show your page format design
-
+First, we use some padding bytes to make sure every single record is larger than a tombstone. Second, we use the
+design B mentioned in class to handle the situation that there is no free space for updated record. Third, we design a
+shift function to support data movement with a page. With these three main methods, we can update any record in the
+file. Further more, we can consider delete as "update to NULL".
 
 5. File Format
 - Show your file format design
+
+We create two
 
 
 6. Implementation Detail
