@@ -8,7 +8,7 @@ RelationManager &RelationManager::instance() {
 }
 
 RC RM_ScanIterator::getNextTuple(RID &rid, void *data) {
-    rbfmScanIterator.getNextRecord(rid, data);
+    return rbfmScanIterator.getNextRecord(rid, data);
 }
 
 const std::vector<Attribute> RelationManager::m_tablesDescriptor = {
@@ -166,6 +166,10 @@ RC RelationManager::createTable(const std::string &tableName, const std::vector<
             memset(columnData, 0, m_columnDataSize);
             columnformat(tableID, attrs[i], i+1, columnData);
             rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
+            ////////////////////////////////////////////////////////
+            std::cerr<< std::endl;
+            rbfm.printRecord(m_collumnsDescriptor, columnData );
+            ////////////////////////////////////////////////////////////////////
         }
         tableFile.closeFile();
         columnFile.closeFile();
@@ -208,20 +212,32 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
     uint8_t* value = new uint8_t [tableName.size()+ sizeof(int) + 1];
     prepareString(tableName, value);
     rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, value, {"tableId"},  rbfm_TB_it);
-    if (rbfm_TB_it.getNextRecord(targetID, tableData) == RBFM_EOF) {
-        std::cerr << "getAttributes: find TableName fail!" << std::endl;
+    // while (rbfm_TB_it.getNextRecord(targetID, tableData) != RBFM_EOF) {
+    //     // std::cerr << "getAttributes: find TableName fail!" << std::endl;
+    //     
+    // }
+    if(rbfm_TB_it.getNextRecord(targetID, tableData) == RBFM_EOF) {
+        std::cerr<< "GET TABLE ID  FAIL!!" <<std::endl;
     }
     memcpy(&tableID, tableData+1, sizeof(int));
+    // std::cerr << tableID << std::endl;
     tableFile.closeFile();
+    
 
     RBFM_ScanIterator rbfm_Col_it;
     rbfm.openFile("Columns", columnFile);
     uint8_t* idValue = new uint8_t [sizeof(int) + 1];
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    tableID = 2;
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     prepareInt(tableID, idValue);
     rbfm.scan(columnFile, m_collumnsDescriptor, "tableId", EQ_OP, &tableID, {"columnName","columnType","columnLength"}, rbfm_Col_it);
     
     RID rid;
     while(rbfm_Col_it.getNextRecord(rid, columnData) != RBFM_EOF) {
+        // std:: cerr << "FIND ONE " <<std::endl; 
         int stringSize;
         int attrType;
         int attrLength;
@@ -236,7 +252,14 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
         memcpy(&attrLength, columnData, sizeof(int));
         std::string attrName(stringBuffer, stringSize);
         attrs.push_back({attrName, (AttrType)attrType, (AttrLength)attrLength});
+        delete[] stringBuffer;
     }
+
+    // for(auto i : attrs) {
+    //     std::cerr << i.name << ' ' << i.type  << " " << i.length <<std::endl;
+    // }
+
+    // columnFile.closeFile();
     return 0;
 }
 
@@ -324,14 +347,12 @@ RC RelationManager::scan(const std::string &tableName,
                          RM_ScanIterator &rm_ScanIterator) {
 
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
-    FileHandle targetFile;
     std::vector<Attribute> attrs;
     this->getAttributes(tableName,attrs);
 
-    //rm_ScanIterator.rbfmScanIterator.init()
-     if (rbfm.openFile(tableName, targetFile) == 0 &&
-         rbfm.scan(targetFile, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfmScanIterator) == 0 ) {
-         targetFile.closeFile();
+     if (rbfm.openFile(tableName, rm_ScanIterator.fileHandle) == 0 &&
+         rbfm.scan(rm_ScanIterator.fileHandle, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfmScanIterator) == 0 ) {
+
          return 0;
      }
      return -1;
