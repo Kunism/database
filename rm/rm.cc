@@ -212,10 +212,6 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
     uint8_t* value = new uint8_t [tableName.size()+ sizeof(int) + 1];
     prepareString(tableName, value);
     rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, value, {"tableId"},  rbfm_TB_it);
-    // while (rbfm_TB_it.getNextRecord(targetID, tableData) != RBFM_EOF) {
-    //     // std::cerr << "getAttributes: find TableName fail!" << std::endl;
-    //     
-    // }
     if(rbfm_TB_it.getNextRecord(targetID, tableData) == RBFM_EOF) {
         std::cerr<< "GET TABLE ID  FAIL!!" <<std::endl;
     }
@@ -228,8 +224,8 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
     rbfm.openFile("Columns", columnFile);
     uint8_t* idValue = new uint8_t [sizeof(int) + 1];
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    tableID = 2;
-
+    // tableID = 2;
+    std::cerr << tableID <<std::endl;
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     prepareInt(tableID, idValue);
