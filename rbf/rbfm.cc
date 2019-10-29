@@ -688,25 +688,20 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
         char* record = new char [recordLength];
         char* condition = new char [conditionLength];
 
-        memcpy(record, recordValue, recordLength);
-        memcpy(condition, conditionValue, conditionLength);
 
         //  Only test for EQ or NEQ
         //  TODO: always true ???
-        std::cerr << "RECORD: isMatch : LEN COMP" << recordLength << " v.s " << conditionLength <<std::endl;
         if(recordLength == conditionLength) {
-            std::cerr << "RECORD: isMatch : SAME LEN" <<std::endl;
-            bool cmp = memcmp(record, condition, recordLength);
+            int cmp = memcmp(recordValue, conditionValue, recordLength + sizeof(int));
             if(comOp == EQ_OP) {
-                std::cerr << "RECORD: isMatch : TRUE" <<std::endl;
                 delete[] record;
                 delete[] condition;
-                return !cmp;
+                return cmp == 0;
             }
             else if(comOp == NE_OP) {
                 delete[] record;
                 delete[] condition;
-                return cmp;
+                return cmp != 0;
             }
         }
         else {
