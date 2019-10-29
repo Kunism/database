@@ -74,7 +74,10 @@ public:
             const std::vector<std::string> &attributeNames);
     void moveToNextSlot(const uint16_t totalSlotNum);
     RC getNextRecord(RID &rid, void *data);
-    RC close() { return -1; };
+    RC close() { 
+        delete[] conditionValue;
+        return 0;
+    };
 
     FileHandle* fileHandle;
 private:

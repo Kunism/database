@@ -30,6 +30,7 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
             conditionType = recordDescriptor[i].type;
         }
     }
+    // DELETE TODO
     //  Find out value length and type, save value to conditionValue
     if(attrIndex != -1 || value) {
 
@@ -273,10 +274,11 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
 
     // TODO do DELTED_MASK && TOMB_MASK
 
-    void* pageData = new uint8_t [PAGE_SIZE];
+    uint8_t* pageData = new uint8_t [PAGE_SIZE];
     if(fileHandle.readPage(rid.pageNum,pageData) == 0) {
         DataPage basePage(pageData);
         auto indexPair = basePage.getIndexPair(rid.slotNum);
+        delete[] pageData;
 
         if(indexPair.second == 0) {
             return -1;
@@ -286,11 +288,12 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
             basePage.readTombstone(tombstone,rid);
             std::cerr << "TOMBSTONE FIND " << tombstone.pageNum << " " << tombstone.slotNum  << std::endl;
             
-            void* recordPageBuffer = new uint8_t [PAGE_SIZE];  
+            uint8_t* recordPageBuffer = new uint8_t [PAGE_SIZE];  
             fileHandle.readPage(tombstone.pageNum, recordPageBuffer);
             DataPage recordPage(recordPageBuffer);
             std::pair<uint16_t, uint16_t> recordPageIndexPair = recordPage.getIndexPair(tombstone.slotNum);
             recordPage.readRecord(fileHandle, recordPageIndexPair.first, indexPair.second, data);
+            delete[] recordPageBuffer;
             return 0;
         }
         else {
@@ -526,6 +529,8 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
             initPage.updateOffsetFromBegin(fileHandle, rid.pageNum, tombstoneDiff);
             initPage.updateIndexPair(fileHandle,rid.pageNum, rid.slotNum, {indexPair.first, newRecord.recordSize});
             std::cerr << "TOMBSTONE NEW HOME~!! " << availablePageNum << ' ' << availablePage.var[SLOT_NUM] << std::endl;
+
+            delete[] availablePageBuffer;
         }
     }
     else {

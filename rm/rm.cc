@@ -253,6 +253,8 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
 
     delete[] columnData;
     delete[] tableData;
+    delete[] value;
+    delete[] idValue;
     columnFile.closeFile();
     return 0;
 }
