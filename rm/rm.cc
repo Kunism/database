@@ -7,6 +7,9 @@ RelationManager &RelationManager::instance() {
     return _relation_manager;
 }
 
+RC RM_ScanIterator::getNextTuple(RID &rid, void *data) {
+    rbfmScanIterator.getNextRecord(rid, data);
+}
 
 const std::vector<Attribute> RelationManager::m_tablesDescriptor = {
     {
@@ -324,12 +327,14 @@ RC RelationManager::scan(const std::string &tableName,
     FileHandle targetFile;
     std::vector<Attribute> attrs;
     this->getAttributes(tableName,attrs);
-    // if (rbfm.openFile(tableName, targetFile) == 0 && 
-    //     rbfm.scan(targetFile, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator) == 0 ) {
-    //     targetFile.closeFile();
-    //     return 0;   
-    // }
-    // return -1;
+
+    //rm_ScanIterator.rbfmScanIterator.init()
+     if (rbfm.openFile(tableName, targetFile) == 0 &&
+         rbfm.scan(targetFile, attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfmScanIterator) == 0 ) {
+         targetFile.closeFile();
+         return 0;
+     }
+     return -1;
 }
 
 // Extra credit work
