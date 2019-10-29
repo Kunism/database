@@ -84,7 +84,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
         uint16_t totalSlotNum = page.var[SLOT_NUM];
 
         if(finishScan) {
-            std::cerr << "RBFM_ScanIterator: No more records." << std::endl;
+            // std::cerr << "RBFM_ScanIterator: No more records." << std::endl;
             return RBFM_EOF;
         }
 
@@ -93,7 +93,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
         if((indexPair.second == 0) || (indexPair.second == TOMB_MASK)) {
             moveToNextSlot(totalSlotNum);
             if(finishScan) {
-                std::cerr << "RBFM_ScanIterator: No more records." << std::endl;
+                // std::cerr << "RBFM_ScanIterator: No more records." << std::endl;
                 return RBFM_EOF;
             }
             else {
@@ -239,7 +239,7 @@ void RecordBasedFileManager::appendPage(FileHandle &fileHandle) {
 
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vector<Attribute> &recordDescriptor,const void *data, RID &rid) {
-    std::cerr << "RBFM: insert reocrd! " <<std::endl;
+    // std::cerr << "RBFM: insert reocrd! " <<std::endl;
     if(fileHandle.getNumberOfPages() == 0) {
         this->appendPage(fileHandle);
     }
@@ -248,7 +248,7 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const std::vecto
     uint8_t* pageData = new uint8_t [PAGE_SIZE];
     uint32_t availablePageNum = getPageNumWithEmptySlot(record.recordSize,fileHandle);
     if(availablePageNum != -1) {
-        std::cerr << "FIND DELTED SLOT PAGE " <<std::endl;
+        // std::cerr << "FIND DELTED SLOT PAGE " <<std::endl;
         fileHandle.readPage(availablePageNum, pageData);
         DataPage page(pageData);
         uint16_t slotNum = page.findEmptySlot();
@@ -457,7 +457,7 @@ RC RecordBasedFileManager::getAllVAR(FileHandle &fileHandle, uint32_t pageNum) {
     std::cerr << "=======================================================" <<std::endl;
     std::cerr << "Page "<< pageNum << " VAR " <<std::endl;
     
-    std::cerr << "VAR: " << d.getFreeSpaceSize() << ' ' <<  d.var[RECORD_OFFSET_FROM_BEGIN] << ' ' << d.var[HEADER_OFFSET_FROM_END] << " "  << std::endl;
+    std::cerr << "VAR: " << d.var[RECORD_OFFSET_FROM_BEGIN] << ' ' << d.var[HEADER_OFFSET_FROM_END] << " " << d.getFreeSpaceSize() << ' ' << std::endl;
     std::cerr << "=======================================================" <<std::endl;
 
 }
@@ -492,13 +492,11 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     int16_t recordsDiff = newRecord.recordSize - indexPair.second;
     int16_t tombstoneDiff = sizeof(Tombstone) - indexPair.second;
 
-    // recordPage.shiftRecords(fileHandle, recordPtr.first, recordPtr.second + oldRecordSize, recordsDiff);
-    //     // recordPage.updateRecord(newRecord,fileHandle,rid);
-    //     // recordPage.updateIndexPair
+    std::cerr << "UPDATE: rid " << rid.pageNum << ' ' << rid.slotNum << std::endl;
 
     if(initPage.isRecord(fileHandle, rid)) {
-        if(recordsDiff <= initPage.getFreeSpaceSize()) {
-            // std::cerr << "IN PLACE UPDATE" << indexPair.first<< ' ' <<  indexPair.second << " " << initPage.getIndexPair(rid.pageNum).first << " " << std::endl;
+        if(recordsDiff <= static_cast<int32_t>(initPage.getFreeSpaceSize())) {
+            std::cerr << "IN PLACE UPDATE" << indexPair.first<< ' ' <<  indexPair.second << " " << initPage.getIndexPair(rid.slotNum).first << " " << std::endl;
             initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first + indexPair.second, recordsDiff);
             initPage.shiftIndexes(fileHandle, rid.pageNum, indexPair.first, recordsDiff);
             initPage.updateRecord(fileHandle, newRecord, rid.pageNum, indexPair.first);
@@ -507,8 +505,9 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         }
         else {
             //  tombstone
+            // TODO HAVE BUGS
             std::cerr << "UpdateRecord: insert TOMBSTONE: " << std::endl;
-            uint32_t availablePageNum = getNextAvailablePageNum(newRecord.recordSize, fileHandle, rid.pageNum);
+            uint32_t availablePageNum = getNextAvailablePageNum(newRecord.recordSize + sizeof(std::pair<uint16_t, uint16_t>), fileHandle, rid.pageNum);
             char* availablePageBuffer = new char [PAGE_SIZE];
             fileHandle.readPage(availablePageNum, availablePageBuffer);
             DataPage availablePage(availablePageBuffer);
@@ -522,10 +521,11 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
             availablePage.updateRecordNum(fileHandle, availablePageNum, 1);
 
             initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first + indexPair.second, tombstoneDiff);
+            initPage.shiftIndexes(fileHandle, rid.pageNum, indexPair.first, tombstoneDiff);
             initPage.writeTombstone(fileHandle, rid.pageNum, tombstone, indexPair.first);
             initPage.updateOffsetFromBegin(fileHandle, rid.pageNum, tombstoneDiff);
             initPage.updateIndexPair(fileHandle,rid.pageNum, rid.slotNum, {indexPair.first, newRecord.recordSize});
-
+            std::cerr << "TOMBSTONE NEW HOME~!! " << availablePageNum << ' ' << availablePage.var[SLOT_NUM] << std::endl;
         }
     }
     else {
@@ -547,7 +547,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         else {
             //  tombstone
             std::cerr << "FIND NEW TOMBSTOME UPDATE"  << " " << std::endl;
-            uint32_t availablePageNum = getNextAvailablePageNum(newRecord.recordSize, fileHandle, tombstone.pageNum);
+            uint32_t availablePageNum = getNextAvailablePageNum(newRecord.recordSize + sizeof(std::pair<uint16_t, uint16_t>), fileHandle, tombstone.pageNum);
              
             uint8_t* availablePageBuffer = new uint8_t [PAGE_SIZE];
             fileHandle.readPage(availablePageNum, availablePageBuffer);
@@ -911,7 +911,7 @@ void DataPage::readRecord(FileHandle& fileHandle, uint16_t offset, uint16_t reco
 void DataPage::shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff) {
     int16_t size = var[RECORD_OFFSET_FROM_BEGIN] - startPos;
     
-    // std::cerr <<"DataPage: shiftRecords: " <<  startPos << ' ' << diff << ' ' << size << ' ' << var[HEADER_OFFSET_FROM_END] <<  std::endl;
+    std::cerr <<"DataPage: shiftRecords: " <<  startPos << ' ' << diff << ' ' << size << ' ' << var[HEADER_OFFSET_FROM_END] <<  std::endl;
     if( startPos < 0) {
         std::cerr << "shiftRecords: shift Record with out of bound [ startPos ]" << std::endl; 
     }

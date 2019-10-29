@@ -180,6 +180,10 @@ RC RelationManager::createTable(const std::string &tableName, const std::vector<
 }
 
 RC RelationManager::deleteTable(const std::string &tableName) {
+    if( tableName == "Tables" || tableName == "Columns") {
+        return -1;
+    }
+
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
     RBFM_ScanIterator rbfm_it;
     FileHandle tableFile;
@@ -301,13 +305,16 @@ RC RelationManager::readTuple(const std::string &tableName, const RID &rid, void
     FileHandle targetFile;
     std::vector<Attribute> attrs;
     this->getAttributes(tableName,attrs);
-    if (rbfm.openFile(tableName, targetFile) == 0 &&
-        rbfm.readRecord(targetFile, attrs, rid, data)== 0 ) {
-        targetFile.closeFile();
-        return 0;   
+    if (rbfm.openFile(tableName, targetFile) != 0) {
+        std::cerr << "CANNOT OPEN FILE" <<std::endl;
+        return -1;
     }
-    std::cerr << "CANNOT OPEN FILE" <<std::endl;
-    return -1;
+    if (rbfm.readRecord(targetFile, attrs, rid, data) != 0 ) {
+        std::cerr << "CANNOT READ FILE" <<std::endl;
+        return -1;
+    }
+        targetFile.closeFile();
+    return 0;
 }
 
 RC RelationManager::printTuple(const std::vector<Attribute> &attrs, const void *data) {
