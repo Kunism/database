@@ -76,11 +76,11 @@ public:
     RC getNextRecord(RID &rid, void *data);
     RC close() { return -1; };
 
+    FileHandle* fileHandle;
 private:
     unsigned currentPageNum;
     unsigned totalPageNum;
     uint16_t currentSlotNum;
-    FileHandle* fileHandle;
     std::vector<Attribute> recordDescriptor;
 
     std::string conditionAttribute;

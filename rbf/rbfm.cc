@@ -8,6 +8,7 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
                            const std::string &conditionAttribute, const CompOp compOp, const void *value,
                            const std::vector<std::string> &attributeNames) {
     //  TODO: file not exist?
+    
     this->fileHandle = &fileHandle;
     this->recordDescriptor = recordDescriptor;
     this->conditionAttribute = conditionAttribute;
@@ -135,14 +136,26 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
             uint16_t dataOffset = 0;
 
             for(int i = 0; i < selectedAttributeNames.size(); i++) {
+
                 uint32_t attributeSize = record.getAttributeSize(selectedAttributeNames[i], recordDescriptor);
+                // std::cerr << "NO. " << i << std::endl;
+                // std::cerr << attributeSize << ' ' <<std::endl;
+
+
                 char* attr = new char [sizeof(uint8_t) + attributeSize];
                 memset(attr, 0, sizeof(uint8_t) + attributeSize);
                 record.getAttribute(selectedAttributeNames[i], recordDescriptor, attr);
+                
+                // for(int j = 0 ; j < attributeSize; j++) {
+                //     std::cerr << static_cast<int>(attr[j]) << ' ';
 
-                uint8_t  isNull;
-                memcpy(&isNull, attr, sizeof(uint8_t));
-                if(isNull) {
+                // }
+                // std::cerr << std::endl;
+                
+                // ;
+                // uint8_t  isNull;
+                // memcpy(&isNull, attr, sizeof(uint8_t));
+                if(record.isNull(i)) {
                     uint8_t nullIndicatorBuffer;
                     memcpy(&nullIndicatorBuffer, data, nullIndicatorSize);
                     nullIndicatorBuffer = (nullIndicatorBuffer << 1 ) | 1;
@@ -635,7 +648,6 @@ bool Record::isNull(int fieldNum) {
 }
 
 bool Record::isMatch(AttrType type, const char *recordValue, const char *conditionValue, const CompOp comOp) {
-    std::cerr << "RECORD: isMatch " <<std::endl;
     if(comOp == NO_OP) {
         return true;
     }
@@ -677,7 +689,6 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
         }
     }
     else if(type == TypeVarChar) {
-        std::cerr << "RECORD: isMatch : TYPE VARCHAR" <<std::endl;
         uint32_t recordLength = 0;
         uint32_t conditionLength = 0;
         memcpy(&recordLength, recordValue, sizeof(uint32_t));
