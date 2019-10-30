@@ -266,6 +266,10 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
 RC RelationManager::insertTuple(const std::string &tableName, const void *data, RID &rid) {
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
     FileHandle targetFile;
+    if( tableName == "Tables" || tableName == "Columns") {
+        return -1;
+    }
+
     std::vector<Attribute> attrs;
     this->getAttributes(tableName,attrs);
     if (rbfm.openFile(tableName, targetFile) == 0) {
