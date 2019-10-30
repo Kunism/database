@@ -86,11 +86,15 @@ file. Further more, we can consider delete as "update to NULL".
 5. File Format
 - Show your file format design
 
-We create two
+We create files for each of tables. The relation between a table name and a file name is 1-to-1. So, we first open the
+file using its table name. Then, we get attributes of that table from Columns table.
 
 
 6. Implementation Detail
 - Other implementation details goes here.
+
+In order to simplify the condition of update, we use the padding bytes on each records, which can make sure that even
+the smallest record can be replaced by a tombstone.
 
 
 7. Other (optional)
