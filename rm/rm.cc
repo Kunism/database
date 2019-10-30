@@ -175,10 +175,6 @@ RC RelationManager::createTable(const std::string &tableName, const std::vector<
         memset(columnData, 0, m_columnDataSize);
         columnformat(tableID, attrs[i], i+1, columnData);
         rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
-        ////////////////////////////////////////////////////////
-        std::cerr<< std::endl;
-        rbfm.printRecord(m_collumnsDescriptor, columnData );
-        ////////////////////////////////////////////////////////////////////
     }
 
     delete[] tableData;
@@ -220,14 +216,14 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
     FileHandle tableFile;
     FileHandle columnFile;
     if (rbfm.openFile("Tables", tableFile) != 0 || rbfm.openFile("Columns", columnFile) != 0) {
-        std::cerr << "OPEN Catalog fail" << std::endl;
+        // std::cerr << "OPEN Catalog fail" << std::endl;
         return -1;
     }
     uint8_t* value = new uint8_t [tableName.size()+ sizeof(int) + 1];
     prepareString(tableName, value);
     rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, value, {"tableId"},  rbfm_TB_it);
     if(rbfm_TB_it.getNextRecord(targetID, tableData) == RBFM_EOF) {
-        std::cerr << "GET TABLE ID  FAIL!!" <<std::endl;
+        // std::cerr << "GET TABLE ID  FAIL!!" <<std::endl;
         return -1;
     }
     memcpy(&tableID, tableData+1, sizeof(int));
@@ -278,7 +274,7 @@ RC RelationManager::insertTuple(const std::string &tableName, const void *data, 
         return 0;
     }
     else {
-        std::cerr << "insertTuple: file open failed!! " <<std::endl;
+        // std::cerr << "insertTuple: file open failed!! " <<std::endl;
         return -1;
     }
 
@@ -361,7 +357,7 @@ RC RelationManager::scan(const std::string &tableName,
     RC rc;
     rc = rbfm.openFile(tableName, rm_ScanIterator.fileHandle);
     if( rc != 0) {
-        std::cerr << "scan open file failed!" << std::endl;
+        // std::cerr << "scan open file failed!" << std::endl;
         return -1;
     }
 

@@ -918,13 +918,13 @@ void DataPage::shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t s
     
     // std::cerr <<"DataPage: shiftRecords: " <<  startPos << ' ' << diff << ' ' << size << ' ' << var[HEADER_OFFSET_FROM_END] <<  std::endl;
     if( startPos < 0) {
-        std::cerr << "shiftRecords: shift Record with out of bound [ startPos ]" << std::endl; 
+        // std::cerr << "shiftRecords: shift Record with out of bound [ startPos ]" << std::endl; 
     }
     else if (var[RECORD_OFFSET_FROM_BEGIN] + diff > PAGE_SIZE - var[HEADER_OFFSET_FROM_END] ) {
-        std::cerr << "shiftRecords: shift Record with out of bound [ end ]" << std::endl;
+        // std::cerr << "shiftRecords: shift Record with out of bound [ end ]" << std::endl;
     }
     else if (startPos + diff < 0) {
-        std::cerr << "shiftRecords: shift Record with out of bound [ begin ]" << std::endl;
+        // std::cerr << "shiftRecords: shift Record with out of bound [ begin ]" << std::endl;
     }
 
     // This method guarantee correct behavior for overlapping buffer.
@@ -952,7 +952,7 @@ void DataPage::updateRecord(FileHandle& fileHandle, const Record& newRecord,  ui
     
     if( newRecord.recordSize == 0)
     {
-        std::cerr <<"DataPage: delete a record" << std::endl;
+        // std::cerr <<"DataPage: delete a record" << std::endl;
     }
     // write Record
     memcpy((char*)page + offset, newRecord.getRecord(), newRecord.recordSize);
@@ -1028,7 +1028,7 @@ uint16_t DataPage::findEmptySlot() {
             return i;
         }
     }
-    std::cerr << "DataPage: Cannot find Empty Slot!!! " <<std::endl;
+    // std::cerr << "DataPage: Cannot find Empty Slot!!! " <<std::endl;
     return -1;
 }
 
