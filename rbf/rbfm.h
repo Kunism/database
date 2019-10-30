@@ -74,7 +74,10 @@ public:
             const std::vector<std::string> &attributeNames);
     void moveToNextSlot(const uint16_t totalSlotNum);
     RC getNextRecord(RID &rid, void *data);
-    RC close() { return -1; };
+    RC close() { 
+        delete[] conditionValue;
+        return 0;
+    };
 
     FileHandle* fileHandle;
 private:
@@ -205,7 +208,7 @@ public:
     // each index size used 2 byte: uint16_t:  65535
     const static uint16_t indexSize = 2;
     // record padding size = 1 byte;
-    const static uint16_t paddingSize = 1;
+    const static uint16_t paddingSize = 6;
 
 private:
     void convertData(const std::vector<Attribute> &descriptor,const void* _data);

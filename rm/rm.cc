@@ -142,41 +142,48 @@ RC RelationManager::deleteCatalog() {
 
 RC RelationManager::createTable(const std::string &tableName, const std::vector<Attribute> &attrs) {
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
-    if(rbfm.createFile(tableName) == 0) {
-        RID rid;
-        FileHandle tableFile;
-        FileHandle columnFile;
-        rbfm.openFile("Tables",tableFile);
-        rbfm.openFile("Columns", columnFile);
+    RID rid;
 
-        uint8_t* tableData = new uint8_t [m_tableDataSize];
-        uint8_t* columnData = new uint8_t [m_columnDataSize];
-        memset(tableData, 0, m_tableDataSize);
-        memset(columnData, 0, m_columnDataSize);
-
-        int tableID = getTableCount() + 1;
-        this->addTableCount();
-
-        //write table
-        tableformat(tableID, tableName, tableName, tableData);
-        rbfm.insertRecord(tableFile, m_tablesDescriptor, tableData, rid);
-
-        // write coulmn
-        for(int i = 0 ; i < attrs.size() ; i++) {
-            memset(columnData, 0, m_columnDataSize);
-            columnformat(tableID, attrs[i], i+1, columnData);
-            rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
-            ////////////////////////////////////////////////////////
-            std::cerr<< std::endl;
-            rbfm.printRecord(m_collumnsDescriptor, columnData );
-            ////////////////////////////////////////////////////////////////////
-        }
+    FileHandle tableFile;
+    FileHandle columnFile;
+    if (rbfm.openFile("Tables",tableFile) != 0 || rbfm.openFile("Columns", columnFile) != 0 ) {
         tableFile.closeFile();
         columnFile.closeFile();
-        return 0;
+        return -1;
     }
-    std::cerr << "CreateTable fail" << std::endl;
-    return -1;
+
+    if(rbfm.createFile(tableName) != 0) {
+        tableFile.closeFile();
+        columnFile.closeFile();
+        return -1;
+    }
+
+    uint8_t* tableData = new uint8_t [m_tableDataSize];
+    uint8_t* columnData = new uint8_t [m_columnDataSize];
+    memset(tableData, 0, m_tableDataSize);
+    memset(columnData, 0, m_columnDataSize);
+
+    int tableID = getTableCount() + 1;
+    this->addTableCount();
+
+    //write table
+    tableformat(tableID, tableName, tableName, tableData);
+    rbfm.insertRecord(tableFile, m_tablesDescriptor, tableData, rid);
+
+    // write coulmn
+    for(int i = 0 ; i < attrs.size() ; i++) {
+        memset(columnData, 0, m_columnDataSize);
+        columnformat(tableID, attrs[i], i+1, columnData);
+        rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
+        ////////////////////////////////////////////////////////
+        std::cerr<< std::endl;
+        rbfm.printRecord(m_collumnsDescriptor, columnData );
+        ////////////////////////////////////////////////////////////////////
+    }
+
+    delete[] tableData;
+    delete[] columnData;
+    return 0;
 }
 
 RC RelationManager::deleteTable(const std::string &tableName) {
@@ -199,7 +206,7 @@ RC RelationManager::deleteTable(const std::string &tableName) {
         tableFile.closeFile();
         return 0;
     }
-    std::cerr << "DeleteTable fail" << std::endl;
+    // std::cerr << "DeleteTable fail" << std::endl;
     return -1;
 }
 
@@ -212,26 +219,22 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
     RID targetID;
     FileHandle tableFile;
     FileHandle columnFile;
-    rbfm.openFile("Tables", tableFile);
+    if (rbfm.openFile("Tables", tableFile) != 0 || rbfm.openFile("Columns", columnFile) != 0) {
+        std::cerr << "OPEN Catalog fail" << std::endl;
+        return -1;
+    }
     uint8_t* value = new uint8_t [tableName.size()+ sizeof(int) + 1];
     prepareString(tableName, value);
     rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, value, {"tableId"},  rbfm_TB_it);
     if(rbfm_TB_it.getNextRecord(targetID, tableData) == RBFM_EOF) {
-        std::cerr<< "GET TABLE ID  FAIL!!" <<std::endl;
+        std::cerr << "GET TABLE ID  FAIL!!" <<std::endl;
+        return -1;
     }
     memcpy(&tableID, tableData+1, sizeof(int));
-    // std::cerr << tableID << std::endl;
-    // tableFile.closeFile();
     
 
     RBFM_ScanIterator rbfm_Col_it;
-    if (rbfm.openFile("Columns", columnFile) != 0) {
-        std::cerr << "OPEN FILE FAILED FUCK!!" <<std::endl;
-    }
     uint8_t* idValue = new uint8_t [sizeof(int) + 1];
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // tableID = 2;
-            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     prepareInt(tableID, idValue);
     rbfm.scan(columnFile, m_collumnsDescriptor, "tableId", EQ_OP, &tableID, {"columnName","columnType","columnLength"}, rbfm_Col_it);
@@ -253,13 +256,20 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
 
     delete[] columnData;
     delete[] tableData;
+    delete[] value;
+    delete[] idValue;
     columnFile.closeFile();
+    tableFile.closeFile();
     return 0;
 }
 
 RC RelationManager::insertTuple(const std::string &tableName, const void *data, RID &rid) {
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
     FileHandle targetFile;
+    if( tableName == "Tables" || tableName == "Columns") {
+        return -1;
+    }
+
     std::vector<Attribute> attrs;
     this->getAttributes(tableName,attrs);
     if (rbfm.openFile(tableName, targetFile) == 0) {
@@ -306,11 +316,11 @@ RC RelationManager::readTuple(const std::string &tableName, const RID &rid, void
     std::vector<Attribute> attrs;
     this->getAttributes(tableName,attrs);
     if (rbfm.openFile(tableName, targetFile) != 0) {
-        std::cerr << "CANNOT OPEN FILE" <<std::endl;
+        // std::cerr << "CANNOT OPEN FILE" <<std::endl;
         return -1;
     }
     if (rbfm.readRecord(targetFile, attrs, rid, data) != 0 ) {
-        std::cerr << "CANNOT READ FILE" <<std::endl;
+        // std::cerr << "CANNOT READ FILE" <<std::endl;
         return -1;
     }
         targetFile.closeFile();
