@@ -30,6 +30,7 @@ your team hasn't implemented this feature.
 Null Bit Indicator:  Ceil((# of Fields) / 8) bytes, a bit sequence denotes which field is null.
 Index pointer: (# of Fields) * 2 bytes, a list of offset from the beginning of a record to the corresponding field.
 Actual Binary Data: Uncertainty bytes, data field in a record.
+Padding btye: 6 Bytes.
 
 In order to satisfy O(1) field access, we insert index pointers between null-field-indicator and actual data.
 Index pointers store a sequence of uint16_t variable which denotes the offset from the beginning of a record to the
