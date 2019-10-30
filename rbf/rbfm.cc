@@ -495,11 +495,11 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
     int16_t recordsDiff = newRecord.recordSize - indexPair.second;
     int16_t tombstoneDiff = sizeof(Tombstone) - indexPair.second;
 
-    std::cerr << "UPDATE: rid " << rid.pageNum << ' ' << rid.slotNum << std::endl;
+    // std::cerr << "UPDATE: rid " << rid.pageNum << ' ' << rid.slotNum << std::endl;
 
     if(initPage.isRecord(fileHandle, rid)) {
         if(recordsDiff <= static_cast<int32_t>(initPage.getFreeSpaceSize())) {
-            std::cerr << "IN PLACE UPDATE: " << indexPair.first<< ' ' <<  indexPair.second << " " << initPage.getIndexPair(rid.slotNum).first << " " << std::endl;
+            // std::cerr << "IN PLACE UPDATE: " << indexPair.first<< ' ' <<  indexPair.second << " " << initPage.getIndexPair(rid.slotNum).first << " " << std::endl;
             initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first + indexPair.second, recordsDiff);
             initPage.shiftIndexes(fileHandle, rid.pageNum, indexPair.first, recordsDiff);
             initPage.updateRecord(fileHandle, newRecord, rid.pageNum, indexPair.first);
@@ -509,7 +509,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         else {
             //  tombstone
             // TODO HAVE BUGS
-            std::cerr << "UpdateRecord: insert TOMBSTONE: " << std::endl;
+            // std::cerr << "UpdateRecord: insert TOMBSTONE: " << std::endl;
             uint32_t availablePageNum = getNextAvailablePageNum(newRecord.recordSize + sizeof(std::pair<uint16_t, uint16_t>), fileHandle, rid.pageNum);
             char* availablePageBuffer = new char [PAGE_SIZE];
             fileHandle.readPage(availablePageNum, availablePageBuffer);
@@ -528,7 +528,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
             initPage.writeTombstone(fileHandle, rid.pageNum, tombstone, indexPair.first);
             initPage.updateOffsetFromBegin(fileHandle, rid.pageNum, tombstoneDiff);
             initPage.updateIndexPair(fileHandle,rid.pageNum, rid.slotNum, {indexPair.first, newRecord.recordSize});
-            std::cerr << "TOMBSTONE NEW HOME~!! " << availablePageNum << ' ' << availablePage.var[SLOT_NUM] << std::endl;
+            // std::cerr << "TOMBSTONE NEW HOME~!! " << availablePageNum << ' ' << availablePage.var[SLOT_NUM] << std::endl;
 
             delete[] availablePageBuffer;
         }
