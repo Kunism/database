@@ -499,7 +499,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
 
     if(initPage.isRecord(fileHandle, rid)) {
         if(recordsDiff <= static_cast<int32_t>(initPage.getFreeSpaceSize())) {
-            std::cerr << "IN PLACE UPDATE" << indexPair.first<< ' ' <<  indexPair.second << " " << initPage.getIndexPair(rid.slotNum).first << " " << std::endl;
+            std::cerr << "IN PLACE UPDATE: " << indexPair.first<< ' ' <<  indexPair.second << " " << initPage.getIndexPair(rid.slotNum).first << " " << std::endl;
             initPage.shiftRecords(fileHandle, rid.pageNum, indexPair.first + indexPair.second, recordsDiff);
             initPage.shiftIndexes(fileHandle, rid.pageNum, indexPair.first, recordsDiff);
             initPage.updateRecord(fileHandle, newRecord, rid.pageNum, indexPair.first);
@@ -786,7 +786,7 @@ uint32_t Record::getAttributeSize(const std::string attrName, const std::vector<
             }
         }
     }
-    std::cerr << "No attribute [" << attrName << "] in record" << std::endl;
+    // std::cerr << "No attribute [" << attrName << "] in record" << std::endl;
     return 0;
 }
 
@@ -916,7 +916,7 @@ void DataPage::readRecord(FileHandle& fileHandle, uint16_t offset, uint16_t reco
 void DataPage::shiftRecords(FileHandle& fileHandle, uint32_t pageNum, uint16_t startPos, int16_t diff) {
     int16_t size = var[RECORD_OFFSET_FROM_BEGIN] - startPos;
     
-    std::cerr <<"DataPage: shiftRecords: " <<  startPos << ' ' << diff << ' ' << size << ' ' << var[HEADER_OFFSET_FROM_END] <<  std::endl;
+    // std::cerr <<"DataPage: shiftRecords: " <<  startPos << ' ' << diff << ' ' << size << ' ' << var[HEADER_OFFSET_FROM_END] <<  std::endl;
     if( startPos < 0) {
         std::cerr << "shiftRecords: shift Record with out of bound [ startPos ]" << std::endl; 
     }
