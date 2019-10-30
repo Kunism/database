@@ -52,7 +52,7 @@ void RBFM_ScanIterator::init(FileHandle &fileHandle, const std::vector<Attribute
             memcpy(conditionValue, value, sizeof(uint32_t) + attrSize);
         }
         else {
-            std::cerr << "Type error" << std::endl;
+            // std::cerr << "Type error" << std::endl;
         }
     }
     else {
@@ -286,7 +286,7 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const std::vector<
         if( !basePage.isRecord(fileHandle,rid)) {
             Tombstone tombstone;
             basePage.readTombstone(tombstone,rid);
-            std::cerr << "TOMBSTONE FIND " << tombstone.pageNum << " " << tombstone.slotNum  << std::endl;
+            // std::cerr << "TOMBSTONE FIND " << tombstone.pageNum << " " << tombstone.slotNum  << std::endl;
             
             uint8_t* recordPageBuffer = new uint8_t [PAGE_SIZE];  
             fileHandle.readPage(tombstone.pageNum, recordPageBuffer);
@@ -542,7 +542,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         std::pair<uint16_t,uint16_t> recordPageIndexPair = recordPage.getIndexPair(tombstone.slotNum);
        
         if(recordsDiff <= static_cast<int32_t>(recordPage.getFreeSpaceSize()) ) {
-            std::cerr << "TOMBSTOME UPDATE"  << " " << std::endl;
+            // std::cerr << "TOMBSTOME UPDATE"  << " " << std::endl;
             recordPage.shiftRecords(fileHandle, tombstone.pageNum, recordPageIndexPair.first + indexPair.second , recordsDiff);
             recordPage.shiftIndexes(fileHandle, tombstone.pageNum, recordPageIndexPair.first, recordsDiff);
             recordPage.updateRecord(fileHandle, newRecord, tombstone.pageNum,  recordPageIndexPair.first);
@@ -551,7 +551,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle,
         }
         else {
             //  tombstone
-            std::cerr << "FIND NEW TOMBSTOME UPDATE"  << " " << std::endl;
+            // std::cerr << "FIND NEW TOMBSTOME UPDATE"  << " " << std::endl;
             uint32_t availablePageNum = getNextAvailablePageNum(newRecord.recordSize + sizeof(std::pair<uint16_t, uint16_t>), fileHandle, tombstone.pageNum);
              
             uint8_t* availablePageBuffer = new uint8_t [PAGE_SIZE];
@@ -735,7 +735,7 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
 
     }
     else {
-        std::cerr << "error in isMatch" << std::endl;
+        // std::cerr << "error in isMatch" << std::endl;
         return false;
     }
 }
@@ -782,7 +782,7 @@ uint32_t Record::getAttributeSize(const std::string attrName, const std::vector<
                     memcpy(&charLength, recordHead + indexData[i], sizeof(uint32_t));
                     return charLength + sizeof(uint32_t);
                 }
-                std::cerr << "Type error" << std::endl;
+                // std::cerr << "Type error" << std::endl;
             }
         }
     }
