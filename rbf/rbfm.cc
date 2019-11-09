@@ -696,9 +696,39 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
     else if(type == TypeVarChar) {
         uint32_t recordLength = 0;
         uint32_t conditionLength = 0;
+
+        char* recordBuffer = new char[recordLength + 1];
+        char* conditionBuffer = new char[conditionLength + 1];
+
         memcpy(&recordLength, recordValue, sizeof(uint32_t));
         memcpy(&conditionLength, conditionValue, sizeof(uint32_t));
 
+        memset(recordBuffer, recordLength + 1, 0);
+        memset(conditionBuffer, conditionLength + 1, 0);
+
+        memcpy(recordBuffer, recordValue + sizeof(uint32_t), recordLength);
+        memcpy(conditionBuffer, conditionValue + sizeof(uint32_t), conditionLength);
+
+        recordBuffer[recordLength] = '\0';
+        conditionBuffer[conditionLength] = '\0';
+
+        std::string record(recordBuffer);
+        std::string condition(conditionBuffer);
+
+        delete[] recordBuffer;
+        delete[] conditionBuffer;
+
+        switch(comOp) {
+            case EQ_OP: return record == condition;
+            case LT_OP: return record < condition;
+            case LE_OP: return record <= condition;
+            case GT_OP: return record > condition;
+            case GE_OP: return record >= condition;
+            case NE_OP: return record != condition;
+            default: return false;
+        }
+
+        /*
         //  TODO: length == 0?
 
         char* record = new char [recordLength];
@@ -732,6 +762,7 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
                 return true;
             }
         }
+         */
 
     }
     else {
