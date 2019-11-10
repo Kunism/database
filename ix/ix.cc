@@ -56,7 +56,7 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
     }
     else {
         BTreeNode node;
-        node.readNode();
+        node.readNode(ixFileHandle);
     }
 }
 
@@ -104,7 +104,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attrib
     BTree bTree;
     readBTree(ixFileHandle, bTree);
     bTree.insertEntry(ixFileHandle, attribute, key, rid);
-    writeBTree();
+    //writeBTree();
     return -1;
 }
 
