@@ -114,6 +114,9 @@ RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePage
 
 //DELETE TODO
 RC FileHandle::openFile(const std::string &fileName) {
+    if(file.is_open()) {
+        return -1;
+    }
     file.open(fileName, std::ios::in | std::ios::out | std::ios::binary);
     if( !file.is_open()) {
         // std::cerr << "CANNOT OPEN FROM THE BOTTOM" <<std::endl;
