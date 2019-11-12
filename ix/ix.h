@@ -37,7 +37,7 @@ public:
     ~BTreeNode();
     RC insertToLeaf(const void *key, const RID &rid);
     RC insertToInternal(const void *key, const int &childPageNum);
-    RC updateMeta(IXFileHandle &ixFileHandle, uint32_t pageNum, bool isLeafNode, bool isDeleted
+    RC updateMetaToDisk(IXFileHandle &ixFileHandle, uint32_t pageNum, bool isLeafNode, bool isDeleted
             , uint32_t curKeyNum, uint32_t rightNode);
     RC readNode(IXFileHandle &ixFileHandle, uint32_t pageNum);
     RC writeNode(IXFileHandle &ixFileHandle);
@@ -73,12 +73,12 @@ public:
     RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid);
     RC createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
             , AttrType attrType, AttrLength attrLength, uint32_t order, uint32_t rightNode);
-    RC updateMeta(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t totalPageNum, AttrType attrType);
     RC recInsert(IXFileHandle &ixFileHandle, const void *key, const RID &rid, uint32_t nodePageNum
             , uint32_t splitNodePageNum, void * copyKey, bool &hasSplit);
 
-    RC readBTree(IXFileHandle &ixFileHandle);
-    RC writeBTree(IXFileHandle &ixFileHandle);
+    RC readBTreeHiddenPage(IXFileHandle &ixFileHandle);
+    RC updateHiddenPageToDisk(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t totalPageNum, AttrType attrType);
+    //RC writeBTree(IXFileHandle &ixFileHandle);
 };
 
 class IndexManager {

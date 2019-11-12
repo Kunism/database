@@ -113,6 +113,7 @@ RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePage
 }
 
 RC FileHandle::readBTreeHiddenPage(void *data) {
+    file.seekg(0);
     file.read(reinterpret_cast<char*>(data) , PAGE_SIZE);
     hiddenPage->var[READ_PAGE_COUNTER]++;
     return 0;
