@@ -48,12 +48,9 @@ public:
     uint32_t getKeysBegin();
     uint32_t getChildrenBegin();
     uint32_t getRecordsBegin();
-    uint32_t getCurKeyNum();
-    uint32_t getRightNode();
+
     uint32_t getFreeSpace();
 
-    bool getIsLeafNode();
-    bool getIsDeleted();
 
 
 private:
@@ -64,9 +61,9 @@ private:
 class BTree {
 public:
     uint32_t rootPageNum;
+    uint32_t totalPageNum;
     AttrType attrType;
     AttrLength attrLength;
-    uint32_t totalPageNum;
     uint32_t order;
 
     BTree();
@@ -76,6 +73,9 @@ public:
     RC updateMeta(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t totalPageNum, AttrType attrType);
     RC recInsert(IXFileHandle &ixFileHandle, const void *key, const RID &rid, uint32_t nodePageNum
             , uint32_t splitNodePageNum, void * copyKey, bool &hasSplit);
+
+    RC readBTree(IXFileHandle &ixFileHandle);
+    RC writeBTree(IXFileHandle &ixFileHandle);
 };
 
 class IndexManager {
@@ -100,11 +100,6 @@ public:
 
     // Delete an entry from the given index that is indicated by the given ixFileHandle.
     RC deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid);
-
-    // Read BTree metadata
-    RC readBTree(IXFileHandle &ixFileHandle, BTree &bTree);
-
-    RC writeBTree();
 
     // Initialize and IX_ScanIterator to support a range search
     RC scan(IXFileHandle &ixFileHandle,

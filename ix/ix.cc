@@ -138,7 +138,7 @@ RC BTreeNode::writeNode(IXFileHandle &ixFileHandle) {
 
     memcpy(page + getKeysBegin(), keys, attrLength * maxKeyNum);
 
-    if(getIsLeafNode()) {
+    if(isLeafNode) {
         memcpy(page + getRecordsBegin(), records, sizeof(RID) * maxKeyNum);
     }
     else {
@@ -192,7 +192,7 @@ RC BTreeNode::updateMeta(IXFileHandle &ixFileHandle, uint32_t pageNum, bool isLe
 }
 
 RC BTreeNode::searchKey(const char *key) {
-    //   1   2   4   6   8   9
+    //     1   2   4   6   8   9
     //  [0] [1] [2] [3] [4] [5]
     //  if key = 4, return 3
     //  if key = 5, return 3
@@ -259,6 +259,8 @@ RC BTreeNode::compareKey(const char *key, const char *val) {
             delete[] _val;
         }
     }
+
+
     return result;
 }
 
@@ -274,24 +276,8 @@ uint32_t BTreeNode::getRecordsBegin() {
     return NODE_OFFSET + attrLength * maxKeyNum;;
 }
 
-uint32_t BTreeNode::getCurKeyNum() {
-    return curKeyNum;
-}
-
-uint32_t BTreeNode::getRightNode() {
-    return rightNode;
-}
-
 uint32_t BTreeNode::getFreeSpace() {
     return maxKeyNum - curKeyNum;
-}
-
-bool BTreeNode::getIsLeafNode() {
-    return isLeafNode;
-}
-
-bool BTreeNode::getIsDeleted() {
-    return isDeleted;
 }
 
 BTree::BTree() {
@@ -325,8 +311,8 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
         createNode(ixFileHandle, root, totalPageNum + 1, true, false
                 , attribute.type, attrLength, order, 0);
         root.insertToLeaf(key, rid);
-        root.updateMeta(ixFileHandle, totalPageNum + 1, root.getIsLeafNode(), root.getIsDeleted()
-                , root.getCurKeyNum() + 1, root.getRightNode());
+        root.updateMeta(ixFileHandle, totalPageNum + 1, root.isLeafNode, root.isDeleted
+                , root.curKeyNum + 1, root.rightNode);
         updateMeta(ixFileHandle, rootPageNum + 1, totalPageNum + 1, attribute.type);
 
     }
@@ -418,8 +404,7 @@ RC BTree::updateMeta(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t 
     this->totalPageNum = totalPageNum;
     this->attrType = attrType;
 
-    //  TODO: write back to file
-    //  ixFileHandle.fileHandle.writePage(0, buffer);
+    writeBTree(ixFileHandle);
 }
 
 RC BTree::recInsert(IXFileHandle &ixFileHandle, const void *key, const RID &rid, uint32_t nodePageNum, uint32_t splitNode,
@@ -438,6 +423,67 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const void *key, const RID &rid,
     else {
 
     }
+}
+
+RC BTree::readBTree(IXFileHandle &ixFileHandle) {
+    RC rc = 0;
+    char* hiddenPage = new char [PAGE_SIZE];
+    memset(hiddenPage, 0, PAGE_SIZE);
+
+    std::cerr << "Page Nums: " << ixFileHandle.fileHandle.getNumberOfPages() << std::endl;
+    rc = ixFileHandle.fileHandle.readPage(0, hiddenPage);
+
+    if(rc != 0) {
+        std::cerr << "ReadPage fail in BTree::readBTree." << std::endl;
+        return rc;
+    }
+
+    uint32_t offset = 0;
+
+    memcpy(&rootPageNum, hiddenPage + offset, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    memcpy(&totalPageNum, hiddenPage + offset, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    memcpy(&attrType, hiddenPage + offset, sizeof(AttrType));
+    offset += sizeof(AttrType);
+
+    memcpy(&attrLength, hiddenPage + offset, sizeof(AttrLength));
+    offset += sizeof(AttrLength);
+
+    memcpy(&order, hiddenPage + offset, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    delete[] hiddenPage;
+
+    return rc;
+}
+
+RC BTree::writeBTree(IXFileHandle &ixFileHandle) {
+    char* hiddenPage = new char [PAGE_SIZE];
+    memset(hiddenPage, 0, PAGE_SIZE);
+
+    uint32_t offset = 0;
+
+    memcpy(hiddenPage + offset, &rootPageNum, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    memcpy(hiddenPage + offset, &totalPageNum, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    memcpy(hiddenPage + offset, &attrType, sizeof(AttrType));
+    offset += sizeof(AttrType);
+
+    memcpy(hiddenPage + offset, &attrLength, sizeof(AttrLength));
+    offset += sizeof(AttrLength);
+
+    memcpy(hiddenPage + offset, &order, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    delete[] hiddenPage;
+
+    return ixFileHandle.fileHandle.writePage(0, hiddenPage);
 }
 
 
@@ -467,22 +513,16 @@ RC IndexManager::closeFile(IXFileHandle &ixFileHandle) {
 }
 
 RC IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
+    RC rc = 0;
     BTree bTree;
-    readBTree(ixFileHandle, bTree);
-    bTree.insertEntry(ixFileHandle, attribute, key, rid);
-    //writeBTree();
-    return -1;
+    rc |= bTree.readBTree(ixFileHandle);
+    rc |= bTree.insertEntry(ixFileHandle, attribute, key, rid);
+    rc |= bTree.writeBTree(ixFileHandle);
+    return rc;
 }
 
 RC IndexManager::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
     return -1;
-}
-
-RC IndexManager::readBTree(IXFileHandle &ixFileHandle, BTree &bTree) {
-    char* page = new char [PAGE_SIZE];
-    ixFileHandle.fileHandle.readPage(0, page);
-
-    //  TODO: parse page variables to bTree
 }
 
 RC IndexManager::scan(IXFileHandle &ixFileHandle,
