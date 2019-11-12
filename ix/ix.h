@@ -12,21 +12,49 @@ class IX_ScanIterator;
 
 class IXFileHandle;
 
+const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool) + sizeof(AttrType) + sizeof(AttrLength)
+        + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
+
 class BTreeNode {
 public:
-    AttrType attrType;
-    bool isLeafNode;
     uint32_t pageNum;
+    bool isLeafNode;
+    bool isDeleted;
+    AttrType attrType;
+    AttrLength attrLength;      // 4 if type is int or float, 4 + maxLength of string if type is varchar
+    uint32_t curKeyNum;
+    uint32_t maxKeyNum;
 
-    void* keys;
-    int* children;      //  list of children's pageNum
+    uint32_t rightNode;
+
+    char* keys;
+    int* children;              //  list of children's pageNum
     RID* records;
 
+    char* page;
+
     BTreeNode();
+    ~BTreeNode();
     RC insertToLeaf(const void *key, const RID &rid);
     RC insertToInternal(const void *key, const int &childPageNum);
-    RC readNode(IXFileHandle &ixFileHandle);
+    RC updateMeta(IXFileHandle &ixFileHandle, uint32_t pageNum, bool isLeafNode, bool isDeleted
+            , uint32_t curKeyNum, uint32_t rightNode);
+    RC readNode(IXFileHandle &ixFileHandle, uint32_t pageNum);
     RC writeNode(IXFileHandle &ixFileHandle);
+
+    RC searchKey(const char *key);
+    RC compareKey(const char *key, const char *val);
+
+    uint32_t getKeysBegin();
+    uint32_t getChildrenBegin();
+    uint32_t getRecordsBegin();
+    uint32_t getCurKeyNum();
+    uint32_t getRightNode();
+    uint32_t getFreeSpace();
+
+    bool getIsLeafNode();
+    bool getIsDeleted();
+
 
 private:
 
@@ -37,13 +65,17 @@ class BTree {
 public:
     uint32_t rootPageNum;
     AttrType attrType;
+    AttrLength attrLength;
     uint32_t totalPageNum;
     uint32_t order;
 
     BTree();
     RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid);
-    RC createNode(IXFileHandle &ixFileHandle, BTreeNode &node, AttrType attrType, uint32_t pageNum, bool isLeafNode);
+    RC createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
+            , AttrType attrType, AttrLength attrLength, uint32_t order, uint32_t rightNode);
     RC updateMeta(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t totalPageNum, AttrType attrType);
+    RC recInsert(IXFileHandle &ixFileHandle, const void *key, const RID &rid, uint32_t nodePageNum
+            , uint32_t splitNodePageNum, void * copyKey, bool &hasSplit);
 };
 
 class IndexManager {
