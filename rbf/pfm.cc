@@ -112,6 +112,61 @@ RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePage
     return 0;
 }
 
+RC FileHandle::readBTreeHiddenPage(void *data) {
+    file.read(reinterpret_cast<char*>(data) , PAGE_SIZE);
+    hiddenPage->var[READ_PAGE_COUNTER]++;
+    return 0;
+}
+
+RC FileHandle::writeBTreeHiddenPage(void *data) {
+    char* buffer = new char [PAGE_SIZE];
+    std::memcpy(buffer, data, PAGE_SIZE);
+    file.write( buffer, PAGE_SIZE);
+    hiddenPage->var[WRITE_PAGE_COUNTER]++;
+    delete[] buffer;
+    return 0;
+}
+
+RC FileHandle::readBTreePage(PageNum pageNum, void *data) {
+    if (pageNum < hiddenPage->var[TOTAL_PAGE_NUM]) {
+        file.seekg((PAGE_OFFSET + pageNum) * PAGE_SIZE);
+        file.read( reinterpret_cast<char*>(data) , PAGE_SIZE);
+        hiddenPage->var[READ_PAGE_COUNTER]++;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+RC FileHandle::writeBTreePage(PageNum pageNum, const void *data) {
+    if (pageNum < hiddenPage->var[TOTAL_PAGE_NUM]) {
+        char* buffer = new char [PAGE_SIZE];
+        std::memcpy(buffer,data, PAGE_SIZE);
+        file.seekp((PAGE_OFFSET + pageNum) * PAGE_SIZE);
+        file.write( buffer, PAGE_SIZE);
+        hiddenPage->var[WRITE_PAGE_COUNTER]++;
+        delete[] buffer;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+RC FileHandle::createNodePage() {
+
+    hiddenPage->var[APPEND_PAGE_COUNTER]++;
+    hiddenPage->var[TOTAL_PAGE_NUM]++;
+    // CHECK
+    hiddenPage->writeHiddenPage(file);
+
+    return 0;
+}
+
+unsigned FileHandle::getNumberOfNodes() {
+    return hiddenPage->var[TOTAL_PAGE_NUM];
+}
 //DELETE TODO
 RC FileHandle::openFile(const std::string &fileName) {
     if(file.is_open()) {
@@ -142,6 +197,12 @@ HiddenPage::HiddenPage() {
     var[WRITE_PAGE_COUNTER] = 0;
     var[APPEND_PAGE_COUNTER] = 0;
     var[PAGE_NUM] = 0;
+
+    var[ROOT_PAGE_NUM] = 0;
+    var[TOTAL_PAGE_NUM] = 0;
+    var[ATTRTYPE] = 0;
+    var[ATTRLENGTH] = 0;
+    var[ORDER] = 0;
 }
 
 HiddenPage::~HiddenPage() {
@@ -156,12 +217,20 @@ void HiddenPage::readHiddenPage(std::fstream& file) {
     var[WRITE_PAGE_COUNTER] = ((unsigned*)buffer)[WRITE_PAGE_COUNTER];
     var[APPEND_PAGE_COUNTER] = ((unsigned*)buffer)[APPEND_PAGE_COUNTER];
     var[PAGE_NUM] = ((unsigned*)buffer)[PAGE_NUM];
+
+    var[ROOT_PAGE_NUM] = ((unsigned*)buffer)[ROOT_PAGE_NUM];
+    var[TOTAL_PAGE_NUM] = ((unsigned*)buffer)[TOTAL_PAGE_NUM];
+    var[ATTRTYPE] = ((unsigned*)buffer)[ATTRTYPE];
+    var[ATTRLENGTH] = ((unsigned*)buffer)[ATTRLENGTH];
+    var[ORDER] = ((unsigned*)buffer)[ORDER];
+
     delete[] buffer;
 }
 
 void HiddenPage::writeHiddenPage(std::fstream& file) {
 
     char* buffer = new char [PAGE_SIZE];
+    memset(buffer, 0, PAGE_SIZE);
     memcpy(buffer, var, sizeof(unsigned) * HIDDEN_PAGE_VAR_NUM);
     file.seekp(0, std::ios::beg);
     file.write(buffer, PAGE_SIZE);

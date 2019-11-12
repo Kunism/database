@@ -44,11 +44,14 @@ public:
 
     RC searchKey(const char *key);
     RC compareKey(const char *key, const char *val);
+    RC insertKey(const char *key, uint32_t index);
+    RC printKey();
+
+    RC insertRID(const RID &rid, uint32_t index);
 
     uint32_t getKeysBegin();
     uint32_t getChildrenBegin();
     uint32_t getRecordsBegin();
-
     uint32_t getFreeSpace();
 
 

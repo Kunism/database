@@ -18,7 +18,7 @@ typedef unsigned char byte;
 class FileHandle;
 class HiddenPage;
 
-#define HIDDEN_PAGE_VAR_NUM 4
+#define HIDDEN_PAGE_VAR_NUM 9
 #define DATA_PAGE_VAR_NUM 4
 
 class PagedFileManager {
@@ -62,6 +62,12 @@ public:
     RC collectCounterValues(unsigned &readPageCount, unsigned &writePageCount,
                             unsigned &appendPageCount);                 // Put current counter values into variables
 
+    RC readBTreeHiddenPage(void *data);
+    RC writeBTreeHiddenPage(void *data);
+    RC readBTreePage(PageNum pageNum, void *data);
+    RC writeBTreePage(PageNum pageNum, const void *data);
+    RC createNodePage();
+    unsigned getNumberOfNodes();
 private:
     
     //bool checkPageNum(int);
@@ -71,7 +77,8 @@ private:
     //DataPage* currentpage;
 };
 
-enum counter {READ_PAGE_COUNTER, WRITE_PAGE_COUNTER, APPEND_PAGE_COUNTER, PAGE_NUM};
+enum counter {READ_PAGE_COUNTER, WRITE_PAGE_COUNTER, APPEND_PAGE_COUNTER, PAGE_NUM
+        , ROOT_PAGE_NUM, TOTAL_PAGE_NUM, ATTRTYPE, ATTRLENGTH, ORDER};
 
 class HiddenPage {
 public:
