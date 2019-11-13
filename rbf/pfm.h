@@ -65,9 +65,10 @@ public:
 
     RC readBTreeHiddenPage(void *data);
     RC writeBTreeHiddenPage(void *data);
+    // RC appendBTreePage(void *data);
     RC readBTreePage(PageNum pageNum, void *data);
     RC writeBTreePage(PageNum pageNum, const void *data);
-    RC createNodePage();
+    RC createNodePage(void *data);
     unsigned getNumberOfNodes();
 private:
     
