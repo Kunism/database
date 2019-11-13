@@ -272,11 +272,14 @@ RC BTreeNode::printKey() {
 }
 
 RC BTreeNode::insertRID(const RID &rid, uint32_t index) {
-    RID* ridBuffer = new RID [maxKeyNum - index];
+
+    //RID* ridBuffer = new RID [maxKeyNum - index];
+    char* ridBuffer = new char [sizeof(RID) * (maxKeyNum - index)];
     memset(ridBuffer, 0, sizeof(RID) * (maxKeyNum - index));
 
     //  newRID + oldRIDs
     memcpy(ridBuffer, &rid, sizeof(RID));
+
     memcpy(ridBuffer + sizeof(RID), page + getRecordsBegin() + sizeof(RID) * index, sizeof(RID) * (maxKeyNum - index - 1));
 
     //  update RID in page
@@ -287,6 +290,13 @@ RC BTreeNode::insertRID(const RID &rid, uint32_t index) {
 
     delete[] ridBuffer;
     return 0;
+}
+RC BTreeNode::printRID() {
+    for(int i = 0; i < curKeyNum; i++) {
+        RID rid;
+        memcpy(&rid, records, sizeof(RID));
+        std::cerr << "RID:  " << rid.pageNum << "\t" << rid.slotNum << std::endl;
+    }
 }
 
 uint32_t BTreeNode::getKeysBegin() {
@@ -602,6 +612,7 @@ void IndexManager::printBtree(IXFileHandle &ixFileHandle, const Attribute &attri
     std::cerr << "curKeyNum = " << root.curKeyNum << std::endl;
 
     root.printKey();
+    root.printRID();
 }
 
 IX_ScanIterator::IX_ScanIterator() {
