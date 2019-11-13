@@ -307,12 +307,13 @@ uint32_t BTreeNode::getFreeSpace() {
 }
 
 BTree::BTree() {
-    rootPageNum = 0;
+    rootPageNum = -1;
     totalPageNum = 0;
     attrLength = 0;
 }
 
 RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
+    // std::cout << rootPageNum <<std::endl;
     if(rootPageNum == -1) {
         uint32_t TMP_ORDER = 10;
         if(attribute.type == TypeInt) {
@@ -336,12 +337,12 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
         BTreeNode root;
         createNode(ixFileHandle, root, totalPageNum, true, false
                 , attribute.type, attrLength, order, 0);
-
+        // root.writeNode(ixFileHandle);
+        this->updateHiddenPageToDisk(ixFileHandle, totalPageNum, totalPageNum + 1, attribute.type);
+        
         root.insertToLeaf(key, rid);
         root.updateMetaToDisk(ixFileHandle, totalPageNum, root.isLeafNode, root.isDeleted
                 , root.curKeyNum + 1, root.rightNode);
-        // TODO THIS UPDATE IS DUPLICATEEEEE!!! 
-        this->updateHiddenPageToDisk(ixFileHandle, totalPageNum, totalPageNum + 1, attribute.type);
 
     }
     else {
@@ -426,7 +427,7 @@ RC BTree::createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageN
 
     //  update hiddenPage
     ixFileHandle.fileHandle.createNodePage(node.page);
-    updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
+    // updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
     return 0;
 }
 
@@ -434,6 +435,7 @@ RC BTree::createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageN
 RC BTree::updateHiddenPageToDisk(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t totalPageNum, AttrType attrType) {
 
     RC rc;
+    //TO DO rc unint
     unsigned data[HIDDEN_PAGE_VAR_NUM];
     
     rc |= ixFileHandle.fileHandle.readBTreeHiddenPage(data);
