@@ -133,7 +133,6 @@ RC BTreeNode::writeNode(IXFileHandle &ixFileHandle) {
     if(offset != NODE_OFFSET) {
         std::cerr << "write error" << std::endl;
     }
-
     return ixFileHandle.fileHandle.writeBTreePage(pageNum, page);
 }
 
@@ -338,12 +337,10 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
         createNode(ixFileHandle, root, totalPageNum, true, false
                 , attribute.type, attrLength, order, 0);
         // root.writeNode(ixFileHandle);
-        this->updateHiddenPageToDisk(ixFileHandle, totalPageNum, totalPageNum + 1, attribute.type);
-        
         root.insertToLeaf(key, rid);
         root.updateMetaToDisk(ixFileHandle, totalPageNum, root.isLeafNode, root.isDeleted
                 , root.curKeyNum + 1, root.rightNode);
-
+        this->updateHiddenPageToDisk(ixFileHandle, totalPageNum, totalPageNum + 1, attribute.type);
     }
     else {
         BTreeNode node;

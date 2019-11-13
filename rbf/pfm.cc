@@ -181,7 +181,8 @@ RC FileHandle::createNodePage(void* data) {
 
     hiddenPage->var[APPEND_PAGE_COUNTER]++;
     hiddenPage->var[TOTAL_PAGE_NUM]++;
-
+    file.seekp(0, std::ios::end);
+    file.write(reinterpret_cast<const char*>(data), PAGE_SIZE);
     hiddenPage->writeHiddenPage(file);
     return 0;
 }
