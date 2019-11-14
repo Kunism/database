@@ -409,8 +409,19 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
             memset(copyKey, 0, sizeof(uint32_t) + strLen);
         }
 
-        // recInsert(ixFileHandle, key, rid, node.pageNum, -1, copyKey, split);
         recInsert(ixFileHandle, rootPageNum, key, rid,  split, copyKey, upPageNum);
+        if(split)
+        {
+            BTreeNode newRoot;
+            uint32_t newRootPageNum = totalPageNum;
+            createNode(ixFileHandle, newRoot, newRootPageNum, false, false, this->attrType, this->attrLength, this->order, -1);
+            updateHiddenPageToDisk(ixFileHandle, newRootPageNum, totalPageNum+1, attrType);
+
+            newRoot.insertKey(copyKey, 0);
+            newRoot.insertChild(rootPageNum, 0);
+            newRoot.insertChild(upPageNum, 1);
+            newRoot.updateMetaToDisk(ixFileHandle, newRootPageNum, newRoot.isLeafNode, newRoot.isDeleted, newRoot.curKeyNum + 1, newRoot.rightNode);
+        }
     }
     return 0;
 }
@@ -566,18 +577,6 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
 
             hasSplit = true;
             upPageNum = newNodePageNum;
-
-            // CHECK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            // if(node.pageNum == rootPageNum)
-            // {
-            //     BTreeNode newRoot;
-            //     uint32_t newRootPageNum = totalPageNum;
-            //     createNode(ixFileHandle, newRoot, newRootPageNum, false, false, this->attrType, this->attrLength, this->order, -1);
-
-            //     newRoot.insertChild({node.pageNum, newNodePageNum});
-            //     newRoot.insertKey(upKey, 0);
-            //     updateHiddenPageToDisk(ixFileHandle, newRootPageNum, totalPageNum+1, attrType);
-            // }
             return 0;
         }
     }
@@ -628,11 +627,8 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                 // Old Node
                 node.updateMetaToDisk(ixFileHandle, node.pageNum, node.isLeafNode, node.isDeleted, pushIndex, node.rightNode);
 
-
                 hasSplit = true;
                 upPageNum = newNodePageNum;
-
-               
                 delete [] keyBuffer;
 
                 return 0;
