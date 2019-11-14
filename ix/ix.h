@@ -78,7 +78,7 @@ public:
     uint32_t order;
 
     BTree();
-    RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid);
+    RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const char *key, const RID &rid);
     RC createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
             , AttrType attrType, AttrLength attrLength, uint32_t order, uint32_t rightNode);
     RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const char *key, const RID &rid, 
