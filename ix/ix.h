@@ -17,6 +17,57 @@ const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool)  + s
 
 // enum SPLIT{NON, LEAF, INTER};
 
+class KeyInt
+{
+public:
+    int key;
+    RID rid;
+
+    // KeyInt(char* input) {
+
+    // }
+
+    uint32_t size() const {
+
+    }
+
+    bool operator<(const KeyInt &keyInt) const {
+
+    }
+};
+
+
+class KeyReal
+{
+public:
+    float key;
+    RID rid;
+
+    uint32_t size() const {
+
+    }
+
+    bool operator<(const KeyReal &keyReal) const {
+
+    }
+};
+
+class KeyVarChar
+{
+    std::string s;
+    RID rid;
+
+    uint32_t size() const {
+
+    }
+
+    bool operator<(const KeyVarChar &keyVarChar) const {
+
+    }
+};
+
+
+template<class KeyType>
 class BTreeNode {
 public:
     uint32_t pageNum;
@@ -33,6 +84,11 @@ public:
     int* children;              //  list of children's pageNum
     RID* records;
 
+    //////////NEW VECTOR////////
+    std::vector<KeyType> key_vec;
+    std::vector<uint32_t> children_vec;
+    ////////////////////////////
+    
     char* page;
 
     BTreeNode();
