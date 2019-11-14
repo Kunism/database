@@ -53,6 +53,7 @@ public:
     RC printRID();
 
     RC getChild(uint32_t index);
+    RC insertChild(uint32_t childPageNum, uint32_t index);
 
     uint32_t getKeysBegin();
     uint32_t getChildrenBegin();

@@ -322,6 +322,16 @@ RC BTreeNode::getChild(uint32_t index) {
     }
 }
 
+RC BTreeNode::insertChild(uint32_t childPageNum, uint32_t index) {
+    if(index <= curKeyNum) {
+        memcpy(page + getChildrenBegin() + sizeof(uint32_t) * index, &childPageNum, sizeof(uint32_t));
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
 uint32_t BTreeNode::getKeysBegin() {
     return NODE_OFFSET;
 }
