@@ -85,9 +85,9 @@ RC BTreeNode::readNode(IXFileHandle &ixFileHandle, uint32_t pageNum) {
     memset(records, 0, sizeof(RID) * maxKeyNum);
     memcpy(records, page + getRecordsBegin(), sizeof(RID) * maxKeyNum);
 
-    children = (int*)(new char [attrLength * (maxKeyNum + 1)]);
-    memset(children, 0, attrLength * (maxKeyNum + 1));
-    memcpy(children, page + getChildrenBegin(), attrLength * (maxKeyNum + 1));
+    children = (int*)(new char [sizeof(uint32_t) * (maxKeyNum + 1)]);
+    memset(children, 0, sizeof(uint32_t) * (maxKeyNum + 1));
+    memcpy(children, page + getChildrenBegin(), sizeof(uint32_t) * (maxKeyNum + 1));
 
     return rc;
 }
@@ -175,6 +175,16 @@ RC BTreeNode::searchKey(const char *key) {
         delete[] val;
     }
     return result;
+}
+
+RC BTreeNode::getKey(uint32_t index, char *key) {
+    if(index < curKeyNum) {
+        memcpy(key, page + getKeysBegin() + attrLength * index, attrLength);
+        return 0;
+    }
+    else {
+        return -1;
+    }
 }
 
 RC BTreeNode::compareKey(const char *key, const char *val) {
@@ -271,6 +281,8 @@ RC BTreeNode::printKey() {
     return 0;
 }
 
+
+
 RC BTreeNode::insertRID(const RID &rid, uint32_t index) {
 
     //RID* ridBuffer = new RID [maxKeyNum - index];
@@ -296,6 +308,17 @@ RC BTreeNode::printRID() {
         RID rid;
         memcpy(&rid, records, sizeof(RID));
         std::cerr << "RID:  " << rid.pageNum << "\t" << rid.slotNum << std::endl;
+    }
+}
+
+RC BTreeNode::getChild(uint32_t index) {
+    if(index < curKeyNum) {
+        uint32_t childPageNum = -1;
+        memcpy(&childPageNum, page + getChildrenBegin() + sizeof(uint32_t) * index, sizeof(uint32_t));
+        return childPageNum;
+    }
+    else {
+        return -1;
     }
 }
 

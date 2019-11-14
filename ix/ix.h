@@ -22,8 +22,6 @@ public:
     uint32_t pageNum;
     bool isLeafNode;
     bool isDeleted;
-//    bool unused1;
-//    bool unused2;
     AttrType attrType;
     AttrLength attrLength;      // 4 if type is int or float, 4 + maxLength of string if type is varchar
     uint32_t curKeyNum;
@@ -47,13 +45,16 @@ public:
     RC writeNode(IXFileHandle &ixFileHandle);
 
     RC searchKey(const char *key);
+    RC getKey(uint32_t index, char* key);
     RC compareKey(const char *key, const char *val);
     RC insertKey(const char *key, uint32_t index);
     RC printKey();
 
+
     RC insertRID(const RID &rid, uint32_t index);
     RC printRID();
 
+    RC getChild(uint32_t index);
 
     uint32_t getKeysBegin();
     uint32_t getChildrenBegin();
