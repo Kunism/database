@@ -15,6 +15,8 @@ class IXFileHandle;
 const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool)  + sizeof(AttrType) + sizeof(AttrLength)
         + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
 
+// enum SPLIT{NON, LEAF, INTER};
+
 class BTreeNode {
 public:
     uint32_t pageNum;
@@ -77,8 +79,8 @@ public:
     RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid);
     RC createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
             , AttrType attrType, AttrLength attrLength, uint32_t order, uint32_t rightNode);
-    RC recInsert(IXFileHandle &ixFileHandle, const void *key, const RID &rid, uint32_t nodePageNum
-            , uint32_t splitNodePageNum, void * copyKey, bool &hasSplit);
+    RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const char *key, const RID &rid, 
+                bool &hasSplit, char *upKey, uint32_t &upPageNum);
 
     RC readBTreeHiddenPage(IXFileHandle &ixFileHandle);
     RC updateHiddenPageToDisk(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t totalPageNum, AttrType attrType);
