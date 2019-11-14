@@ -155,6 +155,8 @@ RC BTreeNode::searchKey(const char *key) {
     //  if key = 5, return 3
 
     int result = 0;
+    char* lastKey = nullptr;
+
     for(int i = 0; i < curKeyNum; i++) {
 
         uint32_t valLen = attrLength;
@@ -167,13 +169,30 @@ RC BTreeNode::searchKey(const char *key) {
         memset(val, 0, valLen);
         memcpy(val, page + getKeysBegin() + attrLength * i, valLen);
 
-        if(compareKey(key, val) < 0) {
+        //  lastKey == curVal == Key, indicates 2nd duplicated elements
+        if(i > 0 && (memcmp(lastKey, val, valLen) == 0 ) && compareKey(key, val) == 0) {
             result = i;
             delete[] val;
+            delete[] lastKey;
+            break;
+        }
+        else if(compareKey(key, val) < 0) {
+            result = i;
+            delete[] val;
+            delete[] lastKey;
             break;
         }
         delete[] val;
+
+        lastKey = new char [valLen];
+        memset(lastKey, 0, valLen);
+        memcpy(lastKey, page + getKeysBegin() + attrLength * i, valLen);
     }
+
+    if(result == 0 && curKeyNum != 0) {
+        delete[] lastKey;
+    }
+
     return result;
 }
 
@@ -637,6 +656,19 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
     }
 }
 
+RC BTree::recSearch(IXFileHandle &ixFileHandle, const char *key, uint32_t pageNum) {
+    BTreeNode node;
+    node.readNode(ixFileHandle, pageNum);
+
+    if(node.isLeafNode) {
+        return node.pageNum;
+    }
+    else {
+        uint32_t index = node.searchKey(key);
+        return recSearch(ixFileHandle, key, node.getChild(index));
+    }
+}
+
 RC BTree::readBTreeHiddenPage(IXFileHandle &ixFileHandle) {
     // char* hiddenPage = new char [PAGE_SIZE];
     // memset(hiddenPage, 0, PAGE_SIZE);
@@ -722,7 +754,12 @@ RC IndexManager::scan(IXFileHandle &ixFileHandle,
                       bool lowKeyInclusive,
                       bool highKeyInclusive,
                       IX_ScanIterator &ix_ScanIterator) {
-    return -1;
+
+    RC rc = 0;
+    rc |= ix_ScanIterator.init(ixFileHandle, attribute, lowKey, highKey, lowKeyInclusive, highKeyInclusive);
+
+
+    return rc;
 }
 
 void IndexManager::printBtree(IXFileHandle &ixFileHandle, const Attribute &attribute) const {
@@ -740,12 +777,40 @@ void IndexManager::printBtree(IXFileHandle &ixFileHandle, const Attribute &attri
 }
 
 IX_ScanIterator::IX_ScanIterator() {
+
+
+    curNodePageNum = -1;
+    finished = false;
 }
 
 IX_ScanIterator::~IX_ScanIterator() {
 }
 
+RC IX_ScanIterator::init(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *lowKey,
+                         const void *highKey, bool lowKeyInclusive, bool highKeyInclusive) {
+    this->ixFileHandle = &ixFileHandle;
+    this->attribute = attribute;
+    //  TODO: need space?
+    this->lowKey = lowKey;
+    this->highKey = highKey;
+    this->lowKeyInclusive = lowKeyInclusive;
+    this->highKeyInclusive = highKeyInclusive;
+
+
+    return 0;
+}
+
 RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
+    if(finished) {
+        return IX_EOF;
+    }
+    else if(curNodePageNum == 0) {
+
+    }
+    else {
+
+    }
+
     return -1;
 }
 

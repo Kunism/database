@@ -83,10 +83,11 @@ public:
             , AttrType attrType, AttrLength attrLength, uint32_t order, uint32_t rightNode);
     RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const char *key, const RID &rid, 
                 bool &hasSplit, char *upKey, uint32_t &upPageNum);
-
+    RC recSearch(IXFileHandle &ixFileHandle, const char *key, uint32_t pageNum);
     RC readBTreeHiddenPage(IXFileHandle &ixFileHandle);
     RC updateHiddenPageToDisk(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t totalPageNum, AttrType attrType);
     //RC writeBTree(IXFileHandle &ixFileHandle);
+
 };
 
 class IndexManager {
@@ -137,11 +138,25 @@ private:
 class IX_ScanIterator {
 public:
 
+    IXFileHandle* ixFileHandle;
+    Attribute attribute;
+    const void *lowKey;
+    const void *highKey;
+    bool lowKeyInclusive;
+    bool highKeyInclusive;
+
+    BTree bTree;
+    uint32_t curNodePageNum;
+    bool finished;
+
     // Constructor
     IX_ScanIterator();
 
     // Destructor
     ~IX_ScanIterator();
+
+    // Init
+    RC init(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *lowKey, const void *highKey, bool lowKeyInclusive, bool highKeyInclusive);
 
     // Get next matching entry
     RC getNextEntry(RID &rid, void *key);
