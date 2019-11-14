@@ -378,7 +378,7 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
 
         BTreeNode root;
         createNode(ixFileHandle, root, totalPageNum, true, false
-                , attribute.type, attrLength, order, 0);
+                , attribute.type, attrLength, order, -1);
         // root.writeNode(ixFileHandle);
         root.insertToLeaf(key, rid);
         root.updateMetaToDisk(ixFileHandle, totalPageNum, root.isLeafNode, root.isDeleted
@@ -408,7 +408,7 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
             memset(copyKey, 0, sizeof(uint32_t) + strLen);
         }
 
-        recInsert(ixFileHandle, key, rid, node.pageNum, -1, copyKey, split);
+        // recInsert(ixFileHandle, key, rid, node.pageNum, -1, copyKey, split);
     }
     return 0;
 }
@@ -521,28 +521,130 @@ RC BTree::updateHiddenPageToDisk(IXFileHandle &ixFileHandle, uint32_t rootPageNu
     return rc;
 }
 
-RC BTree::recInsert(IXFileHandle &ixFileHandle, const void *key, const RID &rid, uint32_t nodePageNum, uint32_t splitNode,
-                    void *copyKey, bool &hasSplit) {
+RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const char *key, const RID &rid,  // insert element
+                    bool &hasSplit, char *upKey, uint32_t &upPageNum) {    // return element
+
     BTreeNode node;
     node.readNode(ixFileHandle, nodePageNum);
     if(node.isLeafNode) {
         if(node.getFreeSpace() > 0) {
             node.insertToLeaf(key, rid);
             node.updateMetaToDisk(ixFileHandle, node.pageNum, node.isLeafNode, node.isDeleted, node.curKeyNum + 1, node.rightNode);
+            hasSplit = false;
+            return 0;
+
         }
         else {
-            //POWEI TODO
-
-            // BTreeNode newNode;
-            // createNode(ixFileHandle, newNode, totalPageNum, true, false, this->attrType, this->attrLength,  this->order, newNode.rightNode);
-            // newNode.updateMetaToDisk(ixFileHandle, totalPageNum, root.isLeafNode, root.isDeleted
-            //     , root.curKeyNum + 1, root.rightNode);
 
 
+            int startIndex = (node.curKeyNum + 1)/2;
+            
+            BTreeNode newNode;
+            uint32_t newNodePageNum = totalPageNum;
+            createNode(ixFileHandle, newNode, newNodePageNum, true, false, this->attrType, this->attrLength,  this->order, node.rightNode);
+            updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
+
+            // prepare for upKey;
+            node.getKey(startIndex, upKey);
+        
+
+            for(int i = startIndex ; i < node.curKeyNum ; i++)
+            {
+                uint8_t* keyBuffer = new uint8_t [this->attrLength];
+                node.getKey(i,keyBuffer);
+                newNode.insertToLeaf(keyBuffer, node.records[i]);
+                newNode.updateMetaToDisk(ixFileHandle, newNode.pageNum, newNode.isLeafNode, newNode.isDeleted, newNode.curKeyNum + 1, newNode.rightNode);
+                delete [] keyBuffer;
+            }
+            
+            // non-deleted old keys
+            node.updateMetaToDisk(ixFileHandle, node.pageNum, node.isLeafNode, node.isDeleted, startIndex, newNodePageNum);
+            // insert the entity
+            node.insertToLeaf(key, rid);
+
+            hasSplit = true;
+            upPageNum = newNodePageNum;
+
+            // CHECK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // if(node.pageNum == rootPageNum)
+            // {
+            //     BTreeNode newRoot;
+            //     uint32_t newRootPageNum = totalPageNum;
+            //     createNode(ixFileHandle, newRoot, newRootPageNum, false, false, this->attrType, this->attrLength, this->order, -1);
+
+            //     newRoot.insertChild({node.pageNum, newNodePageNum});
+            //     newRoot.insertKey(upKey, 0);
+            //     updateHiddenPageToDisk(ixFileHandle, newRootPageNum, totalPageNum+1, attrType);
+            // }
+            return;
         }
     }
     else {
+        
+        int subTreePos = node.searchKey(key);
+        uint32_t childPageNum = node.getChild(subTreePos);
+        recInsert(ixFileHandle, childPageNum, key, rid, hasSplit, upKey, upPageNum);
+        if( hasSplit ) {
+            if (node.getFreeSpace() > 0 ) {
+                node.insertToInternal(upKey, upPageNum);
+                node.updateMetaToDisk(ixFileHandle, node.pageNum, node.isLeafNode, node.isDeleted, node.curKeyNum+1, node.rightNode);
+                hasSplit = false;
+                return 0;
+            }
+            else {
+                int pushIndex = node.curKeyNum/2;
+                BTreeNode newNode;
+                uint32_t newNodePageNum = totalPageNum;
+                createNode(ixFileHandle, newNode, newNodePageNum, false, false, this->attrType, this->attrLength, this->order, -1);
 
+
+                uint8_t* keyBuffer = new uint8_t [this->attrLength];
+                uint32_t childPos = -1;
+               
+               
+                // preapre for upkey
+                node.getKey(pushIndex, upKey);
+
+                // New Node
+                for(int i = pushIndex + 1 ; i < node.curKeyNum ; i++) {
+                    memset(keyBuffer, 0, this->attrLength);
+                    node.getKey(i,keyBuffer);
+                    childPos = getChild(i);
+                    newNode.insertKey(keyBuffer, newNode.curKeyNum);
+                    newNode.insertChild(childPos, newNode.curKeyNum);
+                    newNode.updateMetaToDisk(ixFileHandle, newNode.pageNum, newNode.isLeafNode, newNode.isDeleted, newNode.curKeyNum+1, newNode.rightNode);
+                }
+                // insert last child
+                childPos = getChild(node.curKeyNum);
+                newNode.insertChild(childPos, newNode.curKeyNum);
+                newNode.updateMetaToDisk(ixFileHandle, newNode.pageNum, newNode.isLeafNode, newNode.isDeleted, newNode.curKeyNum+1, newNode.rightNode);
+
+                // Old Node
+                node.updateMetaToDisk(ixFileHandle, node.pageNum, node.isLeafNode, node.isDeleted, pushIndex, node.rightNode);
+
+
+                hasSplit = true;
+                upPageNum = newNodePageNum;
+
+                // if(node.pageNum == rootPageNum)
+                // {
+                //     BTreeNode newRoot;
+                //     uint32_t newRootPageNum = totalPageNum;
+                //     createNode(ixFileHandle, newRoot, newRootPageNum, false, false, this->attrType, this->attrLength, this->order, -1);
+                //     updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
+
+                //     newRoot.insertKey(upKey, 0);
+                //     newRoot.insertChild(node.pageNum, 0);
+                //     newRoot.insertChild(newNodePageNum, 1);
+                //     newRoot.updateMetaToDisk(ixFileHandle, newRoot.pageNum, newRoot.isLeafNode, newRoot.isDeleted, newRoot.curKeyNum + 1, newRoot.rightNode);
+                //     updateHiddenPageToDisk(ixFileHandle, newRootPageNum, totalPageNum+1, attrType);
+                //     return 0;
+
+                // }
+
+                return 0;
+            }
+        }        
     }
 }
 
