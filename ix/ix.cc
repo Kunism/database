@@ -49,6 +49,18 @@ RC BTreeNode<KeyType>::insertToInternal(const void *key, const int &childPageNum
 
 template<class KeyType>
 RC BTreeNode<KeyType>::readNode(IXFileHandle &ixFileHandle, uint32_t pageNum) {
+
+    if(typeid(KeyType) == typeid(KeyInt)) {
+
+    }
+    else if(typeid(KeyType) == typeid(KeyReal) {
+
+    }
+    else if(typeid(KeyType) == typeid(KeyVarChar) {
+
+    }
+
+
     RC rc = 0;
     rc = ixFileHandle.fileHandle.readBTreePage(pageNum, page);
     if(rc != 0) {
