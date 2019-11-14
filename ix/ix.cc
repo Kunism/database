@@ -576,7 +576,10 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
         recInsert(ixFileHandle, childPageNum, key, rid, hasSplit, upKey, upPageNum);
         if( hasSplit ) {
             if (node.getFreeSpace() > 0 ) {
-                node.insertToInternal(upKey, upPageNum);
+
+                // node.insertToInternal(upKey, upPageNum);
+                
+                
                 node.updateMetaToDisk(ixFileHandle, node.pageNum, node.isLeafNode, node.isDeleted, node.curKeyNum+1, node.rightNode);
                 hasSplit = false;
                 return 0;
@@ -588,7 +591,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                 createNode(ixFileHandle, newNode, newNodePageNum, false, false, this->attrType, this->attrLength, this->order, -1);
 
 
-                uint8_t* keyBuffer = new uint8_t [this->attrLength];
+                char* keyBuffer = new char [this->attrLength];
                 uint32_t childPos = -1;
                
                
@@ -599,13 +602,13 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                 for(int i = pushIndex + 1 ; i < node.curKeyNum ; i++) {
                     memset(keyBuffer, 0, this->attrLength);
                     node.getKey(i,keyBuffer);
-                    childPos = getChild(i);
+                    childPos = node.getChild(i);
                     newNode.insertKey(keyBuffer, newNode.curKeyNum);
                     newNode.insertChild(childPos, newNode.curKeyNum);
                     newNode.updateMetaToDisk(ixFileHandle, newNode.pageNum, newNode.isLeafNode, newNode.isDeleted, newNode.curKeyNum+1, newNode.rightNode);
                 }
                 // insert last child
-                childPos = getChild(node.curKeyNum);
+                childPos = node.getChild(node.curKeyNum);
                 newNode.insertChild(childPos, newNode.curKeyNum);
                 newNode.updateMetaToDisk(ixFileHandle, newNode.pageNum, newNode.isLeafNode, newNode.isDeleted, newNode.curKeyNum+1, newNode.rightNode);
 
@@ -631,6 +634,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                 //     return 0;
 
                 // }
+                delete [] keyBuffer;
 
                 return 0;
             }
