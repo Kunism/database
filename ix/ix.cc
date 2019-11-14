@@ -311,6 +311,17 @@ RC BTreeNode::printRID() {
     }
 }
 
+RC BTreeNode::getChild(uint32_t index) {
+    if(index < curKeyNum) {
+        uint32_t childPageNum = -1;
+        memcpy(&childPageNum, page + getChildrenBegin() + sizeof(uint32_t) * index, sizeof(uint32_t));
+        return childPageNum;
+    }
+    else {
+        return -1;
+    }
+}
+
 uint32_t BTreeNode::getKeysBegin() {
     return NODE_OFFSET;
 }

@@ -52,6 +52,7 @@ public:
     RC insertRID(const RID &rid, uint32_t index);
     RC printRID();
 
+    RC getChild(uint32_t index);
 
     uint32_t getKeysBegin();
     uint32_t getChildrenBegin();
