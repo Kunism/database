@@ -12,7 +12,7 @@ class IX_ScanIterator;
 
 class IXFileHandle;
 
-const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool) + sizeof(AttrType) + sizeof(AttrLength)
+const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool)  + sizeof(AttrType) + sizeof(AttrLength)
         + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
 
 class BTreeNode {
@@ -20,6 +20,8 @@ public:
     uint32_t pageNum;
     bool isLeafNode;
     bool isDeleted;
+//    bool unused1;
+//    bool unused2;
     AttrType attrType;
     AttrLength attrLength;      // 4 if type is int or float, 4 + maxLength of string if type is varchar
     uint32_t curKeyNum;
@@ -48,6 +50,8 @@ public:
     RC printKey();
 
     RC insertRID(const RID &rid, uint32_t index);
+    RC printRID();
+
 
     uint32_t getKeysBegin();
     uint32_t getChildrenBegin();
