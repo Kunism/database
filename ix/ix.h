@@ -15,59 +15,18 @@ class IXFileHandle;
 const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool)  + sizeof(AttrType) + sizeof(AttrLength)
         + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
 
-// enum SPLIT{NON, LEAF, INTER};
-
-class KeyInt
-{
+class Key {
 public:
-    int key;
+    int keyInt;
+    float keyFloat;
+    std::string keyString;
     RID rid;
 
-    // KeyInt(char* input) {
-
-    // }
-
-    uint32_t size() const {
-
-    }
-
-    bool operator<(const KeyInt &keyInt) const {
-
-    }
+    Key(char* data, AttrType attrType);
+    //  TODO: operator <
+    //  TODO: size
 };
 
-
-class KeyReal
-{
-public:
-    float key;
-    RID rid;
-
-    uint32_t size() const {
-
-    }
-
-    bool operator<(const KeyReal &keyReal) const {
-
-    }
-};
-
-class KeyVarChar
-{
-    std::string s;
-    RID rid;
-
-    uint32_t size() const {
-
-    }
-
-    bool operator<(const KeyVarChar &keyVarChar) const {
-
-    }
-};
-
-
-template<class KeyType>
 class BTreeNode {
 public:
     uint32_t pageNum;
@@ -76,17 +35,17 @@ public:
     AttrType attrType;
     AttrLength attrLength;      // 4 if type is int or float, 4 + maxLength of string if type is varchar
     uint32_t curKeyNum;
-    uint32_t maxKeyNum;
+    uint32_t curChildNum;
 
     uint32_t rightNode;
 
-    char* keys;
-    int* children;              //  list of children's pageNum
-    RID* records;
+//    char* keys;
+//    int* children;              //  list of children's pageNum
+//    RID* records;
 
     //////////NEW VECTOR////////
-    std::vector<KeyType> key_vec;
-    std::vector<uint32_t> children_vec;
+    std::vector<Key> keys;
+    std::vector<uint32_t> children;
     ////////////////////////////
     
     char* page;

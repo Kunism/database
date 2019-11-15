@@ -1,9 +1,43 @@
 #include <iostream>
 #include "ix.h"
 
+Key::Key(char *data, AttrType attrType) {
 
-template<class KeyType>
-BTreeNode<KeyType>::BTreeNode() {
+    uint32_t actualKeyLen = 0;
+
+    if(attrType == TypeInt) {
+        //  read key
+        actualKeyLen = sizeof(int);
+        memcpy(&keyInt, data, actualKeyLen);
+
+        //  read rid
+        memcpy(&rid, data + actualKeyLen, sizeof(RID));
+    }
+    else if(attrType == TypeReal) {
+        //  read key
+        actualKeyLen = sizeof(float);
+        memcpy(&keyFloat, data, actualKeyLen);
+
+        //  read rid
+        memcpy(&rid, data + actualKeyLen, sizeof(RID));
+    }
+    else if(attrType == TypeVarChar) {
+        //  read key length
+        memcpy(&actualKeyLen, data, sizeof(uint32_t));
+
+        //  read key
+        char* strBuffer = new char [actualKeyLen];
+        memcpy(strBuffer, data + sizeof(uint32_t), actualKeyLen);
+        keyString = std::string(strBuffer);
+
+        //  read rid
+        memcpy(&rid, data + sizeof(uint32_t) + actualKeyLen, sizeof(RID));
+
+        delete[] strBuffer;
+    }
+}
+
+BTreeNode::BTreeNode() {
     attrType = TypeInt;
     isLeafNode = false;
     isDeleted = false;
@@ -20,16 +54,14 @@ BTreeNode<KeyType>::BTreeNode() {
     memset(page, 0, PAGE_SIZE);
 }
 
-template<class KeyType>
-BTreeNode<KeyType>::~BTreeNode() {
+BTreeNode::~BTreeNode() {
     delete[] page;
     delete[] keys;
     delete[] children;
     delete[] records;
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::insertToLeaf(const void *key, const RID &rid) {
+RC BTreeNode::insertToLeaf(const void *key, const RID &rid) {
 
     // TODO: need to check leaf is full???
 
@@ -41,25 +73,12 @@ RC BTreeNode<KeyType>::insertToLeaf(const void *key, const RID &rid) {
     return 0;
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::insertToInternal(const void *key, const int &childPageNum) {
+RC BTreeNode::insertToInternal(const void *key, const int &childPageNum) {
     // TODO
     // TODO
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::readNode(IXFileHandle &ixFileHandle, uint32_t pageNum) {
-
-    if(typeid(KeyType) == typeid(KeyInt)) {
-
-    }
-    else if(typeid(KeyType) == typeid(KeyReal) {
-
-    }
-    else if(typeid(KeyType) == typeid(KeyVarChar) {
-
-    }
-
+RC BTreeNode::readNode(IXFileHandle &ixFileHandle, uint32_t pageNum) {
 
     RC rc = 0;
     rc = ixFileHandle.fileHandle.readBTreePage(pageNum, page);
@@ -93,24 +112,36 @@ RC BTreeNode<KeyType>::readNode(IXFileHandle &ixFileHandle, uint32_t pageNum) {
     memcpy(&rightNode, page + offset, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
-    //  allocate spaces for keys, type difference are handled by attrLength
-    keys = new char [attrLength * maxKeyNum];
-    memset(keys, 0, attrLength * maxKeyNum);
-    memcpy(keys, page + getKeysBegin(), attrLength * maxKeyNum);
+    //  read key to vector
+    for(int i = 0; i < curKeyNum; i++) {
+        //  keyDataLength = keyLen + ridLen
+        uint32_t keyDataLength = 0;
+        memcpy(&keyDataLength, page + offset, sizeof(uint32_t));
+        offset += sizeof(uint32_t);
 
-    records = new RID [maxKeyNum];
-    memset(records, 0, sizeof(RID) * maxKeyNum);
-    memcpy(records, page + getRecordsBegin(), sizeof(RID) * maxKeyNum);
+        char* keyData = new char [keyDataLength];
+        memcpy(keyData, page + offset, keyDataLength);
+        offset += keyDataLength;
 
-    children = (int*)(new char [sizeof(uint32_t) * (maxKeyNum + 1)]);
-    memset(children, 0, sizeof(uint32_t) * (maxKeyNum + 1));
-    memcpy(children, page + getChildrenBegin(), sizeof(uint32_t) * (maxKeyNum + 1));
+        //Key key(keyData, attrType);
+        keys.push_back(Key(keyData, attrType));
+
+        std::cerr << "Key Int = " << keys[0].keyInt << " \tRid = {" << keys[0].rid.pageNum << ", " << keys[0].rid.slotNum << "}" << std::endl;
+
+        delete[] keyData;
+    }
+
+    //  read child to vector
+    for(int i = 0; i < curChildNum; i++) {
+        uint32_t child = 0;
+        memcpy(&child, page + PAGE_SIZE - sizeof(uint32_t) * (i+1), sizeof(uint32_t));
+        children.push_back(child);
+    }
 
     return rc;
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::writeNode(IXFileHandle &ixFileHandle) {
+RC BTreeNode::writeNode(IXFileHandle &ixFileHandle) {
     memset(page, 0, PAGE_SIZE);
 
     uint32_t offset = 0;
@@ -133,20 +164,37 @@ RC BTreeNode<KeyType>::writeNode(IXFileHandle &ixFileHandle) {
     memcpy(page + offset, &curKeyNum, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
-    memcpy(page + offset, &maxKeyNum, sizeof(uint32_t));
+    memcpy(page + offset, &curChildNum, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
     memcpy(page + offset, &rightNode, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
-    memcpy(page + getKeysBegin(), keys, attrLength * maxKeyNum);
+    //  write key vector
+    for(int i = 0; i < curKeyNum; i++) {
 
-    if(isLeafNode) {
-        memcpy(page + getRecordsBegin(), records, sizeof(RID) * maxKeyNum);
+        //  keyDataLength = keyLen + ridLen
+        uint32_t keyDataLength = 0;
+
+        if(attrType == TypeInt) {
+
+        }
+        else if(attrType == TypeReal) {
+
+        }
+        else if(attrType == TypeVarChar) {
+
+        }
     }
-    else {
-        memcpy(page + getChildrenBegin(), children, attrLength * (maxKeyNum + 1));
-    }
+
+//    memcpy(page + getKeysBegin(), keys, attrLength * maxKeyNum);
+//
+//    if(isLeafNode) {
+//        memcpy(page + getRecordsBegin(), records, sizeof(RID) * maxKeyNum);
+//    }
+//    else {
+//        memcpy(page + getChildrenBegin(), children, attrLength * (maxKeyNum + 1));
+//    }
 
     if(offset != NODE_OFFSET) {
         std::cerr << "write error" << std::endl;
@@ -154,8 +202,7 @@ RC BTreeNode<KeyType>::writeNode(IXFileHandle &ixFileHandle) {
     return ixFileHandle.fileHandle.writeBTreePage(pageNum, page);
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::updateMetaToDisk(IXFileHandle &ixFileHandle, uint32_t pageNum, bool isLeafNode, bool isDeleted
+RC BTreeNode::updateMetaToDisk(IXFileHandle &ixFileHandle, uint32_t pageNum, bool isLeafNode, bool isDeleted
         , uint32_t curKeyNum, uint32_t rightNode) {
     //  update meta variables
     this->pageNum = pageNum;
@@ -167,8 +214,7 @@ RC BTreeNode<KeyType>::updateMetaToDisk(IXFileHandle &ixFileHandle, uint32_t pag
     return writeNode(ixFileHandle);
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::searchKey(const char *key) {
+RC BTreeNode::searchKey(const char *key) {
     //     1   2   4   6   8   9
     //  [0] [1] [2] [3] [4] [5]
     //  if key = 4, return 3
@@ -216,8 +262,7 @@ RC BTreeNode<KeyType>::searchKey(const char *key) {
     return result;
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::getKey(uint32_t index, char *key) {
+RC BTreeNode::getKey(uint32_t index, char *key) {
     if(index < curKeyNum) {
         memcpy(key, page + getKeysBegin() + attrLength * index, attrLength);
         return 0;
@@ -227,8 +272,7 @@ RC BTreeNode<KeyType>::getKey(uint32_t index, char *key) {
     }
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::compareKey(const char *key, const char *val) {
+RC BTreeNode::compareKey(const char *key, const char *val) {
     RC result = 0;
 
     if(attrType == TypeInt) {
@@ -272,8 +316,7 @@ RC BTreeNode<KeyType>::compareKey(const char *key, const char *val) {
     return result;
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::insertKey(const char *key, uint32_t index) {
+RC BTreeNode::insertKey(const char *key, uint32_t index) {
 
     char* keyBuffer = new char [attrLength * (maxKeyNum - index)];
     memset(keyBuffer, 0 , attrLength * (maxKeyNum - index));
@@ -298,8 +341,7 @@ RC BTreeNode<KeyType>::insertKey(const char *key, uint32_t index) {
     return 0;
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::printKey() {
+RC BTreeNode::printKey() {
     for(int i = 0; i < curKeyNum; i++) {
         if(attrType == TypeInt) {
             int key;
@@ -325,8 +367,7 @@ RC BTreeNode<KeyType>::printKey() {
 }
 
 
-template<class KeyType>
-RC BTreeNode<KeyType>::insertRID(const RID &rid, uint32_t index) {
+RC BTreeNode::insertRID(const RID &rid, uint32_t index) {
 
     //RID* ridBuffer = new RID [maxKeyNum - index];
     char* ridBuffer = new char [sizeof(RID) * (maxKeyNum - index)];
@@ -347,8 +388,7 @@ RC BTreeNode<KeyType>::insertRID(const RID &rid, uint32_t index) {
     return 0;
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::printRID() {
+RC BTreeNode::printRID() {
     for(int i = 0; i < curKeyNum; i++) {
         RID rid;
         memcpy(&rid, records, sizeof(RID));
@@ -356,8 +396,7 @@ RC BTreeNode<KeyType>::printRID() {
     }
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::getChild(uint32_t index) {
+RC BTreeNode::getChild(uint32_t index) {
     if(index < curKeyNum) {
         uint32_t childPageNum = -1;
         memcpy(&childPageNum, page + getChildrenBegin() + sizeof(uint32_t) * index, sizeof(uint32_t));
@@ -368,8 +407,7 @@ RC BTreeNode<KeyType>::getChild(uint32_t index) {
     }
 }
 
-template<class KeyType>
-RC BTreeNode<KeyType>::insertChild(uint32_t childPageNum, uint32_t index) {
+RC BTreeNode::insertChild(uint32_t childPageNum, uint32_t index) {
     if(index <= curKeyNum) {
         memcpy(page + getChildrenBegin() + sizeof(uint32_t) * index, &childPageNum, sizeof(uint32_t));
         return 0;
@@ -379,23 +417,19 @@ RC BTreeNode<KeyType>::insertChild(uint32_t childPageNum, uint32_t index) {
     }
 }
 
-template<class KeyType>
-uint32_t BTreeNode<KeyType>::getKeysBegin() {
+uint32_t BTreeNode::getKeysBegin() {
     return NODE_OFFSET;
 }
 
-template<class KeyType>
-uint32_t BTreeNode<KeyType>::getChildrenBegin() {
+uint32_t BTreeNode::getChildrenBegin() {
     return NODE_OFFSET + attrLength * maxKeyNum;
 }
 
-template<class KeyType>
-uint32_t BTreeNode<KeyType>::getRecordsBegin() {
+uint32_t BTreeNode::getRecordsBegin() {
     return NODE_OFFSET + attrLength * maxKeyNum;;
 }
 
-template<class KeyType>
-uint32_t BTreeNode<KeyType>::getFreeSpace() {
+uint32_t BTreeNode::getFreeSpace() {
     return maxKeyNum - curKeyNum;
 }
 
@@ -420,6 +454,7 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
         else if(attribute.type == TypeReal) {
             attrLength = sizeof(float);
             order = TMP_ORDER;
+
 
         }
         else if(attribute.type == TypeVarChar) {
