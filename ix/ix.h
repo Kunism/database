@@ -22,7 +22,12 @@ public:
     std::string keyString;
     RID rid;
 
+    AttrType attrType;
     Key(char* data, AttrType attrType);
+    bool operator < (const Key &k) const;
+
+    uint32_t size() const;
+
     //  TODO: operator <
     //  TODO: size
     uint32_t size() const;
@@ -53,21 +58,18 @@ public:
 
     BTreeNode();
     ~BTreeNode();
-    RC insertToLeaf(const void *key, const RID &rid);
+    RC insertToLeaf(const Key &key, const RID &rid);
     RC insertToInternal(const void *key, const int &childPageNum);
     RC updateMetaToDisk(IXFileHandle &ixFileHandle, uint32_t pageNum, bool isLeafNode, bool isDeleted
             , uint32_t curKeyNum, uint32_t rightNode);
     RC readNode(IXFileHandle &ixFileHandle, uint32_t pageNum);
     RC writeNode(IXFileHandle &ixFileHandle);
 
-    RC searchKey(const char *key);
-    RC getKey(uint32_t index, char* key);
-    RC compareKey(const char *key, const char *val);
-    RC insertKey(const char *key, uint32_t index);
+    RC searchKey(const Key &key);
+    //RC compareKey(const char *key, const char *val);
+    RC insertKey(Key &key, uint32_t index);
     RC printKey();
 
-
-    RC insertRID(const RID &rid, uint32_t index);
     RC printRID();
 
     RC getChild(uint32_t index);
@@ -76,7 +78,7 @@ public:
     uint32_t getKeysBegin();
     uint32_t getChildrenBegin();
     uint32_t getRecordsBegin();
-    uint32_t getFreeSpace();
+    int32_t getFreeSpace();
 
 
 
