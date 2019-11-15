@@ -25,6 +25,7 @@ public:
     Key(char* data, AttrType attrType);
     //  TODO: operator <
     //  TODO: size
+    uint32_t size() const;
 };
 
 class BTreeNode {
@@ -96,8 +97,8 @@ public:
     RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const char *key, const RID &rid);
     RC createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
             , AttrType attrType, AttrLength attrLength, uint32_t order, uint32_t rightNode);
-    RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const char *key, const RID &rid, 
-                bool &hasSplit, char *upKey, uint32_t &upPageNum);
+    RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const Key &key,   // insert element
+                bool &hasSplit, std::vector<std::pair<Key, uint32_t>> &pushEntries);        // return element
     RC recSearch(IXFileHandle &ixFileHandle, const char *key, uint32_t pageNum);
     RC readBTreeHiddenPage(IXFileHandle &ixFileHandle);
     RC updateHiddenPageToDisk(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t totalPageNum, AttrType attrType);
