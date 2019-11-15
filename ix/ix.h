@@ -22,7 +22,12 @@ public:
     std::string keyString;
     RID rid;
 
+    AttrType attrType;
     Key(char* data, AttrType attrType);
+    bool operator < (const Key &k);
+
+    uint32_t getSize();
+
     //  TODO: operator <
     //  TODO: size
 };
@@ -52,21 +57,18 @@ public:
 
     BTreeNode();
     ~BTreeNode();
-    RC insertToLeaf(const void *key, const RID &rid);
+    RC insertToLeaf(const Key &key, const RID &rid);
     RC insertToInternal(const void *key, const int &childPageNum);
     RC updateMetaToDisk(IXFileHandle &ixFileHandle, uint32_t pageNum, bool isLeafNode, bool isDeleted
             , uint32_t curKeyNum, uint32_t rightNode);
     RC readNode(IXFileHandle &ixFileHandle, uint32_t pageNum);
     RC writeNode(IXFileHandle &ixFileHandle);
 
-    RC searchKey(const char *key);
-    RC getKey(uint32_t index, char* key);
-    RC compareKey(const char *key, const char *val);
-    RC insertKey(const char *key, uint32_t index);
+    RC searchKey(const Key &key);
+    //RC compareKey(const char *key, const char *val);
+    RC insertKey(Key &key, uint32_t index);
     RC printKey();
 
-
-    RC insertRID(const RID &rid, uint32_t index);
     RC printRID();
 
     RC getChild(uint32_t index);
@@ -75,7 +77,7 @@ public:
     uint32_t getKeysBegin();
     uint32_t getChildrenBegin();
     uint32_t getRecordsBegin();
-    uint32_t getFreeSpace();
+    int32_t getFreeSpace();
 
 
 
@@ -96,7 +98,7 @@ public:
     RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const char *key, const RID &rid);
     RC createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
             , AttrType attrType, AttrLength attrLength, uint32_t order, uint32_t rightNode);
-    RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const char *key, const RID &rid, 
+    RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const Key &key, const RID &rid,
                 bool &hasSplit, char *upKey, uint32_t &upPageNum);
     RC recSearch(IXFileHandle &ixFileHandle, const char *key, uint32_t pageNum);
     RC readBTreeHiddenPage(IXFileHandle &ixFileHandle);
