@@ -109,7 +109,7 @@ RC BTreeNode::insertToLeaf(const Key &key, const RID &rid) {
 
     //  in order to insert, need to move elements after index backward one unit
     uint32_t index = searchKey(key);
-    insertKey((char*)key, index);
+    insertKey(key, index);
     insertRID(rid, index);
     // TO DO NEED WRITE ????
     return 0;
@@ -306,72 +306,10 @@ RC BTreeNode::searchKey(const Key &key) {
     return result;
 }
 
-//RC BTreeNode::compareKey(const char *key, const char *val) {
-//    RC result = 0;
-//
-//    if(attrType == TypeInt) {
-//        int _key, _val;
-//        memcpy(&_key, key, sizeof(int));
-//        memcpy(&_val, val, sizeof(int));
-//        if(_key > _val) result = 1;
-//        else if(_key == _val) result = 0;
-//        else if(_key < _val) result = -1;
-//    }
-//    else if(attrType == TypeReal) {
-//        float _key, _val;
-//        memcpy(&_key, key, sizeof(float));
-//        memcpy(&_val, val, sizeof(float));
-//        if(_key > _val) result = 1;
-//        else if(_key == _val) result = 0;
-//        else if(_key < _val) result = -1;
-//    }
-//    else if(attrType == TypeVarChar) {
-//        int keyLen, valLen;
-//        memcpy(&keyLen, key, sizeof(uint32_t));
-//        memcpy(&valLen, val, sizeof(uint32_t));
-//
-//        if(keyLen < valLen) result = -1;
-//        else if(keyLen > valLen) result = 1;
-//        else {
-//            char* _key = new char [keyLen];
-//            char* _val = new char [valLen];
-//
-//            memcpy(_key, key + sizeof(uint32_t), keyLen);
-//            memcpy(_val, val + sizeof(uint32_t), valLen);
-//
-//            result = strcmp(_key, _val);
-//
-//            delete[] _key;
-//            delete[] _val;
-//        }
-//    }
-//
-//
-//    return result;
-//}
 
-RC BTreeNode::insertKey(Key &key, uint32_t index) {
 
-//    char* keyBuffer = new char [attrLength * (maxKeyNum - index)];
-//    memset(keyBuffer, 0 , attrLength * (maxKeyNum - index));
-//
-//    uint32_t keyLen = attrLength;
-//    if(attrType == TypeVarChar) {
-//        memcpy(&keyLen, key, sizeof(uint32_t));
-//        keyLen += sizeof(uint32_t);
-//    }
-//
-//    //  newKey + oldKeys(bigger than newKey)
-//    memcpy(keyBuffer, key, keyLen);
-//    memcpy(keyBuffer + attrLength, page + getKeysBegin() + attrLength * index, attrLength * (maxKeyNum - index - 1));
-//
-//    //  update keys in page
-//    memcpy(page + getKeysBegin() + attrLength * index, keyBuffer, attrLength * (maxKeyNum - index));
-//
-//    //  update variables keys
-//    memcpy(keys + attrLength * index, keyBuffer, attrLength * (maxKeyNum - index));
-//
-//    delete[] keyBuffer;
+RC BTreeNode::insertKey(const Key &key, uint32_t index) {
+
     keys.insert(keys.begin() + index, key);
     return 0;
 }
@@ -453,7 +391,7 @@ BTree::BTree() {
     attrLength = 0;
 }
 
-RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const char *key, const RID &rid) {
+RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key, const RID &rid) {
     if(rootPageNum == -1) {  // no root
         uint32_t TMP_ORDER = 10;
         if(attribute.type == TypeInt) {
@@ -494,22 +432,6 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
         uint32_t upPageNum;
         
         //  allocate space for copykey, if split is needed
-        char* copyKey;
-        if(attribute.type == TypeInt) {
-            copyKey = new char [sizeof(int)];
-            memset(copyKey, 0, sizeof(int));
-        }
-        else if(attribute.type == TypeReal) {
-            copyKey = new char [sizeof(float)];
-            memset(copyKey, 0, sizeof(float));
-        }
-        else if(attribute.type == TypeVarChar) {
-            uint32_t strLen = 0;
-            memcpy(&strLen, key, sizeof(uint32_t));
-
-            copyKey = new char [sizeof(uint32_t) + strLen];
-            memset(copyKey, 0, sizeof(uint32_t) + strLen);
-        }
 
         recInsert(ixFileHandle, rootPageNum, key, rid,  split, copyKey, upPageNum);
         if(split)
@@ -636,7 +558,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
     if(node.isLeafNode) {  
         // leaf only insert key
         if(node.getFreeSpace() > key.size()) {
-            node.insertToLeaf(key, rid);
+            node.insertToLeaf(key, key.rid);
             node.updateMetaToDisk(ixFileHandle, node.pageNum, node.isLeafNode, node.isDeleted, node.curKeyNum + 1, node.rightNode);
             hasSplit = false;
             return 0;
@@ -668,7 +590,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
             for(int i = startIndex ; i < temp.size() ; i++)
             {
                 if( newNode.getFreeSpace() > temp[i].size()) {
-                    newNode.insertToLeaf(key);
+                    newNode.insertToLeaf(key, key.rid);
                     newNode.updateMetaToDisk(ixFileHandle, newNode.pageNum, newNode.isLeafNode, newNode.isDeleted, newNode.curKeyNum + 1, newNode.rightNode);
                 }
                 else {
@@ -714,19 +636,19 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                 return 0;
             }
             else {
-                std::vector<Key> temp(node.keys.begin(), node.keys.end());
+                // std::vector<Key> temp(node.keys.begin(), node.keys.end());
                 // find proper place to insert
                 
                 for(auto i : pushEntries) {
-                    node.searchKey(key)
-                    temp.insert(temp.begin() + , key)
+                    uint32_t insertPos = node.searchKey(key);
+                    node.insertKey(i.first, insertPos);
+                    node.insertChild(i.second, insertPos);
                 }
-                ;
+                
                 
                 // split index
                 int pushIndex = 0;
-                int totalSize = NODE_OFFSET;    
-                for(;pushIndex < temp.size() && totalSize < PAGE_SIZE / 2 ; pushIndex++)
+                for(;pushIndex < node..size() && totalSize < PAGE_SIZE / 2 ; pushIndex++)
                 {
                     totalSize += temp[pushIndex].size();
                     totalSize += sizeof(uint32_t);
