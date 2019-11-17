@@ -224,8 +224,7 @@ HiddenPage::HiddenPage() {
     var[ROOT_PAGE_NUM] = -1;
     var[TOTAL_PAGE_NUM] = 0;
     var[ATTRTYPE] = 0;
-    var[ATTRLENGTH] = 0;
-    var[ORDER] = 0;
+
 }
 
 HiddenPage::~HiddenPage() {
@@ -244,7 +243,6 @@ void HiddenPage::readHiddenPage(std::fstream& file) {
     var[ROOT_PAGE_NUM] = ((unsigned*)buffer)[ROOT_PAGE_NUM];
     var[TOTAL_PAGE_NUM] = ((unsigned*)buffer)[TOTAL_PAGE_NUM];
     var[ATTRTYPE] = ((unsigned*)buffer)[ATTRTYPE];
-    var[ORDER] = ((unsigned*)buffer)[ORDER];
 
     delete[] buffer;
 }

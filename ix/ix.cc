@@ -125,12 +125,13 @@ BTreeNode::~BTreeNode() {
     delete[] page;
 }
 
-RC BTreeNode::insertToLeaf(const Key &key, const RID &rid) {
+RC BTreeNode::insertToLeaf(const Key &key) {
 
     // TODO: need to check leaf is full???
 
     //  in order to insert, need to move elements after index backward one unit
     uint32_t index = searchKey(key);
+
     insertKey(key, index);
     // TO DO NEED WRITE ????
     return 0;
@@ -163,20 +164,16 @@ RC BTreeNode::readNode(IXFileHandle &ixFileHandle, uint32_t pageNum) {
     memcpy(&attrType, page + offset, sizeof(AttrType));
     offset += sizeof(AttrType);
 
-//    memcpy(&attrLength, page + offset, sizeof(AttrLength));
-//    offset += sizeof(AttrLength);
-//
-//    memcpy(&curKeyNum, page + offset, sizeof(uint32_t));
-//    offset += sizeof(uint32_t);
-//
-//    memcpy(&curChildNum, page + offset, sizeof(uint32_t));
-//    offset += sizeof(uint32_t);
-
     memcpy(&rightNode, page + offset, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
+    //  read keyNum
+    uint32_t keyNum = 0;
+    memcpy(&keyNum, page + offset, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
     //  read key to vector
-    for(int i = 0; i < keys.size(); i++) {
+    for(int i = 0; i < keyNum; i++) {
         //  keyDataLength = keyLen + ridLen
         uint32_t keyDataLength = 0;
         memcpy(&keyDataLength, page + offset, sizeof(uint32_t));
@@ -186,6 +183,7 @@ RC BTreeNode::readNode(IXFileHandle &ixFileHandle, uint32_t pageNum) {
         memcpy(keyData, page + offset, keyDataLength);
         offset += keyDataLength;
 
+        std::cerr << "Before push" << std::endl;
         keys.push_back(Key(keyData, attrType));
 
         std::cerr << "Key Int = " << keys[0].keyInt << " \tRid = {" << keys[0].rid.pageNum << ", " << keys[0].rid.slotNum << "}" << std::endl;
@@ -230,6 +228,10 @@ RC BTreeNode::writeNode(IXFileHandle &ixFileHandle) {
 //    offset += sizeof(uint32_t);
 
     memcpy(page + offset, &rightNode, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    uint32_t keyNum = keys.size();
+    memcpy(page + offset, &keyNum, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
     //  write key vector
@@ -397,7 +399,8 @@ BTree::BTree() {
     totalPageNum = 0;
 }
 
-RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key, const RID &rid) {
+RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key) {
+
     if(rootPageNum == -1) {  // no root
 
         if(attribute.type == TypeInt) {
@@ -417,8 +420,9 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
                 , attribute.type, -1);
         this->updateHiddenPageToDisk(ixFileHandle, newRootPageNum, totalPageNum + 1, attribute.type);
         
-        // can use general insert instead.  
-        root.insertToLeaf(key, rid);
+        // can use general insert instead.
+
+        root.insertToLeaf(key);
         root.updateMetaToDisk(ixFileHandle, root.isLeafNode, root.isDeleted, root.rightNode);
         
     }
@@ -533,7 +537,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
     if(node.isLeafNode) {  
         // leaf only insert key
         if(node.getFreeSpace() > key.size()) {
-            node.insertToLeaf(key, key.rid);
+            node.insertToLeaf(key);
             node.writeNode(ixFileHandle);
             hasSplit = false;
             return 0;
@@ -563,7 +567,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
             for(int i = startIndex ; i < temp.size() ; i++)
             {
                 if( newNode.getFreeSpace() > temp[i].size()) {
-                    newNode.insertToLeaf(temp[i], temp[i].rid);
+                    newNode.insertToLeaf(temp[i]);
                 }
                 else {
                     newNode.writeNode(ixFileHandle);
@@ -574,7 +578,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                     updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
                     // prepare for upKey;
                     pushEntries.push_back({temp[i], newNodePageNum});
-                    newNode.insertToLeaf(temp[i], temp[i].rid);
+                    newNode.insertToLeaf(temp[i]);
                 }
             }
             
@@ -763,7 +767,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attrib
     RC rc = 0;
     BTree bTree;
     rc |= bTree.readBTreeHiddenPage(ixFileHandle);
-    rc |= bTree.insertEntry(ixFileHandle, attribute, Key(key, rid, attribute.type), rid);
+    rc |= bTree.insertEntry(ixFileHandle, attribute, Key(key, rid, attribute.type));
     //rc |= bTree.writeBTree(ixFileHandle);
     return rc;
 }
@@ -803,6 +807,7 @@ void IndexManager::printBtree(IXFileHandle &ixFileHandle, const Attribute &attri
 
 IX_ScanIterator::IX_ScanIterator() {
     curNodePageNum = -1;
+    curIndex = -1;
     finished = false;
 }
 
@@ -820,22 +825,54 @@ RC IX_ScanIterator::init(IXFileHandle &ixFileHandle, const Attribute &attribute,
     this->highKeyInclusive = highKeyInclusive;
 
 
+
+
     return 0;
 }
 
 RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
+
     if(finished) {
         return IX_EOF;
     }
-    else {
-        Key targetKey(key, rid, attribute.type);
+    //  first time to call getNext, so search tree and return the left most leaf
+    else if(curNodePageNum == -1) {
         if(lowKey == NULL) {
+
+            bTree.readBTreeHiddenPage(*ixFileHandle);
+            curNodePageNum = bTree.recSearch(*ixFileHandle, Key(key, {0, 0}, attribute.type), bTree.rootPageNum);
+
+            BTreeNode node;
+            node.readNode(*ixFileHandle, curNodePageNum);
+            curIndex = node.searchKey(Key(key, {0, 0}, attribute.type));
 
         }
         else {
+            bTree.readBTreeHiddenPage(*ixFileHandle);
+            curNodePageNum = bTree.recSearch(*ixFileHandle, Key(lowKey, {0, 0}, attribute.type), bTree.rootPageNum);
 
+            BTreeNode node;
+            node.readNode(*ixFileHandle, curNodePageNum);
+            curIndex = node.searchKey(Key(lowKey, {0, 0}, attribute.type));
         }
+
+
+
     }
+    //  iterator already on leaf node, so keep read more key in leaf node, or go to next leaf node
+    else {
+        BTreeNode node;
+        node.readNode(*ixFileHandle, curNodePageNum);
+    }
+
+
+//    rid = node.keys[curIndex].rid;
+//
+//    curIndex++;
+//    if(curIndex >= node.keys.size()) {
+//        curIndex = 0;
+//        curNodePageNum = node.rightNode;
+//    }
 
     return -1;
 }

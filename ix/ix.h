@@ -44,7 +44,7 @@ public:
 
     BTreeNode();
     ~BTreeNode();
-    RC insertToLeaf(const Key &key, const RID &rid);
+    RC insertToLeaf(const Key &key);
     RC insertToInternal(const void *key, const int &childPageNum);
     RC updateMetaToDisk(IXFileHandle &ixFileHandle, bool isLeafNode, bool isDeleted, uint32_t rightNode);
     RC readNode(IXFileHandle &ixFileHandle, uint32_t pageNum);
@@ -83,7 +83,7 @@ public:
     AttrType attrType;
 
     BTree();
-    RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key, const RID &rid);
+    RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key);
     RC createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
             , AttrType attrType, uint32_t rightNode);
     RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const Key &key,   // insert element
@@ -153,6 +153,7 @@ public:
 
     BTree bTree;
     uint32_t curNodePageNum;
+    uint32_t curIndex;
     bool finished;
 
     // Constructor
