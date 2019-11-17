@@ -18,7 +18,7 @@ typedef unsigned char byte;
 class FileHandle;
 class HiddenPage;
 
-#define HIDDEN_PAGE_VAR_NUM 9
+#define HIDDEN_PAGE_VAR_NUM 7
 #define NON_BTREE_VAR_NUM 4
 #define DATA_PAGE_VAR_NUM 4
 
@@ -80,7 +80,7 @@ private:
 };
 
 enum counter {READ_PAGE_COUNTER, WRITE_PAGE_COUNTER, APPEND_PAGE_COUNTER, PAGE_NUM
-        , ROOT_PAGE_NUM, TOTAL_PAGE_NUM, ATTRTYPE, ATTRLENGTH, ORDER};
+        , ROOT_PAGE_NUM, TOTAL_PAGE_NUM, ATTRTYPE};
 
 class HiddenPage {
 public:

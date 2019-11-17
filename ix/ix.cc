@@ -87,8 +87,6 @@ BTreeNode::BTreeNode() {
     isLeafNode = false;
     isDeleted = false;
     pageNum = -1;
-    curKeyNum = 0;
-    curChildNum = 0;
 
     rightNode = -1;
 
@@ -110,7 +108,6 @@ RC BTreeNode::insertToLeaf(const Key &key, const RID &rid) {
     //  in order to insert, need to move elements after index backward one unit
     uint32_t index = searchKey(key);
     insertKey(key, index);
-    insertRID(rid, index);
     // TO DO NEED WRITE ????
     return 0;
 }
@@ -142,20 +139,20 @@ RC BTreeNode::readNode(IXFileHandle &ixFileHandle, uint32_t pageNum) {
     memcpy(&attrType, page + offset, sizeof(AttrType));
     offset += sizeof(AttrType);
 
-    memcpy(&attrLength, page + offset, sizeof(AttrLength));
-    offset += sizeof(AttrLength);
-
-    memcpy(&curKeyNum, page + offset, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
-
-    memcpy(&curChildNum, page + offset, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
+//    memcpy(&attrLength, page + offset, sizeof(AttrLength));
+//    offset += sizeof(AttrLength);
+//
+//    memcpy(&curKeyNum, page + offset, sizeof(uint32_t));
+//    offset += sizeof(uint32_t);
+//
+//    memcpy(&curChildNum, page + offset, sizeof(uint32_t));
+//    offset += sizeof(uint32_t);
 
     memcpy(&rightNode, page + offset, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
     //  read key to vector
-    for(int i = 0; i < curKeyNum; i++) {
+    for(int i = 0; i < keys.size(); i++) {
         //  keyDataLength = keyLen + ridLen
         uint32_t keyDataLength = 0;
         memcpy(&keyDataLength, page + offset, sizeof(uint32_t));
@@ -174,7 +171,7 @@ RC BTreeNode::readNode(IXFileHandle &ixFileHandle, uint32_t pageNum) {
     }
 
     //  read child to vector
-    for(int i = 0; i < curChildNum; i++) {
+    for(int i = 0; i < children.size(); i++) {
         uint32_t child = 0;
         memcpy(&child, page + PAGE_SIZE - sizeof(uint32_t) * (i+1), sizeof(uint32_t));
         children.push_back(child);
@@ -200,20 +197,20 @@ RC BTreeNode::writeNode(IXFileHandle &ixFileHandle) {
     memcpy(page + offset, &attrType, sizeof(AttrType));
     offset += sizeof(AttrType);
 
-    memcpy(page + offset, &attrLength, sizeof(AttrLength));
-    offset += sizeof(AttrLength);
-
-    memcpy(page + offset, &curKeyNum, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
-
-    memcpy(page + offset, &curChildNum, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
+//    memcpy(page + offset, &attrLength, sizeof(AttrLength));
+//    offset += sizeof(AttrLength);
+//
+//    memcpy(page + offset, &curKeyNum, sizeof(uint32_t));
+//    offset += sizeof(uint32_t);
+//
+//    memcpy(page + offset, &curChildNum, sizeof(uint32_t));
+//    offset += sizeof(uint32_t);
 
     memcpy(page + offset, &rightNode, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
     //  write key vector
-    for(int i = 0; i < curKeyNum; i++) {
+    for(int i = 0; i < keys.size(); i++) {
 
         //  keyDataLength = keyLen + ridLen
         uint32_t keyDataLength = 0;
@@ -258,20 +255,18 @@ RC BTreeNode::writeNode(IXFileHandle &ixFileHandle) {
     }
 
     //  write children vector
-    for(int i = 0; i < curChildNum; i++) {
+    for(int i = 0; i < children.size(); i++) {
         memcpy(page + PAGE_SIZE - sizeof(uint32_t) * (i + 1), &children[i], sizeof(uint32_t));
     }
 
     return ixFileHandle.fileHandle.writeBTreePage(pageNum, page);
 }
 
-RC BTreeNode::updateMetaToDisk(IXFileHandle &ixFileHandle, uint32_t pageNum, bool isLeafNode, bool isDeleted
-        , uint32_t curKeyNum, uint32_t rightNode) {
+RC BTreeNode::updateMetaToDisk(IXFileHandle &ixFileHandle, bool isLeafNode, bool isDeleted, uint32_t rightNode) {
     //  update meta variables
     this->pageNum = pageNum;
     this->isLeafNode = isLeafNode;
     this->isDeleted = isDeleted;
-    this->curKeyNum = curKeyNum;
     this->rightNode = rightNode;
 
     return writeNode(ixFileHandle);
@@ -285,18 +280,7 @@ RC BTreeNode::searchKey(const Key &key) {
 
     int result = 0;
 
-    for(int i = 0; i < curKeyNum; i++) {
-
-//        uint32_t valLen = attrLength;
-//        if(attrType == TypeVarChar) {
-//            memcpy(&valLen, page + getKeysBegin() + attrLength * i, sizeof(uint32_t));
-//            valLen += sizeof(uint32_t);
-//        }
-//
-//        char* val = new char [valLen];
-//        memset(val, 0, valLen);
-//        memcpy(val, page + getKeysBegin() + attrLength * i, valLen);
-
+    for(int i = 0; i < keys.size(); i++) {
         if(key < keys[i]) {
             result = i;
             break;
@@ -315,7 +299,7 @@ RC BTreeNode::insertKey(const Key &key, uint32_t index) {
 }
 
 RC BTreeNode::printKey() {
-    for(int i = 0; i < curKeyNum; i++) {
+    for(int i = 0; i < keys.size(); i++) {
         if(attrType == TypeInt) {
             std::cerr << "key = " << keys[i].keyInt << std::endl;
         }
@@ -330,13 +314,13 @@ RC BTreeNode::printKey() {
 }
 
 RC BTreeNode::printRID() {
-    for(int i = 0; i < curKeyNum; i++) {
+    for(int i = 0; i < keys.size(); i++) {
         std::cerr << "RID:  " << keys[i].rid.pageNum << "\t" << keys[i].rid.slotNum << std::endl;
     }
 }
 
 RC BTreeNode::getChild(uint32_t index) {
-    if(index < curChildNum) {
+    if(index < children.size()) {
         return children[index];
     }
     else {
@@ -345,7 +329,7 @@ RC BTreeNode::getChild(uint32_t index) {
 }
 
 RC BTreeNode::insertChild(uint32_t childPageNum, uint32_t index) {
-    if(index < curChildNum) {
+    if(index < children.size()) {
         children.insert(children.begin() + index, childPageNum);
         return 0;
     }
@@ -364,65 +348,46 @@ uint32_t BTreeNode::getChildrenBegin() {
 }
 
 int32_t BTreeNode::getFreeSpace() {
-    int32_t freeSpace = 0;
-    if(attrType == TypeInt) {
-        freeSpace = (int32_t)PAGE_SIZE - (int32_t)(NODE_OFFSET + (sizeof(uint32_t) + sizeof(int) + sizeof(RID)) * curKeyNum + sizeof(uint32_t) * curChildNum);
-    }
-    else if(attrType == TypeReal) {
-        freeSpace = (int32_t)PAGE_SIZE - (int32_t)(NODE_OFFSET + (sizeof(uint32_t) + sizeof(float) + sizeof(RID)) * curKeyNum + sizeof(uint32_t) * curChildNum);
-    }
-    else if(attrType == TypeVarChar) {
-        //  all key size total
-        uint32_t keySize = 0;
-        for(int i = 0; i < curKeyNum; i++) {
-            keySize += keys[i].size();
-        }
 
-        freeSpace = (int32_t)PAGE_SIZE - (int32_t)(NODE_OFFSET + keySize + sizeof(uint32_t) * curChildNum);
+    uint32_t keysSize = 0;
+    uint32_t childrenSize = sizeof(uint32_t) * children.size();
+
+    for(int i = 0; i < keys.size(); i++) {
+        keysSize += keys[i].size();
     }
 
-    return freeSpace;
+    return (int32_t)PAGE_SIZE - (int32_t)(NODE_OFFSET + keysSize + childrenSize);
 }
 
 
 BTree::BTree() {
     rootPageNum = -1;
     totalPageNum = 0;
-    attrLength = 0;
 }
 
 RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key, const RID &rid) {
     if(rootPageNum == -1) {  // no root
-        uint32_t TMP_ORDER = 10;
+
         if(attribute.type == TypeInt) {
-            attrLength = sizeof(int);
             //  TODO: calculate order
             //  ( sizeof(int) + sizeof(RID) ) * m + sizeof(p) + sizeof(metadata) <= PAGE_SIZE
-            order = TMP_ORDER;
-
         }
         else if(attribute.type == TypeReal) {
-            attrLength = sizeof(float);
-            order = TMP_ORDER;
-
 
         }
         else if(attribute.type == TypeVarChar) {
-            attrLength = attribute.length + sizeof(uint32_t);
-            order = TMP_ORDER;
 
         }
 
         BTreeNode root;
         uint32_t newRootPageNum = totalPageNum;
         createNode(ixFileHandle, root, newRootPageNum, true, false
-                , attribute.type, attrLength, order, -1);
+                , attribute.type, -1);
         this->updateHiddenPageToDisk(ixFileHandle, newRootPageNum, totalPageNum + 1, attribute.type);
         
         // can use general insert instead.  
         root.insertToLeaf(key, rid);
-        root.updateMetaToDisk(ixFileHandle, newRootPageNum, root.isLeafNode, root.isDeleted
-                , root.curKeyNum + 1, root.rightNode);
+        root.updateMetaToDisk(ixFileHandle, root.isLeafNode, root.isDeleted, root.rightNode);
         
     }
     else {
@@ -438,27 +403,24 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
         {
             BTreeNode newRoot;
             uint32_t newRootPageNum = totalPageNum;
-            createNode(ixFileHandle, newRoot, newRootPageNum, false, false, this->attrType, this->attrLength, this->order, -1);
+            createNode(ixFileHandle, newRoot, newRootPageNum, false, false, this->attrType, -1);
             updateHiddenPageToDisk(ixFileHandle, newRootPageNum, totalPageNum+1, attrType);
 
             newRoot.insertKey(copyKey, 0);
             newRoot.insertChild(rootPageNum, 0);
             newRoot.insertChild(upPageNum, 1);
-            newRoot.updateMetaToDisk(ixFileHandle, newRootPageNum, newRoot.isLeafNode, newRoot.isDeleted, newRoot.curKeyNum + 1, newRoot.rightNode);
+            newRoot.updateMetaToDisk(ixFileHandle, newRoot.isLeafNode, newRoot.isDeleted, newRoot.rightNode);
         }
     }
     return 0;
 }
 
 RC BTree::createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
-        , AttrType attrType, AttrLength attrLength, uint32_t order, uint32_t rightNode) {
+        , AttrType attrType, uint32_t rightNode) {
     node.pageNum = pageNum;
     node.isLeafNode = isLeafNode;
     node.isDeleted = isDeleted;
     node.attrType = attrType;
-    node.attrLength = attrLength;
-    node.curKeyNum = 0;
-    node.curChildNum = 0;
     node.rightNode = rightNode;
 
     uint32_t offset = 0;
@@ -476,16 +438,6 @@ RC BTree::createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageN
 
     memcpy(node.page + offset, &attrType, sizeof(AttrType));
     offset += sizeof(AttrType);
-
-    //  attrLength = 4 if int or float. if type is varchar, attrLength = 4 + charLength
-    memcpy(node.page + offset, &attrLength, sizeof(AttrLength));
-    offset += sizeof(AttrLength);
-
-    memcpy(node.page + offset, &node.curKeyNum, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
-
-    memcpy(node.page + offset, &node.curChildNum, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
 
     memcpy(node.page + offset, &rightNode, sizeof(uint32_t));
     offset += sizeof(uint32_t);
@@ -519,34 +471,6 @@ RC BTree::updateHiddenPageToDisk(IXFileHandle &ixFileHandle, uint32_t rootPageNu
 
     rc |= ixFileHandle.fileHandle.writeBTreeHiddenPage(data);
 
-    // RC rc = 0;
-
-    // char* hiddenPage = new char [PAGE_SIZE];
-    // memset(hiddenPage, 0, PAGE_SIZE);
-    // rc |= ixFileHandle.fileHandle.readBTreeHiddenPage(hiddenPage);
-
-    // uint32_t offset = sizeof(uint32_t) * NON_BTREE_VAR_NUM;
-    // memset(hiddenPage + offset, 0, PAGE_SIZE - offset);
-
-    // memcpy(hiddenPage + offset, &rootPageNum, sizeof(uint32_t));
-    // offset += sizeof(uint32_t);
-
-    // memcpy(hiddenPage + offset, &totalPageNum, sizeof(uint32_t));
-    // offset += sizeof(uint32_t);
-
-    // memcpy(hiddenPage + offset, &attrType, sizeof(AttrType));
-    // offset += sizeof(AttrType);
-
-    // memcpy(hiddenPage + offset, &attrLength, sizeof(AttrLength));
-    // offset += sizeof(AttrLength);
-
-    // memcpy(hiddenPage + offset, &order, sizeof(uint32_t));
-    // offset += sizeof(uint32_t);
-
-    // rc |= ixFileHandle.fileHandle.writeBTreeHiddenPage(hiddenPage);
-    // // ixFileHandle.fileHandle.
-
-    // delete[] hiddenPage;
     return rc;
 }
 
@@ -581,9 +505,9 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
 
             BTreeNode newNode;
             uint32_t newNodePageNum = totalPageNum;
-            createNode(ixFileHandle, newNode, newNodePageNum, true, false, this->attrType, this->attrLength,  this->order, node.rightNode);
+            createNode(ixFileHandle, newNode, newNodePageNum, true, false, this->attrType, node.rightNode);
             updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
-            node.updateMetaToDisk(ixFileHandle, node.pageNum, node.isLeafNode, node.isDeleted, startIndex, newNodePageNum);
+            node.updateMetaToDisk(ixFileHandle, node.isLeafNode, node.isDeleted, startIndex, newNodePageNum);
             // prepare for upKey;
             pushEntries.push_back({temp[startIndex], newNodePageNum});
 
@@ -690,7 +614,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
     }
 }
 
-RC BTree::recSearch(IXFileHandle &ixFileHandle, const char *key, uint32_t pageNum) {
+RC BTree::recSearch(IXFileHandle &ixFileHandle, const Key &key, uint32_t pageNum) {
     BTreeNode node;
     node.readNode(ixFileHandle, pageNum);
 
@@ -715,8 +639,6 @@ RC BTree::readBTreeHiddenPage(IXFileHandle &ixFileHandle) {
     rootPageNum = data[ROOT_PAGE_NUM];
     totalPageNum = data[TOTAL_PAGE_NUM];
     attrType = (AttrType)data[ATTRTYPE];
-    attrLength = data[ATTRLENGTH];
-    order = data[ORDER];
     
     return 0;
     //  var in the beginning belongs to RBF
@@ -772,7 +694,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attrib
     RC rc = 0;
     BTree bTree;
     rc |= bTree.readBTreeHiddenPage(ixFileHandle);
-    rc |= bTree.insertEntry(ixFileHandle, attribute, (char*)key, rid);
+    rc |= bTree.insertEntry(ixFileHandle, attribute, Key((char*)key, attribute.type), rid);
     //rc |= bTree.writeBTree(ixFileHandle);
     return rc;
 }
@@ -804,7 +726,7 @@ void IndexManager::printBtree(IXFileHandle &ixFileHandle, const Attribute &attri
     std::cerr << "totalPageNum = " << bTree.totalPageNum << std::endl;
     std::cerr << "rootPageNum = " << bTree.rootPageNum << std::endl;
     root.readNode(ixFileHandle, bTree.rootPageNum);
-    std::cerr << "curKeyNum = " << root.curKeyNum << std::endl;
+    std::cerr << "curKeyNum = " << root.keys.size() << std::endl;
 
     root.printKey();
     root.printRID();

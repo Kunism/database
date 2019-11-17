@@ -12,8 +12,7 @@ class IX_ScanIterator;
 
 class IXFileHandle;
 
-const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool)  + sizeof(AttrType) + sizeof(AttrLength)
-        + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
+const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool)  + sizeof(AttrType) + sizeof(uint32_t);
 
 class Key {
 public:
@@ -27,10 +26,6 @@ public:
     bool operator < (const Key &k) const;
 
     uint32_t size() const;
-
-    //  TODO: operator <
-    //  TODO: size
-    uint32_t size() const;
 };
 
 class BTreeNode {
@@ -39,40 +34,31 @@ public:
     bool isLeafNode;
     bool isDeleted;
     AttrType attrType;
-    AttrLength attrLength;      // 4 if type is int or float, 4 + maxLength of string if type is varchar
-    uint32_t curKeyNum;
-    uint32_t curChildNum;
-
     uint32_t rightNode;
 
-//    char* keys;
-//    int* children;              //  list of children's pageNum
-//    RID* records;
-
-    //////////NEW VECTOR////////
     std::vector<Key> keys;
     std::vector<uint32_t> children;
-    ////////////////////////////
-    
+
     char* page;
 
     BTreeNode();
     ~BTreeNode();
     RC insertToLeaf(const Key &key, const RID &rid);
     RC insertToInternal(const void *key, const int &childPageNum);
-    RC updateMetaToDisk(IXFileHandle &ixFileHandle, uint32_t pageNum, bool isLeafNode, bool isDeleted
-            , uint32_t curKeyNum, uint32_t rightNode);
+    RC updateMetaToDisk(IXFileHandle &ixFileHandle, bool isLeafNode, bool isDeleted, uint32_t rightNode);
     RC readNode(IXFileHandle &ixFileHandle, uint32_t pageNum);
     RC writeNode(IXFileHandle &ixFileHandle);
 
     RC searchKey(const Key &key);
     //RC compareKey(const char *key, const char *val);
     RC insertKey(const Key &key, uint32_t index);
+    RC getCurKeyNum();
     RC printKey();
 
     RC printRID();
 
     RC getChild(uint32_t index);
+    RC getCurChildNum();
     RC insertChild(uint32_t childPageNum, uint32_t index);
 
     uint32_t getKeysBegin();
@@ -92,16 +78,14 @@ public:
     uint32_t rootPageNum;
     uint32_t totalPageNum;
     AttrType attrType;
-    AttrLength attrLength;
-    uint32_t order;
 
     BTree();
     RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key, const RID &rid);
     RC createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
-            , AttrType attrType, AttrLength attrLength, uint32_t order, uint32_t rightNode);
+            , AttrType attrType, uint32_t rightNode);
     RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const Key &key,   // insert element
                 bool &hasSplit, std::vector<std::pair<Key, uint32_t>> &pushEntries);        // return element
-    RC recSearch(IXFileHandle &ixFileHandle, const char *key, uint32_t pageNum);
+    RC recSearch(IXFileHandle &ixFileHandle, const Key &key, uint32_t pageNum);
     RC readBTreeHiddenPage(IXFileHandle &ixFileHandle);
     RC updateHiddenPageToDisk(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t totalPageNum, AttrType attrType);
     //RC writeBTree(IXFileHandle &ixFileHandle);
