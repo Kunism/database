@@ -1,6 +1,30 @@
 #include <iostream>
 #include "ix.h"
 
+Key::Key(const void *key, const RID &rid, AttrType attrType) {
+    this->attrType = attrType;
+
+    if(attrType == TypeInt) {
+        memcpy(&keyInt, key, sizeof(int));
+        memcpy(&this->rid, &rid, sizeof(RID));
+    }
+    else if(attrType == TypeReal) {
+        memcpy(&keyFloat, key, sizeof(float));
+        memcpy(&this->rid, &rid, sizeof(RID));
+    }
+    else if(attrType == TypeVarChar) {
+        uint32_t strLen = 0;
+        memcpy(&strLen, key, sizeof(uint32_t));
+
+        char* strBuffer = new char [strLen];
+        memcpy(strBuffer, (char*)key + sizeof(uint32_t), strLen);
+        keyString = std::string(strBuffer);
+        delete[] strBuffer;
+
+        memcpy(&this->rid, &rid, sizeof(RID));
+    }
+}
+
 Key::Key(char *data, AttrType attrType) {
     this->attrType = attrType;
 
@@ -162,7 +186,6 @@ RC BTreeNode::readNode(IXFileHandle &ixFileHandle, uint32_t pageNum) {
         memcpy(keyData, page + offset, keyDataLength);
         offset += keyDataLength;
 
-        //Key key(keyData, attrType);
         keys.push_back(Key(keyData, attrType));
 
         std::cerr << "Key Int = " << keys[0].keyInt << " \tRid = {" << keys[0].rid.pageNum << ", " << keys[0].rid.slotNum << "}" << std::endl;
@@ -740,7 +763,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attrib
     RC rc = 0;
     BTree bTree;
     rc |= bTree.readBTreeHiddenPage(ixFileHandle);
-    rc |= bTree.insertEntry(ixFileHandle, attribute, Key((char*)key, attribute.type), rid);
+    rc |= bTree.insertEntry(ixFileHandle, attribute, Key(key, rid, attribute.type), rid);
     //rc |= bTree.writeBTree(ixFileHandle);
     return rc;
 }
@@ -805,6 +828,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
         return IX_EOF;
     }
     else {
+        Key targetKey(key, rid, attribute.type);
         if(lowKey == NULL) {
 
         }

@@ -22,6 +22,7 @@ public:
     RID rid;
 
     AttrType attrType;
+    Key(const void *key, const RID &rid, AttrType attrType);
     Key(char* data, AttrType attrType);
     bool operator < (const Key &k) const;
 
