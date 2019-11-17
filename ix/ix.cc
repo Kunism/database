@@ -293,8 +293,12 @@ RC BTreeNode::searchKey(const Key &key) {
 
 
 RC BTreeNode::insertKey(const Key &key, uint32_t index) {
-
     keys.insert(keys.begin() + index, key);
+    return 0;
+}
+
+RC BTreeNode::deleteKey(uint32_t index) {
+    keys.erase(keys.begin() + index);
     return 0;
 }
 
@@ -336,6 +340,11 @@ RC BTreeNode::insertChild(uint32_t childPageNum, uint32_t index) {
     else {
         return -1;
     }
+}
+
+RC BTreeNode::deleteChild(uint32_t index) {
+    children.erase(children.begin() + index);
+    return 0;
 }
 
 uint32_t BTreeNode::getKeysBegin() {
@@ -472,6 +481,17 @@ RC BTree::updateHiddenPageToDisk(IXFileHandle &ixFileHandle, uint32_t rootPageNu
     rc |= ixFileHandle.fileHandle.writeBTreeHiddenPage(data);
 
     return rc;
+}
+
+RC BTree::findAvailablePage(IXFileHandle &ixFileHandle) {
+    for(int i = 0; i < totalPageNum; i++) {
+        BTreeNode node;
+        node.readNode(ixFileHandle, i);
+        if(node.isDeleted) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const Key &key,   // insert element
@@ -733,8 +753,6 @@ void IndexManager::printBtree(IXFileHandle &ixFileHandle, const Attribute &attri
 }
 
 IX_ScanIterator::IX_ScanIterator() {
-
-
     curNodePageNum = -1;
     finished = false;
 }
@@ -760,11 +778,13 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
     if(finished) {
         return IX_EOF;
     }
-    else if(curNodePageNum == 0) {
-
-    }
     else {
+        if(lowKey == NULL) {
 
+        }
+        else {
+
+        }
     }
 
     return -1;

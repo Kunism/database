@@ -52,6 +52,7 @@ public:
     RC searchKey(const Key &key);
     //RC compareKey(const char *key, const char *val);
     RC insertKey(const Key &key, uint32_t index);
+    RC deleteKey(uint32_t index);
     RC getCurKeyNum();
     RC printKey();
 
@@ -60,6 +61,7 @@ public:
     RC getChild(uint32_t index);
     RC getCurChildNum();
     RC insertChild(uint32_t childPageNum, uint32_t index);
+    RC deleteChild(uint32_t index);
 
     uint32_t getKeysBegin();
     uint32_t getChildrenBegin();
@@ -88,6 +90,7 @@ public:
     RC recSearch(IXFileHandle &ixFileHandle, const Key &key, uint32_t pageNum);
     RC readBTreeHiddenPage(IXFileHandle &ixFileHandle);
     RC updateHiddenPageToDisk(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t totalPageNum, AttrType attrType);
+    RC findAvailablePage(IXFileHandle &ixFileHandle);
     //RC writeBTree(IXFileHandle &ixFileHandle);
 
 };
