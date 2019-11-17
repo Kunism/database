@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include "ix.h"
 
 Key::Key(const void *key, const RID &rid, AttrType attrType) {
@@ -104,6 +105,21 @@ uint32_t Key::size() const {
         size = sizeof(uint32_t) + sizeof(uint32_t) + keyString.length() + sizeof(RID);
     }
     return size;
+}
+
+std::ostream& operator<<(std::ostream& os, const Key& key) {
+    if(key.attrType == TypeInt) {
+        os << key.keyInt;
+        return os;
+    }
+    else if(key.attrType == TypeReal) {
+        os << key.keyFloat;
+        return os;
+    }
+    else if(key.attrType == TypeVarChar) {
+        os << key.keyString;
+        return os;
+    }
 }
 
 BTreeNode::BTreeNode() {
@@ -795,15 +811,65 @@ void IndexManager::printBtree(IXFileHandle &ixFileHandle, const Attribute &attri
 
     BTree bTree;
     bTree.readBTreeHiddenPage(ixFileHandle);
-    BTreeNode root;
-    std::cerr << "totalPageNum = " << bTree.totalPageNum << std::endl;
-    std::cerr << "rootPageNum = " << bTree.rootPageNum << std::endl;
-    root.readNode(ixFileHandle, bTree.rootPageNum);
-    std::cerr << "curKeyNum = " << root.keys.size() << std::endl;
+    // BTreeNode root;
+    // std::cerr << "totalPageNum = " << bTree.totalPageNum << std::endl;
+    // std::cerr << "rootPageNum = " << bTree.rootPageNum << std::endl;
+    // root.readNode(ixFileHandle, bTree.rootPageNum);
+    // std::cerr << "curKeyNum = " << root.keys.size() << std::endl;
 
-    root.printKey();
-    root.printRID();
+    // root.printKey();
+    // root.printRID();
+    recursivePrint(ixFileHandle, bTree.rootPageNum, 0);
+    std::cout << std::endl;
+
 }
+
+void IndexManager::recursivePrint(IXFileHandle &ixFileHandle, uint32_t pageNum, int depth) const
+{
+    BTreeNode btNode;
+    btNode.readNode(ixFileHandle, pageNum);
+   
+    std::cout << std::setw(4*depth) << " " << "{\"keys\": [";
+    
+    for(int i = 0 ; i < btNode.keys.size() ; i++) {
+        std::cout << "\"" <<    btNode.keys[i];
+        if(btNode.isLeafNode) {
+            std::cout <<":[(" << btNode.keys[i].rid.pageNum << ',' << btNode.keys[i].rid.slotNum << ")]";
+        }
+        std::cout << "\"";
+        if(i != btNode.keys.size()-1)
+        {
+            std::cout << ",";
+        }
+    }
+    std::cout << "]"; 
+    
+    if(!btNode.isLeafNode)
+    {
+        std::cout << "," <<std::endl;
+        std::cout << std::setw(4*depth) << "\"children\":[\"" << std::endl;
+        for(int i = 0 ; i < btNode.children.size() ; i++) {
+            recursivePrint(ixFileHandle, btNode.children[i], depth+1);
+            if(i != btNode.children.size()-1)
+            {
+                std::cout << "," << std::endl;
+            }
+        }
+        std::cout << std::endl;
+        std::cout << std::setw(4*depth) << " " << "]";
+    }
+    std::cout << "}"; 
+}
+
+// void IndexManager::padding(int depth)
+// {
+//     for(int i = 0 ; i < depth ; i++)
+//     {
+//         std::cout << '\t';
+//     }
+// }
+
+
 
 IX_ScanIterator::IX_ScanIterator() {
     curNodePageNum = -1;

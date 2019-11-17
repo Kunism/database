@@ -25,7 +25,7 @@ public:
     Key(const void *key, const RID &rid, AttrType attrType);
     Key(char* data, AttrType attrType);
     bool operator < (const Key &k) const;
-
+    friend std::ostream& operator<<(std::ostream& os, const Key& key);
     uint32_t size() const;
 };
 
@@ -138,6 +138,8 @@ protected:
     IndexManager &operator=(const IndexManager &) = default;                    // Prevent assignment
 
 private:
+    void recursivePrint(IXFileHandle &ixFileHandle, uint32_t pageNum, int depth) const;
+    // string padding(int depth);
 //    FileHandle* fileHandle;
 };
 
