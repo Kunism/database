@@ -8,6 +8,14 @@ Key::Key()
 
 }
 
+Key::Key(const Key &k) {
+    this->keyInt = k.keyInt;
+    this->keyFloat = k.keyFloat;
+    this->keyString = k.keyString;
+    this->rid = k.rid;
+    this->attrType = k.attrType;
+}
+
 Key::Key(const void *key, const RID &rid, AttrType attrType) {
     this->attrType = attrType;
 
@@ -99,6 +107,14 @@ bool Key::operator<(const Key &k) const {
     return res;
 }
 
+void Key::operator=(const Key &k) {
+    this->keyInt = k.keyInt;
+    this->keyFloat = k.keyFloat;
+    this->keyString = k.keyString;
+    this->rid = k.rid;
+    this->attrType = k.attrType;
+}
+
 uint32_t Key::size() const {
     uint32_t size = 0;
     if(attrType == TypeInt) {
@@ -111,6 +127,20 @@ uint32_t Key::size() const {
         size = sizeof(uint32_t) + sizeof(uint32_t) + keyString.length() + sizeof(RID);
     }
     return size;
+}
+
+void Key::toData(void *_key) {
+    if(attrType == TypeInt) {
+        memcpy(_key, &keyInt, sizeof(int));
+    }
+    else if(attrType == TypeReal) {
+        memcpy(_key, &keyFloat, sizeof(float));
+    }
+    else if(attrType == TypeVarChar) {
+        uint32_t strLen = keyString.length();
+        memcpy(_key, &strLen, sizeof(uint32_t));
+        memcpy((char*)_key + sizeof(uint32_t), keyString.c_str(), strLen);
+    }
 }
 
 std::ostream& operator<<(std::ostream& os, const Key& key) {
@@ -428,7 +458,7 @@ int32_t BTreeNode::getFreeSpace() {
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
-    return (int32_t)PAGE_SIZE - (int32_t)(NODE_OFFSET + keysSize + childrenSize + sizeof(uint32_t) + 3900);
+    return int32_t(NODE_CONTENT_SIZE) - int32_t(keysSize + childrenSize + 3900);
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
@@ -538,7 +568,7 @@ RC BTree::createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageN
     memcpy(node.page + offset, &rightNode, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
-    if(offset != NODE_OFFSET) {
+    if(offset + sizeof(uint32_t) != NODE_OFFSET) {
         std::cerr << "Memcpy Error in BTree::createNode" << std::endl;
     }
 
@@ -602,16 +632,23 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
             // std::cerr << "BTree:recInsert NEED SPLIT!!  "  << std::endl;
 
             std::vector<Key> temp(node.keys.begin(), node.keys.end());
+
             temp.insert(temp.begin() + node.searchKey(key), key);
 
             // split index
             int startIndex = 0;
-            int totalSize = NODE_OFFSET;    
+            int totalSize = NODE_OFFSET + sizeof(uint32_t);    
             for(;startIndex < temp.size() && totalSize < (PAGE_SIZE - 3900) / 2; startIndex++)
             {
                 totalSize += temp[startIndex].size();
             }
             // startIndex = node.keys.size() / 2;
+
+
+            // for(int i = 0; i < temp.size(); i++) {
+            //     std::cerr << "temp key: " << temp[i].keyInt << " ";
+            // }
+            // std::cerr << std::endl;
 
             BTreeNode newNode;
             uint32_t newNodePageNum = totalPageNum;
@@ -620,6 +657,8 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
             node.updateMetaToDisk(ixFileHandle, node.isLeafNode, node.isDeleted, newNodePageNum);
             // prepare for upKey;
             pushEntries.push_back({temp[startIndex], newNodePageNum});
+            std::cerr << "startIndex = " << startIndex << std::endl;
+            std::cerr << "Up Key: " << temp[startIndex].keyInt << "\t Net Node Page Num: " << newNodePageNum << std::endl;
 
             for(int i = startIndex ; i < temp.size() ; i++)
             {
@@ -871,11 +910,16 @@ void IndexManager::printBtree(IXFileHandle &ixFileHandle, const Attribute &attri
 
     BTree bTree;
     bTree.readBTreeHiddenPage(ixFileHandle);
-    // BTreeNode root;
-    // std::cerr << "totalPageNum = " << bTree.totalPageNum << std::endl;
-    // std::cerr << "rootPageNum = " << bTree.rootPageNum << std::endl;
-    // root.readNode(ixFileHandle, bTree.rootPageNum);
-    // std::cerr << "curKeyNum = " << root.keys.size() << std::endl;
+
+     BTreeNode root;
+     std::cerr << "totalPageNum = " << bTree.totalPageNum << std::endl;
+     std::cerr << "rootPageNum = " << bTree.rootPageNum << std::endl;
+     root.readNode(ixFileHandle, bTree.rootPageNum);
+     std::cerr << "curKeyNum = " << root.keys.size() << std::endl;
+     for(int i = 0; i < root.keys.size(); i++) {
+         std::cerr << "Key = " << root.keys[i] << " ";
+     }
+     std::cerr << std::endl;
 
     // root.printKey();
     // root.printRID();
@@ -1044,7 +1088,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
         this->curKey = node.keys[this->curIndex];
         if(curKey < highKey) {
         // return value
-            // curKey.toData(key);
+            curKey.toData(key);
             rid = curKey.rid;
             return 0;
         }
@@ -1059,7 +1103,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
         this->curKey = node.keys[this->curIndex];
         if(curKey < highKey) {
         // return value
-            // curKey.toData(key);
+            curKey.toData(key);
             rid = curKey.rid;
             return 0;
         }
