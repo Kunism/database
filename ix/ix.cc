@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <limits>
+#include <unitypes.h>
 #include "ix.h"
 
 Key::Key()
@@ -458,7 +459,7 @@ int32_t BTreeNode::getFreeSpace() {
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
-    return int32_t(NODE_CONTENT_SIZE) - int32_t(keysSize + childrenSize + 3900);
+    return int32_t(PAGE_SIZE) - int32_t(NODE_META_SIZE + keysSize + childrenSize + 3900);
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
@@ -637,7 +638,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
 
             // split index
             int startIndex = 0;
-            int totalSize = NODE_OFFSET + sizeof(uint32_t);    
+            int totalSize = NODE_META_SIZE;
             for(;startIndex < temp.size() && totalSize < (PAGE_SIZE - 3900) / 2; startIndex++)
             {
                 totalSize += temp[startIndex].size();
@@ -739,7 +740,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                 
                 // split index
                 int pushIndex = 0;
-                int totalSize = NODE_OFFSET; 
+                int totalSize = NODE_META_SIZE;
                 for(;pushIndex < node.keys.size() && totalSize < (PAGE_SIZE - 3900) / 2 ; pushIndex++)
                 {
                     totalSize += node.keys[pushIndex].size();

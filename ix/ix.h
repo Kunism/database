@@ -13,14 +13,13 @@ class IX_ScanIterator;
 class IXFileHandle;
 
 const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool)  + sizeof(AttrType) + sizeof(uint32_t) + sizeof(uint32_t);
-const uint32_t NODE_CONTENT_SIZE = PAGE_SIZE
-        - sizeof(uint32_t)      //  page num
-        - sizeof(bool)          //  is leaf
-        - sizeof(bool)          //  is deleted
-        - sizeof(AttrType)      //  attrtype
-        - sizeof(uint32_t)      //  right node
-        - sizeof(uint32_t)      //  key num
-        - sizeof(uint32_t);     //  children num
+const uint32_t NODE_META_SIZE = sizeof(uint32_t)      //  page num
+        + sizeof(bool)          //  is leaf
+        + sizeof(bool)          //  is deleted
+        + sizeof(AttrType)      //  attrtype
+        + sizeof(uint32_t)      //  right node
+        + sizeof(uint32_t)      //  key num
+        + sizeof(uint32_t);     //  children num
 
 class Key {
 public:
