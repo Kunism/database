@@ -12,7 +12,7 @@ class IX_ScanIterator;
 
 class IXFileHandle;
 
-const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool)  + sizeof(AttrType) + sizeof(uint32_t);
+const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool)  + sizeof(AttrType) + sizeof(uint32_t) +sizeof(uint32_t);
 
 class Key {
 public:

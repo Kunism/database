@@ -428,7 +428,7 @@ int32_t BTreeNode::getFreeSpace() {
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
-    return (int32_t)PAGE_SIZE - (int32_t)(NODE_OFFSET + keysSize + childrenSize + sizeof(uint32_t) + sizeof(uint32_t) +3600);
+    return (int32_t)PAGE_SIZE - (int32_t)(NODE_OFFSET + keysSize + childrenSize + sizeof(uint32_t) + 3900);
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
@@ -607,11 +607,11 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
             // split index
             int startIndex = 0;
             int totalSize = NODE_OFFSET;    
-            for(;startIndex < temp.size() && totalSize < PAGE_SIZE / 2 ; startIndex++)
+            for(;startIndex < temp.size() && totalSize < (PAGE_SIZE - 3900) / 2; startIndex++)
             {
                 totalSize += temp[startIndex].size();
             }
-
+            // startIndex = node.keys.size() / 2;
 
             BTreeNode newNode;
             uint32_t newNodePageNum = totalPageNum;
@@ -701,7 +701,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                 // split index
                 int pushIndex = 0;
                 int totalSize = NODE_OFFSET; 
-                for(;pushIndex < node.keys.size() && totalSize < PAGE_SIZE / 2 ; pushIndex++)
+                for(;pushIndex < node.keys.size() && totalSize < (PAGE_SIZE - 3900) / 2 ; pushIndex++)
                 {
                     totalSize += node.keys[pushIndex].size();
                     totalSize += sizeof(uint32_t);
