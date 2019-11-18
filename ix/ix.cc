@@ -1,7 +1,6 @@
 #include <iostream>
 #include <iomanip>
 #include <limits>
-#include <unitypes.h>
 #include "ix.h"
 
 Key::Key()
@@ -985,7 +984,7 @@ IX_ScanIterator::IX_ScanIterator() {
     // need fault constructor!!!! for lowKey and High Key
     curNodePageNum = -1;
     curIndex = -1;
-    finished = false;
+    firstValid = false;
 }
 
 IX_ScanIterator::~IX_ScanIterator() {
@@ -1066,7 +1065,13 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
     this->curNodePageNum = bTree.recSearch(*ixFileHandle, lowKey, bTree.rootPageNum);
     BTreeNode node;
     node.readNode(*ixFileHandle, curNodePageNum);
+
     this->curIndex = 0;
+    if(!(node.keys[0] < lowKey)) {
+        firstValid = true;
+        return 0;
+    }
+
     for(int i = 0 ; i < node.keys.size() ; i++) {
         // take last '<' or first '>='  ?
         // currently take last '<'
@@ -1082,6 +1087,19 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
 RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
     BTreeNode node;
     node.readNode(*ixFileHandle, curNodePageNum);
+
+   if(firstValid) {
+       this->curKey = node.keys[this->curIndex];
+       if(curKey < highKey) {
+            curKey.toData(key);
+            rid = curKey.rid;
+            firstValid = false;
+            return 0;
+        }
+        else {
+            return IX_EOF;
+        }
+   }
     
     // next element 
     if(this->curIndex < node.keys.size() - 1) {

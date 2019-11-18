@@ -172,7 +172,7 @@ public:
     BTree bTree;
     uint32_t curNodePageNum;
     uint32_t curIndex;
-    bool finished;
+    bool firstValid;
 
     // Constructor
     IX_ScanIterator();
