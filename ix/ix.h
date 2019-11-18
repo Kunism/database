@@ -22,12 +22,17 @@ public:
     RID rid;
 
     AttrType attrType;
+    
+    Key();
     Key(const void *key, const RID &rid, AttrType attrType);
     Key(char* data, AttrType attrType);
     bool operator < (const Key &k) const;
-    friend std::ostream& operator<<(std::ostream& os, const Key& key);
     uint32_t size() const;
+    
+    friend std::ostream& operator<<(std::ostream& os, const Key& key);
 };
+
+
 
 class BTreeNode {
 public:
@@ -148,8 +153,9 @@ public:
 
     IXFileHandle* ixFileHandle;
     Attribute attribute;
-    const void *lowKey;
-    const void *highKey;
+    Key lowKey;
+    Key highKey;
+    Key curKey;
     bool lowKeyInclusive;
     bool highKeyInclusive;
 
