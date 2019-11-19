@@ -51,6 +51,7 @@ public:
     bool isDeleted;
     AttrType attrType;
     uint32_t rightNode;
+    uint32_t leftNode;
 
     std::vector<Key> keys;
     std::vector<uint32_t> children;
@@ -99,6 +100,7 @@ public:
 
     BTree();
     RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key);
+    RC deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key);
     RC createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
             , AttrType attrType, uint32_t rightNode);
     RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const Key &key,   // insert element

@@ -165,6 +165,7 @@ BTreeNode::BTreeNode() {
     pageNum = -1;
 
     rightNode = -1;
+    leftNode = -1;
 
     keys.clear();
     children.clear();
@@ -474,22 +475,10 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
     
     // std::cerr << "BTree:Insert: " << key << std::endl;
     if(rootPageNum == -1) {  // no root
-        std::cerr << "BTree: No Root" <<std::endl; 
-        if(attribute.type == TypeInt) {
-            //  TODO: calculate order
-            //  ( sizeof(int) + sizeof(RID) ) * m + sizeof(p) + sizeof(metadata) <= PAGE_SIZE
-        }
-        else if(attribute.type == TypeReal) {
-
-        }
-        else if(attribute.type == TypeVarChar) {
-
-        }
-
         BTreeNode root;
         uint32_t newRootPageNum = totalPageNum;
         createNode(ixFileHandle, root, newRootPageNum, true, false
-                , attribute.type, -1);
+                , attribute.type, -1, -1);
         this->updateHiddenPageToDisk(ixFileHandle, newRootPageNum, totalPageNum + 1, attribute.type);
         
         // can use general insert instead.
@@ -512,7 +501,7 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
         {
             BTreeNode newRoot;
             uint32_t newRootPageNum = totalPageNum;
-            createNode(ixFileHandle, newRoot, newRootPageNum, false, false, this->attrType, -1);
+            createNode(ixFileHandle, newRoot, newRootPageNum, false, false, this->attrType, -1, -1);
 
             for(auto i : pushEntities)
             {
@@ -539,6 +528,10 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
         }
     }
     return 0;
+}
+
+RC BTree::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key) {
+
 }
 
 RC BTree::createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
@@ -642,17 +635,10 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
             {
                 totalSize += temp[startIndex].size();
             }
-            // startIndex = node.keys.size() / 2;
-
-
-            // for(int i = 0; i < temp.size(); i++) {
-            //     std::cerr << "temp key: " << temp[i].keyInt << " ";
-            // }
-            // std::cerr << std::endl;
 
             BTreeNode newNode;
             uint32_t newNodePageNum = totalPageNum;
-            createNode(ixFileHandle, newNode, newNodePageNum, true, false, this->attrType, node.rightNode);
+            createNode(ixFileHandle, newNode, newNodePageNum, true, false, this->attrType, node.pageNum, node.rightNode);
             updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
             node.updateMetaToDisk(ixFileHandle, node.isLeafNode, node.isDeleted, newNodePageNum);
             // prepare for upKey;
@@ -669,8 +655,9 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                     newNode.writeNode(ixFileHandle);
                     newNodePageNum = totalPageNum;
                     uint32_t oldRightNode = newNode.rightNode;
+                    uint32_t oldLeftNode = newNode.pageNum;
                     newNode.updateMetaToDisk(ixFileHandle, newNode.isLeafNode, newNode.isDeleted, newNodePageNum);
-                    createNode(ixFileHandle, newNode, newNodePageNum, true, false, this->attrType, oldRightNode);
+                    createNode(ixFileHandle, newNode, newNodePageNum, true, false, this->attrType, oldLeftNode, oldRightNode);
                     updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
                     // prepare for upKey;
                     pushEntries.push_back({temp[i], newNodePageNum});
@@ -759,7 +746,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
 
                 BTreeNode newNode;
                 uint32_t newNodePageNum = totalPageNum;
-                createNode(ixFileHandle, newNode, newNodePageNum, false, false, this->attrType, -1);
+                createNode(ixFileHandle, newNode, newNodePageNum, false, false, this->attrType, -1, -1); // inter has no left & right node
                 updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
                 pushEntries.push_back({node.keys[pushIndex],newNodePageNum});
                 // vector need to delete too
@@ -777,7 +764,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                         // std::cerr << "Current new Node is full!!!" <<std::endl;
                         newNode.writeNode(ixFileHandle);
                         newNodePageNum = totalPageNum;
-                        createNode(ixFileHandle, newNode, newNodePageNum, false, false, node.attrType, -1);
+                        createNode(ixFileHandle, newNode, newNodePageNum, false, false, node.attrType, -1, -1);
                         updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
                         // prepare for upKey;
                         pushEntries.push_back({node.keys[i], newNodePageNum});
@@ -905,7 +892,17 @@ RC IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attrib
 }
 
 RC IndexManager::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
-    return -1;
+    BTree bTree;
+    if( bTree.readBTreeHiddenPage(ixFileHandle) != 0) {
+        return -1;
+    }
+
+    if( bTree.deleteEntry(ixFileHandle, attribute, Key(key, rid, attribute.type)) != 0) {
+        return -1;
+    }
+
+    return 0;
+
 }
 
 RC IndexManager::scan(IXFileHandle &ixFileHandle,
