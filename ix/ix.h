@@ -22,6 +22,9 @@ const uint32_t NODE_META_SIZE = sizeof(uint32_t)      //  page num
         + sizeof(uint32_t)      //  key num
         + sizeof(uint32_t);     //  children num
 
+
+
+
 class Key {
 public:
     int keyInt;
@@ -36,6 +39,7 @@ public:
     Key(const void *key, const RID &rid, AttrType attrType);
     Key(char* data, AttrType attrType);
     bool operator < (const Key &k) const;
+    bool operator == (const Key &k) const;
     void operator = (const Key &k);
     uint32_t size() const;
     void toData(void* _key);
@@ -176,7 +180,7 @@ public:
 
     BTree bTree;
     uint32_t curNodePageNum;
-    uint32_t curIndex;
+    int32_t curIndex;
     bool firstValid;
 
     // Constructor
@@ -213,5 +217,5 @@ public:
     RC collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount);
     FileHandle fileHandle;
 };
-
+std::ostream& operator<<(std::ostream& os, const RID &rid);
 #endif

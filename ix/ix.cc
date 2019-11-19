@@ -3,7 +3,12 @@
 #include <limits>
 #include "ix.h"
 
+std::ostream& operator<<(std::ostream& os, const RID &rid) {
+    os << rid.pageNum << ' ' << rid.slotNum;
+}
+
 Key::Key()
+:keyInt{}, keyFloat{}, keyString{}, rid{}
 {
 
 }
@@ -17,6 +22,7 @@ Key::Key(const Key &k) {
 }
 
 Key::Key(const void *key, const RID &rid, AttrType attrType) {
+    Key();
     this->attrType = attrType;
 
     if(attrType == TypeInt) {
@@ -41,6 +47,7 @@ Key::Key(const void *key, const RID &rid, AttrType attrType) {
 }
 
 Key::Key(char *data, AttrType attrType) {
+    Key();
     this->attrType = attrType;
 
     uint32_t actualKeyLen = 0;
@@ -104,6 +111,20 @@ bool Key::operator<(const Key &k) const {
         else res = this->keyString.length() < k.keyString.length();
     }
 
+    return res;
+}
+
+bool Key::operator==(const Key &k) const {
+    bool res = false;
+    if(k.attrType == TypeInt) {
+        res = (keyInt == k.keyInt) && (rid.pageNum == k.rid.pageNum) && (rid.slotNum == k.rid.slotNum);
+    }
+    else if(k.attrType == TypeReal) {
+        res = (keyFloat == k.keyFloat) && (rid.pageNum == k.rid.pageNum) && (rid.slotNum == k.rid.slotNum);
+    }
+    else if(k.attrType == TypeVarChar) {
+        res = (keyString == k.keyString) && (rid.pageNum == k.rid.pageNum) && (rid.slotNum == k.rid.slotNum);
+    }
     return res;
 }
 
@@ -229,9 +250,10 @@ RC BTreeNode::readNode(IXFileHandle &ixFileHandle, uint32_t _pageNum) {
     memcpy(&keyNum, page + offset, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
+
     //  read key to vector
 
-
+    keys.clear();
     for(int i = 0; i < keyNum; i++) {
         //  keyDataLength = keyLen + ridLen
         uint32_t keyDataLength = 0;
@@ -255,6 +277,7 @@ RC BTreeNode::readNode(IXFileHandle &ixFileHandle, uint32_t _pageNum) {
     // std::cerr << "READ NODE CHILDREN SIZE: " << childrenNum << std::endl;
 
     //  read child to vector
+    children.clear();
     for(int i = 0; i < childrenNum; i++) {
         uint32_t child = 0;
         memcpy(&child, page + PAGE_SIZE - sizeof(uint32_t) * (i+2), sizeof(uint32_t));
@@ -456,7 +479,7 @@ int32_t BTreeNode::getFreeSpace() {
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
-    return int32_t(PAGE_SIZE) - int32_t(NODE_META_SIZE + keysSize + childrenSize + 3900);
+    return int32_t(PAGE_SIZE) - int32_t(NODE_META_SIZE + keysSize + childrenSize);
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
     //////////////////////////////////////TOOOOOOOOOOOOOOODOOOOOOOOOOOOOOOOOOOOO////////////////////////////////////////////////
@@ -536,11 +559,12 @@ RC BTree::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
         bool isUpdated = false;
         bool isDeleted = false;
         Key updateKey;
-        recDelete(ixFileHandle, rootPageNum, key, isUpdated, isDeleted, updateKey);
+        return recDelete(ixFileHandle, rootPageNum, key, isUpdated, isDeleted, updateKey);
 
         // root need no update
         // root may need to be deleted.
     }
+    return 0;
 }
 
 
@@ -548,100 +572,32 @@ RC BTree::recDelete(IXFileHandle &ixFileHandle, uint32_t pageNum, const Key &tar
     BTreeNode node;
     node.readNode(ixFileHandle, pageNum);
 
-
+    // std::cerr << "DEL KEY: " << tar << std::endl;
     if(node.isLeafNode) {
         int deleteIndex = -1;
+
         for(int i = 0 ; i < node.keys.size() ; i++) {
+            // std::cerr << node.keys[i] << ' ';
+            // std::cerr <<(node.keys[i] == tar )<<  std::endl;
             if(node.keys[i] == tar) {
                 deleteIndex = i;
                 break;
             }
         }
-
+        // std::cerr <<"INDEX: " <<  deleteIndex <<std::endl;
         if(deleteIndex != -1) {
-            if (deleteIndex == 0) {
-                if(node.keys.size() == 1) {
-                    if( node.leftNode != -1) {
-                        BTreeNode leftNode;
-                        leftNode.readNode(ixFileHandle, node.leftNode);
-                        leftNode.rightNode = node.rightNode;
-                        leftNode.writeNode(ixFileHandle);
-                    }
-
-                    if( node.rightNode != -1) {
-                        BTreeNode rightNode;
-                        rightNode.readNode(ixFileHandle, node.rightNode);
-                        rightNode.leftNode = node.leftNode;
-                        rightNode.writeNode(ixFileHandle);
-                    
-                    }
-                    // node.deleteKey(deleteIndex);
-                    node.isDeleted = true;
-                    node.writeNode(ixFileHandle);
-                }
-                else {
-                    updateKey = node.keys[deleteIndex+1];
-                    isUpdated = true;
-                    node.deleteKey(deleteIndex);
-                    node.writeNode(ixFileHandle);
-                    return 0;
-                }
-            }
-            else {
-                node.deleteKey(deleteIndex);
-                node.writeNode(ixFileHandle);
-            }
+            node.deleteKey(deleteIndex);
+            node.writeNode(ixFileHandle);
+            return 0;
         }
-
+        else {
+            return -1;
+        }
     }
     else {
         int childIndex = node.searchKey(tar);
         uint32_t childPageNum = node.children[childIndex];
-        recDelete(ixFileHandle, childPageNum, tar, isUpdated, isDeleted, updateKey);
-
-        if(isUpdated) {
-            if( childIndex == 0) {
-                return 0;
-            }
-            else if (childIndex == 1) {
-                node.keys[0] = updateKey;
-                isUpdated = false;
-                return 0;
-            }
-            else {
-                node.keys[childIndex-1] = updateKey;
-                isUpdated = false;
-                return 0;
-            }
-        }
-        else if (isDeleted) {
-            if (childIndex == 0 && node.keys.size() != 1) {
-                updateKey = node.keys[0];
-                node.deleteKey(0);
-                node.deleteChild(0);
-                isDeleted = false;
-                isUpdated = true;
-                return 0;
-            }
-            else if (childIndex == 1 && node.keys.size() != 1) {
-                node.deleteKey(0);
-                node.deleteChild(1);
-                isDeleted = false;
-                return 0;
-            }
-            else if (childIndex == 0) {
-
-            }
-            else if (childIndex == 1) {
-
-            }
-            else {
-                node.deleteKey(childIndex-1);
-                node.deleteChild(childIndex);
-                isDeleted = false;
-                return 0;
-            }
-        }
+        return recDelete(ixFileHandle, childPageNum, tar, isUpdated, isDeleted, updateKey);
     }
 }
 
@@ -746,7 +702,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
             // split index
             int startIndex = 0;
             int totalSize = NODE_META_SIZE;
-            for(;startIndex < temp.size() && totalSize < (PAGE_SIZE - 3900) / 2; startIndex++)
+            for(;startIndex < temp.size() && totalSize < (PAGE_SIZE) / 2; startIndex++)
             {
                 totalSize += temp[startIndex].size();
             }
@@ -852,7 +808,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                 // split index
                 int pushIndex = 0;
                 int totalSize = NODE_META_SIZE;
-                for(;pushIndex < node.keys.size() && totalSize < (PAGE_SIZE - 3900) / 2 ; pushIndex++)
+                for(;pushIndex < node.keys.size() && totalSize < (PAGE_SIZE) / 2 ; pushIndex++)
                 {
                     totalSize += node.keys[pushIndex].size();
                     totalSize += sizeof(uint32_t);
@@ -1009,6 +965,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attrib
 RC IndexManager::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
     BTree bTree;
     if( bTree.readBTreeHiddenPage(ixFileHandle) != 0) {
+        std::cerr << "IndexManager: read Hidden page fail" <<std::endl; 
         return -1;
     }
 
@@ -1040,15 +997,15 @@ void IndexManager::printBtree(IXFileHandle &ixFileHandle, const Attribute &attri
     BTree bTree;
     bTree.readBTreeHiddenPage(ixFileHandle);
 
-     BTreeNode root;
-     std::cerr << "totalPageNum = " << bTree.totalPageNum << std::endl;
-     std::cerr << "rootPageNum = " << bTree.rootPageNum << std::endl;
-     root.readNode(ixFileHandle, bTree.rootPageNum);
-     std::cerr << "curKeyNum = " << root.keys.size() << std::endl;
-     for(int i = 0; i < root.keys.size(); i++) {
-         std::cerr << "Key = " << root.keys[i] << " ";
-     }
-     std::cerr << std::endl;
+    //  BTreeNode root;
+    //  std::cerr << "totalPageNum = " << bTree.totalPageNum << std::endl;
+    //  std::cerr << "rootPageNum = " << bTree.rootPageNum << std::endl;
+    //  root.readNode(ixFileHandle, bTree.rootPageNum);
+    //  std::cerr << "curKeyNum = " << root.keys.size() << std::endl;
+    //  for(int i = 0; i < root.keys.size(); i++) {
+    //      std::cerr << "Key = " << root.keys[i] << " ";
+    //  }
+    //  std::cerr << std::endl;
 
     // root.printKey();
     // root.printRID();
@@ -1061,7 +1018,7 @@ void IndexManager::recursivePrint(IXFileHandle &ixFileHandle, uint32_t pageNum, 
 {
     BTreeNode btNode;
     btNode.readNode(ixFileHandle, pageNum);
-    // std::cerr << std::setw(4*depth) << "" << "node num: " << btNode.pageNum <<std::endl;
+    std::cerr << std::setw(4*depth) << "" << "node num: " << btNode.pageNum <<std::endl;
     std::cout << std::setw(4*depth) << "" << "{\"keys\": [";
     
     for(int i = 0 ; i < btNode.keys.size() ; i++) {
@@ -1075,8 +1032,8 @@ void IndexManager::recursivePrint(IXFileHandle &ixFileHandle, uint32_t pageNum, 
             std::cout << ",";
         }
     }
-    // std::cerr << "Left Node: " << btNode.leftNode;
-    // std::cerr << "  Right Node: " << btNode.rightNode;
+    std::cerr << "Left Node: " << btNode.leftNode;
+    std::cerr << "  Right Node: " << btNode.rightNode;
     std::cout << "]"; 
     
     if(!btNode.isLeafNode)
@@ -1124,6 +1081,11 @@ IX_ScanIterator::~IX_ScanIterator() {
 
 RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribute, const void *_lowKey,
                          const void *_highKey, bool _lowKeyInclusive, bool _highKeyInclusive) {
+    if(_ixFileHandle.fileHandle.isOpen() != 0) {
+        std::cerr << "WHATTTTTR" << std::endl;
+        return -1;
+    }
+    
     this->ixFileHandle = &_ixFileHandle;
     this->attribute = _attribute;
     //  TODO: need space?
@@ -1151,7 +1113,6 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
         if ( attribute.type == TypeInt) {
             int temp = 0;
             this->lowKey = Key(&temp, {0,0}, attribute.type);
-            std::cerr << "lowKey: " << this->lowKey << std::endl;
         }
         else if (attribute.type == TypeReal) {
             float temp = 0.0f;
@@ -1172,9 +1133,7 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
     if(_highKey == NULL) {
         if ( attribute.type == TypeInt) {
             int temp = std::numeric_limits<int>::max();
-            std::cerr << "TYPE: " <<  attribute.type << std::endl;
             this->highKey = Key(&temp, {INT_MAX,INT_MAX}, attribute.type);
-            std::cerr << "high key: " << this->highKey << std::endl;
         }
         else if (attribute.type == TypeReal) {
             float temp = std::numeric_limits<float>::max();
@@ -1196,8 +1155,14 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
         this->highKey = Key(_highKey, highRID, attribute.type);
     }
 
+      std::cerr << "INIT" << std::endl;
+    std::cerr << lowKey << ' ' << lowKey.rid << std::endl;
+    std::cerr << highKey << ' ' << highKey.rid << std::endl;
 
-    bTree.readBTreeHiddenPage(*ixFileHandle);
+
+    if( bTree.readBTreeHiddenPage(*ixFileHandle) != 0) {
+        return -1;
+    }
     this->curNodePageNum = bTree.recSearch(*ixFileHandle, lowKey, bTree.rootPageNum);
     BTreeNode node;
     node.readNode(*ixFileHandle, curNodePageNum);
@@ -1205,7 +1170,7 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
 
 
     this->curIndex = 0;
-    if(!(node.keys[0] < lowKey)) {
+    if(node.keys.size()>0 && !(node.keys[0] < lowKey)) {
         firstValid = true;
         return 0;
     }
@@ -1219,7 +1184,7 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
         }
     }
 
-
+  
 
     return 0;
 }
@@ -1228,7 +1193,6 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
     BTreeNode node;
     node.readNode(*ixFileHandle, curNodePageNum);
 
-    std::cerr << "Iterator::getNextEntry\t" << lowKey << ' ' << highKey << ' ' << firstValid <<  std::endl;
 
     if(firstValid) {
        this->curKey = node.keys[this->curIndex];
@@ -1242,39 +1206,73 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
             return IX_EOF;
         }
    }
+   
+   if(this->curIndex < node.keys.size() && !(this->curKey == node.keys[this->curIndex])) {
+        this->curKey = node.keys[this->curIndex];
+        if(curKey < highKey) {
+            curKey.toData(key);
+            rid = curKey.rid;
+            return 0;
+        }
+        else {
+            return IX_EOF;
+        }
+   }
     
     // next element 
-    if(this->curIndex < node.keys.size() - 1) {
-        this->curIndex++;
-        this->curKey = node.keys[this->curIndex];
-        if(curKey < highKey) {
-        // return value
-            curKey.toData(key);
-            rid = curKey.rid;
-            return 0;
-        }
-        else {
+    while(true) {
+        // std::cerr <<  node.rightNode << ' ' << node.keys.size()  <<std::endl;
+        if (this->curNodePageNum == -1) {
             return IX_EOF;
         }
-    }
-    else if (node.rightNode != -1) {
-        this->curNodePageNum = node.rightNode;
-        this->curIndex = 0;
-        node.readNode(*ixFileHandle, curNodePageNum);
-        this->curKey = node.keys[this->curIndex];
-        if(curKey < highKey) {
-        // return value
-            curKey.toData(key);
-            rid = curKey.rid;
-            return 0;
+
+        node.readNode(*ixFileHandle,curNodePageNum);
+        if( node.keys.size() != 0 && this->curIndex < int32_t(node.keys.size() - 1)) {
+            this->curIndex++;
+            this->curKey = node.keys[this->curIndex];
+            if(curKey < highKey) {
+            // return value
+                curKey.toData(key);
+                rid = curKey.rid;
+                return 0;
+            }
+            else {
+                return IX_EOF;
+            }
         }
         else {
-            return IX_EOF;
+            this->curNodePageNum = node.rightNode;
+            this->curIndex = -1;
         }
     }
-    else {
-        return IX_EOF;
-    }
+        
+        
+        
+    //     if (node.rightNode != -1) {
+    //         this->curNodePageNum = node.rightNode;
+    //         node.readNode(*ixFileHandle, curNodePageNum);
+    //         if (node.keys.size() == 0) {
+    //             this->curNodePageNum = node.rightNode;
+    //         }
+    //         else {
+    //             this->curIndex = 0;
+    //             this->curKey = node.keys[this->curIndex];
+    //             if(curKey < highKey) {
+    //             // return value
+    //                 curKey.toData(key);
+    //                 rid = curKey.rid;
+    //                 return 0;
+    //             }
+    //             else {
+    //                 return IX_EOF;
+    //             }
+    //         }
+    //     }
+    //     else {
+    //         return IX_EOF;
+    //     }
+    // }
+    
    
 
     // if(finished) {
@@ -1319,7 +1317,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
 //        curNodePageNum = node.rightNode;
 //    }
 
-    return -1;
+    // return -1;
 }
 
 RC IX_ScanIterator::close() {
