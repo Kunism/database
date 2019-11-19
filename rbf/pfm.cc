@@ -206,6 +206,14 @@ RC FileHandle::openFile(const std::string &fileName) {
         return 0;
     }
 }
+RC FileHandle::isOpen() {
+    if(file.is_open()) {
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
 
 RC FileHandle::closeFile() {
     hiddenPage->writeHiddenPage(file);

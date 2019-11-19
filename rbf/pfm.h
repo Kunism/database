@@ -58,7 +58,7 @@ public:
 
     RC openFile(const std::string &fileName);   // TODO: read hiddenpage
     RC closeFile();                             // TODO: wirte hiddenpage
-    
+    RC isOpen();
     unsigned getNumberOfPages();                                        // Get the number of pages in the file
     RC collectCounterValues(unsigned &readPageCount, unsigned &writePageCount,
                             unsigned &appendPageCount);                 // Put current counter values into variables
