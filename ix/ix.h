@@ -12,11 +12,12 @@ class IX_ScanIterator;
 
 class IXFileHandle;
 
-const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool)  + sizeof(AttrType) + sizeof(uint32_t) + sizeof(uint32_t);
+const uint32_t NODE_OFFSET = sizeof(uint32_t) + sizeof(bool) + sizeof(bool)  + sizeof(AttrType) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
 const uint32_t NODE_META_SIZE = sizeof(uint32_t)      //  page num
         + sizeof(bool)          //  is leaf
         + sizeof(bool)          //  is deleted
         + sizeof(AttrType)      //  attrtype
+        + sizeof(uint32_t)      //  left node
         + sizeof(uint32_t)      //  right node
         + sizeof(uint32_t)      //  key num
         + sizeof(uint32_t);     //  children num
@@ -51,6 +52,7 @@ public:
     bool isDeleted;
     AttrType attrType;
     uint32_t rightNode;
+    uint32_t leftNode;
 
     std::vector<Key> keys;
     std::vector<uint32_t> children;
@@ -61,7 +63,7 @@ public:
     ~BTreeNode();
     RC insertToLeaf(const Key &key);
     RC insertToInternal(const void *key, const int &childPageNum);
-    RC updateMetaToDisk(IXFileHandle &ixFileHandle, bool isLeafNode, bool isDeleted, uint32_t rightNode);
+    RC updateMetaToDisk(IXFileHandle &ixFileHandle, bool isLeafNode, bool isDeleted, uint32_t leftNode, uint32_t rightNode);
     RC readNode(IXFileHandle &ixFileHandle, uint32_t pageNum);
     RC writeNode(IXFileHandle &ixFileHandle);
 
@@ -100,7 +102,7 @@ public:
     BTree();
     RC insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key);
     RC createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
-            , AttrType attrType, uint32_t rightNode);
+            , AttrType attrType, uint32_t leftNode, uint32_t rightNode);
     RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const Key &key,   // insert element
                 bool &hasSplit, std::vector<std::pair<Key, uint32_t>> &pushEntries);        // return element
     RC recSearch(IXFileHandle &ixFileHandle, const Key &key, uint32_t pageNum);
