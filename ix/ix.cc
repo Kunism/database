@@ -37,8 +37,9 @@ Key::Key(const void *key, const RID &rid, AttrType attrType) {
         uint32_t strLen = 0;
         memcpy(&strLen, key, sizeof(uint32_t));
 
-        char* strBuffer = new char [strLen];
+        char* strBuffer = new char [strLen + 1];
         memcpy(strBuffer, (char*)key + sizeof(uint32_t), strLen);
+        strBuffer[strLen] = '\0';
         keyString = std::string(strBuffer);
         delete[] strBuffer;
 
@@ -73,11 +74,9 @@ Key::Key(char *data, AttrType attrType) {
         memcpy(&actualKeyLen, data, sizeof(uint32_t));
 
         //  read key
-        char* strBuffer = new char [actualKeyLen];
+        char* strBuffer = new char [actualKeyLen + 1];
         memcpy(strBuffer, data + sizeof(uint32_t), actualKeyLen);
-        std::cerr << "KEY CTOR: " <<std::endl;
-        std::cerr << strBuffer << std::endl;
-        std::cerr << actualKeyLen <<std::endl;
+        strBuffer[actualKeyLen] = '\0';
         keyString = std::string(strBuffer);
 
         //  read rid
@@ -495,7 +494,12 @@ BTree::BTree() {
 }
 
 RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key) {
-    
+
+
+
+    std::cerr << "InsertEntry: " << key.keyString << std::endl;
+
+
     // std::cerr << "BTree:Insert: " << key << std::endl;
     if(rootPageNum == -1) {  // no root
         BTreeNode root;
@@ -1019,6 +1023,12 @@ void IndexManager::recursivePrint(IXFileHandle &ixFileHandle, uint32_t pageNum, 
 {
     BTreeNode btNode;
     btNode.readNode(ixFileHandle, pageNum);
+
+    for(int i = 0; i < btNode.keys.size(); i++) {
+        std::cerr << btNode.keys[i].keyString << std::endl;
+    }
+
+
     std::cerr << std::setw(4*depth) << "" << "node num: " << btNode.pageNum <<std::endl;
     std::cout << std::setw(4*depth) << "" << "{\"keys\": [";
     
