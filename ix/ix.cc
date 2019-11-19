@@ -497,7 +497,7 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
 
 
 
-    std::cerr << "InsertEntry: " << key.keyString << std::endl;
+    // std::cerr << "InsertEntry: " << key.keyString << std::endl;
 
 
     // std::cerr << "BTree:Insert: " << key << std::endl;
@@ -1166,7 +1166,7 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
         this->highKey = Key(_highKey, highRID, attribute.type);
     }
 
-      std::cerr << "INIT" << std::endl;
+    std::cerr << "INIT" << std::endl;
     std::cerr << lowKey << ' ' << lowKey.rid << std::endl;
     std::cerr << highKey << ' ' << highKey.rid << std::endl;
 
@@ -1219,26 +1219,26 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
         }
    }
 
+
    
    
-   if(this->curIndex < node.keys.size() && !(this->curKey == node.keys[this->curIndex])) {
-        this->curKey = node.keys[this->curIndex];
-        if(curKey < highKey) {
-            curKey.toData(key);
-            rid = curKey.rid;
-            return 0;
-        }
-        else {
-            return IX_EOF;
-        }
-   }
+//    if(this->curIndex < node.keys.size() && !(this->curKey == node.keys[this->curIndex])) {
+//         this->curKey = node.keys[this->curIndex];
+//         if(curKey < highKey) {
+//             curKey.toData(key);
+//             rid = curKey.rid;
+//             return 0;
+//         }
+//         else {
+//             return IX_EOF;
+//         }
+//    }
     
     // next element 
     while(true) {
         if (this->curNodePageNum == -1) {
             return IX_EOF;
         }
-
         node.readNode(*ixFileHandle,curNodePageNum);
         int nextIndex = node.searchKey(curKey);
         if( nextIndex != node.keys.size()) {
