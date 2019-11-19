@@ -481,7 +481,7 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
         // can use general insert instead.
 
         root.insertToLeaf(key);
-        root.updateMetaToDisk(ixFileHandle, root.isLeafNode, root.isDeleted, root.rightNode);
+        root.updateMetaToDisk(ixFileHandle, root.isLeafNode, root.isDeleted, root.leftNode, root.rightNode);
         
     }
     else {
@@ -528,7 +528,121 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
 }
 
 RC BTree::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key) {
+    if (this->rootPageNum == -1) {
+        std::cerr << "No Root" <<std::endl;
+        return -1;
+    }
+    else {
+        bool isUpdated = false;
+        bool isDeleted = false;
+        Key updateKey;
+        recDelete(ixFileHandle, rootPageNum, key, isUpdated, isDeleted, updateKey);
 
+        // root need no update
+        // root may need to be deleted.
+    }
+}
+
+
+RC BTree::recDelete(IXFileHandle &ixFileHandle, uint32_t pageNum, const Key &tar, bool &isUpdated, bool &isDeleted, Key &updateKey) {
+    BTreeNode node;
+    node.readNode(ixFileHandle, pageNum);
+
+
+    if(node.isLeafNode) {
+        int deleteIndex = -1;
+        for(int i = 0 ; i < node.keys.size() ; i++) {
+            if(node.keys[i] == tar) {
+                deleteIndex = i;
+                break;
+            }
+        }
+
+        if(deleteIndex != -1) {
+            if (deleteIndex == 0) {
+                if(node.keys.size() == 1) {
+                    if( node.leftNode != -1) {
+                        BTreeNode leftNode;
+                        leftNode.readNode(ixFileHandle, node.leftNode);
+                        leftNode.rightNode = node.rightNode;
+                        leftNode.writeNode(ixFileHandle);
+                    }
+
+                    if( node.rightNode != -1) {
+                        BTreeNode rightNode;
+                        rightNode.readNode(ixFileHandle, node.rightNode);
+                        rightNode.leftNode = node.leftNode;
+                        rightNode.writeNode(ixFileHandle);
+                    
+                    }
+                    // node.deleteKey(deleteIndex);
+                    node.isDeleted = true;
+                    node.writeNode(ixFileHandle);
+                }
+                else {
+                    updateKey = node.keys[deleteIndex+1];
+                    isUpdated = true;
+                    node.deleteKey(deleteIndex);
+                    node.writeNode(ixFileHandle);
+                    return 0;
+                }
+            }
+            else {
+                node.deleteKey(deleteIndex);
+                node.writeNode(ixFileHandle);
+            }
+        }
+
+    }
+    else {
+        int childIndex = node.searchKey(tar);
+        uint32_t childPageNum = node.children[childIndex];
+        recDelete(ixFileHandle, childPageNum, tar, isUpdated, isDeleted, updateKey);
+
+        if(isUpdated) {
+            if( childIndex == 0) {
+                return 0;
+            }
+            else if (childIndex == 1) {
+                node.keys[0] = updateKey;
+                isUpdated = false;
+                return 0;
+            }
+            else {
+                node.keys[childIndex-1] = updateKey;
+                isUpdated = false;
+                return 0;
+            }
+        }
+        else if (isDeleted) {
+            if (childIndex == 0 && node.keys.size() != 1) {
+                updateKey = node.keys[0];
+                node.deleteKey(0);
+                node.deleteChild(0);
+                isDeleted = false;
+                isUpdated = true;
+                return 0;
+            }
+            else if (childIndex == 1 && node.keys.size() != 1) {
+                node.deleteKey(0);
+                node.deleteChild(1);
+                isDeleted = false;
+                return 0;
+            }
+            else if (childIndex == 0) {
+
+            }
+            else if (childIndex == 1) {
+
+            }
+            else {
+                node.deleteKey(childIndex-1);
+                node.deleteChild(childIndex);
+                isDeleted = false;
+                return 0;
+            }
+        }
+    }
 }
 
 RC BTree::createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageNum, bool isLeafNode, bool isDeleted
@@ -641,7 +755,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
             uint32_t newNodePageNum = totalPageNum;
             createNode(ixFileHandle, newNode, newNodePageNum, true, false, this->attrType, node.pageNum, node.rightNode);
             updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
-            node.updateMetaToDisk(ixFileHandle, node.isLeafNode, node.isDeleted, newNodePageNum);
+            node.updateMetaToDisk(ixFileHandle, node.isLeafNode, node.isDeleted, node.leftNode, newNodePageNum);
             // prepare for upKey;
             pushEntries.push_back({temp[startIndex], newNodePageNum});
             // std::cerr << "startIndex = " << startIndex << std::endl;
@@ -657,7 +771,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                     newNodePageNum = totalPageNum;
                     uint32_t oldRightNode = newNode.rightNode;
                     uint32_t oldLeftNode = newNode.pageNum;
-                    newNode.updateMetaToDisk(ixFileHandle, newNode.isLeafNode, newNode.isDeleted, newNodePageNum);
+                    newNode.updateMetaToDisk(ixFileHandle, newNode.isLeafNode, newNode.isDeleted, newNode.leftNode, newNodePageNum);
                     createNode(ixFileHandle, newNode, newNodePageNum, true, false, this->attrType, oldLeftNode, oldRightNode);
                     updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
                     // prepare for upKey;
@@ -961,7 +1075,8 @@ void IndexManager::recursivePrint(IXFileHandle &ixFileHandle, uint32_t pageNum, 
             std::cout << ",";
         }
     }
-    // std::cerr << "right Node: " << btNode.rightNode;
+    // std::cerr << "Left Node: " << btNode.leftNode;
+    // std::cerr << "  Right Node: " << btNode.rightNode;
     std::cout << "]"; 
     
     if(!btNode.isLeafNode)

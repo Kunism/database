@@ -106,6 +106,8 @@ public:
             , AttrType attrType, uint32_t leftNode, uint32_t rightNode);
     RC recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const Key &key,   // insert element
                 bool &hasSplit, std::vector<std::pair<Key, uint32_t>> &pushEntries);        // return element
+    RC recDelete(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, const Key &key,
+                 bool &isUpdated, bool &isDeleted, Key &updateKey);
     RC recSearch(IXFileHandle &ixFileHandle, const Key &key, uint32_t pageNum);
     RC readBTreeHiddenPage(IXFileHandle &ixFileHandle);
     RC updateHiddenPageToDisk(IXFileHandle &ixFileHandle, uint32_t rootPageNum, uint32_t totalPageNum, AttrType attrType);
