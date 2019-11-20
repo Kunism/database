@@ -1015,7 +1015,9 @@ RC IndexManager::scan(IXFileHandle &ixFileHandle,
                       IX_ScanIterator &ix_ScanIterator) {
 
     RC rc = 0;
-    rc |= ix_ScanIterator.init(ixFileHandle, attribute, lowKey, highKey, lowKeyInclusive, highKeyInclusive);
+    if( ix_ScanIterator.init(ixFileHandle, attribute, lowKey, highKey, lowKeyInclusive, highKeyInclusive) != 0 ) {
+        return -1;
+    }
 
 
     return rc;
@@ -1026,21 +1028,8 @@ void IndexManager::printBtree(IXFileHandle &ixFileHandle, const Attribute &attri
     BTree bTree;
     bTree.readBTreeHiddenPage(ixFileHandle);
 
-    //  BTreeNode root;
-    //  std::cerr << "totalPageNum = " << bTree.totalPageNum << std::endl;
-    //  std::cerr << "rootPageNum = " << bTree.rootPageNum << std::endl;
-    //  root.readNode(ixFileHandle, bTree.rootPageNum);
-    //  std::cerr << "curKeyNum = " << root.keys.size() << std::endl;
-    //  for(int i = 0; i < root.keys.size(); i++) {
-    //      std::cerr << "Key = " << root.keys[i] << " ";
-    //  }
-    //  std::cerr << std::endl;
-
-    // root.printKey();
-    // root.printRID();
     recursivePrint(ixFileHandle, bTree.rootPageNum, 0);
     std::cout << std::endl;
-
 }
 
 void IndexManager::recursivePrint(IXFileHandle &ixFileHandle, uint32_t pageNum, int depth) const
@@ -1048,14 +1037,8 @@ void IndexManager::recursivePrint(IXFileHandle &ixFileHandle, uint32_t pageNum, 
     BTreeNode btNode;
     btNode.readNode(ixFileHandle, pageNum);
 
-    for(int i = 0; i < btNode.keys.size(); i++) {
-        std::cerr << btNode.keys[i].keyString << std::endl;
-    }
 
-
-    std::cerr << std::setw(4*depth) << "" << "node num: " << btNode.pageNum <<std::endl;
     std::cout << std::setw(4*depth) << "" << "{\"keys\": [";
-    
     for(int i = 0 ; i < btNode.keys.size() ; i++) {
         std::cout << "\"" <<    btNode.keys[i];
         if(btNode.isLeafNode) {
@@ -1067,8 +1050,6 @@ void IndexManager::recursivePrint(IXFileHandle &ixFileHandle, uint32_t pageNum, 
             std::cout << ",";
         }
     }
-    std::cerr << "Left Node: " << btNode.leftNode;
-    std::cerr << "  Right Node: " << btNode.rightNode;
     std::cout << "]"; 
     
     if(!btNode.isLeafNode)
@@ -1076,7 +1057,6 @@ void IndexManager::recursivePrint(IXFileHandle &ixFileHandle, uint32_t pageNum, 
         std::cout << "," <<std::endl;
         std::cout << std::setw(4*depth) << "" << "\"children\":[" << std::endl;
 
-        // std::cerr <<"WARNING: " << btNode.children.size() << std::endl;
         for(int i = 0 ; i < btNode.children.size() ; i++) {
             BTreeNode bt;
             bt.readNode(ixFileHandle,btNode.children[i]);
@@ -1117,7 +1097,7 @@ IX_ScanIterator::~IX_ScanIterator() {
 RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribute, const void *_lowKey,
                          const void *_highKey, bool _lowKeyInclusive, bool _highKeyInclusive) {
     if(_ixFileHandle.fileHandle.isOpen() != 0) {
-        std::cerr << "WHATTTTTR" << std::endl;
+        // std::cerr << "file open error" <<std::endl;
         return -1;
     }
     
@@ -1190,9 +1170,9 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
         this->highKey = Key(_highKey, highRID, attribute.type);
     }
 
-    std::cerr << "INIT" << std::endl;
-//    std::cerr << lowKey << ' ' << lowKey.rid << std::endl;
-//    std::cerr << highKey << ' ' << highKey.rid << std::endl;
+    // std::cerr << "INIT" << std::endl;
+    // std::cerr << lowKey  << ' ' << lowKey.rid << std::endl;
+    // std::cerr << highKey << ' '<< highKey.rid << std::endl;
 
 
     if( bTree.readBTreeHiddenPage(*ixFileHandle) != 0) {
@@ -1205,8 +1185,12 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
 
 
     this->curIndex = 0;
+    
+    this->curKey = Key{};
+
     if(node.keys.size()>0 && !(node.keys[0] < lowKey)) {
         firstValid = true;
+        curKey = lowKey;
         return 0;
     }
 
@@ -1220,6 +1204,7 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
         }
     }
 
+    // std::cerr << ixFileHandle << ' ' << attribute.type << ' ' <<  lowKey << " " <<  curKey << ' ' <<  highKey << ' ' << lowKeyInclusive << ' ' << highKeyInclusive << ' '  << curNodePageNum << ' ' << curIndex  << ' ' << firstValid  << std::endl;
   
 
     return 0;
@@ -1229,9 +1214,11 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
     BTreeNode node;
     node.readNode(*ixFileHandle, curNodePageNum);
 
+    
 
     if(firstValid) {
        this->curKey = node.keys[this->curIndex];
+    //    std::cerr << curKey << " v.s " << highKey << ' ' << (curKey < highKey) << std::endl;
        if(curKey < highKey) {
             curKey.toData(key);
             rid = curKey.rid;
@@ -1267,6 +1254,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
         int nextIndex = node.searchKey(curKey);
         if( nextIndex != node.keys.size()) {
             this->curKey = node.keys[nextIndex];
+            // std::cerr << curKey << " v.s " << highKey << ' ' << (curKey < highKey) << std::endl;
             if(curKey < highKey) {
             // return value
                 curKey.toData(key);
@@ -1285,30 +1273,29 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
         
         
         
-    //     if (node.rightNode != -1) {
-    //         this->curNodePageNum = node.rightNode;
-    //         node.readNode(*ixFileHandle, curNodePageNum);
-    //         if (node.keys.size() == 0) {
-    //             this->curNodePageNum = node.rightNode;
-    //         }
-    //         else {
-    //             this->curIndex = 0;
-    //             this->curKey = node.keys[this->curIndex];
-    //             if(curKey < highKey) {
-    //             // return value
-    //                 curKey.toData(key);
-    //                 rid = curKey.rid;
-    //                 return 0;
-    //             }
-    //             else {
-    //                 return IX_EOF;
-    //             }
-    //         }
-    //     }
-    //     else {
-    //         return IX_EOF;
-    //     }
-    // }
+        // if (node.rightNode != -1) {
+        //     this->curNodePageNum = node.rightNode;
+        //     node.readNode(*ixFileHandle, curNodePageNum);
+        //     if (node.keys.size() == 0) {
+        //         this->curNodePageNum = node.rightNode;
+        //     }
+        //     else {
+        //         this->curIndex = 0;
+        //         this->curKey = node.keys[this->curIndex];
+        //         if(curKey < highKey) {
+        //         // return value
+        //             curKey.toData(key);
+        //             rid = curKey.rid;
+        //             return 0;
+        //         }
+        //         else {
+        //             return IX_EOF;
+        //         }
+        //     }
+        // }
+        // else {
+        //     return IX_EOF;
+        // }
     
    
 
