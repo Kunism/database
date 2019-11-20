@@ -297,6 +297,9 @@ RC BTreeNode::readNode(IXFileHandle &ixFileHandle, uint32_t _pageNum) {
 }
 
 RC BTreeNode::writeNode(IXFileHandle &ixFileHandle) {
+
+//    std::cerr << "BTreeNode::WriteNode getFreeSpace = " << getFreeSpace() << std::endl;
+//    std::cerr << "IsLeafNode = " << isLeafNode << std::endl;
     memset(page, 0, PAGE_SIZE);
 
     uint32_t offset = 0;
@@ -701,13 +704,27 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
         if(node.getFreeSpace() > key.size()) {
             node.insertToLeaf(key);
 
-
+//            std::cerr << "================================"<< std::endl;
+//            std::cerr << "start" << std::endl;
             node.writeNode(ixFileHandle);
             hasSplit = false;
+//            std::cerr << "free space: \t" <<node.getFreeSpace()  << std::endl;
+//            std::cerr << "================================"<< std::endl;
             return 0;
         }
         else {
             // std::cerr << "BTree:recInsert NEED SPLIT!!  "  << std::endl;
+
+
+            BTreeNode newNode;
+            uint32_t newNodePageNum = totalPageNum;
+            uint32_t oldRightNodePageNum = newNodePageNum;
+            createNode(ixFileHandle, newNode, newNodePageNum, true, false, this->attrType, node.pageNum, node.rightNode);
+            updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
+            node.updateMetaToDisk(ixFileHandle, node.isLeafNode, node.isDeleted, node.leftNode, newNodePageNum);
+
+
+
             uint32_t insertPos = node.searchKey(key);
             node.insertKey(key, insertPos);
 
@@ -719,11 +736,8 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                 totalSize += node.keys[startIndex].size();
             }
 
-            BTreeNode newNode;
-            uint32_t newNodePageNum = totalPageNum;
-            createNode(ixFileHandle, newNode, newNodePageNum, true, false, this->attrType, node.pageNum, node.rightNode);
-            updateHiddenPageToDisk(ixFileHandle, rootPageNum, totalPageNum+1, attrType);
-            node.updateMetaToDisk(ixFileHandle, node.isLeafNode, node.isDeleted, node.leftNode, newNodePageNum);
+
+
             // prepare for upKey;
             pushEntries.push_back({node.keys[startIndex], newNodePageNum});
             // std::cerr << "startIndex = " << startIndex << std::endl;
@@ -747,7 +761,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                     newNode.insertToLeaf(node.keys[i]);
                 }
             }
-            
+
             newNode.writeNode(ixFileHandle);
             // delete overflow keys in vector   
 
@@ -767,6 +781,8 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
             // for(auto i : pushEntries) {
             //     std::cerr << "KEY: " << i.first << ' ' << "CHILD: " << i.second << std::endl;
             // }
+
+//            std::cerr << node.getFreeSpace() << "\tv.s.\t" << newNode.getFreeSpace() << std::endl;
             return 0;
         }
     }
@@ -1175,8 +1191,8 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
     }
 
     std::cerr << "INIT" << std::endl;
-    std::cerr << lowKey << ' ' << lowKey.rid << std::endl;
-    std::cerr << highKey << ' ' << highKey.rid << std::endl;
+//    std::cerr << lowKey << ' ' << lowKey.rid << std::endl;
+//    std::cerr << highKey << ' ' << highKey.rid << std::endl;
 
 
     if( bTree.readBTreeHiddenPage(*ixFileHandle) != 0) {
