@@ -1186,7 +1186,7 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
 
     this->curIndex = 0;
     
-    this->curKey = Key{};
+    this->curKey = lowKey;
 
     if(node.keys.size()>0 && !(node.keys[0] < lowKey)) {
         firstValid = true;
