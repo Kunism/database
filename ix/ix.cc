@@ -1185,24 +1185,28 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
 
 
     this->curIndex = 0;
-    
-    this->curKey = Key{};
+    this->curKey = lowKey;
 
-    if(node.keys.size()>0 && !(node.keys[0] < lowKey)) {
-        firstValid = true;
-        curKey = lowKey;
-        return 0;
-    }
-
-    for(int i = 0 ; i < node.keys.size() ; i++) {
-        // take last '<' or first '>='  ?
-        // currently take last '<'
-        if(node.keys[i] < lowKey)
-        {
-            this->curIndex = i;
-            curKey = node.keys[i];
+    if(lowKeyInclusive) {
+        if(node.keys.size()>0 && !(node.keys[0] < lowKey)) {
+            firstValid = true;
+            curKey = node.keys[0];
+            return 0;
+        }
+        for(int i = 0 ; i < node.keys.size() ; i++) {
+            // take last '<' or first '>='  ?
+            // currently take last '<'
+            if(node.keys[i] < lowKey)
+            {
+                this->curIndex = i;
+                curKey = node.keys[i];
+            }
         }
     }
+
+    
+
+    
 
     // std::cerr << ixFileHandle << ' ' << attribute.type << ' ' <<  lowKey << " " <<  curKey << ' ' <<  highKey << ' ' << lowKeyInclusive << ' ' << highKeyInclusive << ' '  << curNodePageNum << ' ' << curIndex  << ' ' << firstValid  << std::endl;
   
