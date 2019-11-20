@@ -1,34 +1,76 @@
 1. Basic information
-Team number (e.g., 01) : 
-#1 Student ID : 
-#1 Student Name : 
-#2 Student ID : 
-#2 Student Name : 
-OS (bit) :
-gcc version :
+Team number (e.g., 01) : 11
+#1 Student ID : 92968380
+#1 Student Name : Cheng-Liang Hsieh
+#2 Student ID : 66927079
+#2 Student Name : Po-Wei Huang
+OS (bit) : CentOS Linux 7 x86_64
+gcc version : GCC - 5.4
 
 
 2. Meta-data page in an index file
 - Show your meta-data page of an index design if you have any. 
 
+Hidden Page in index file:
+
+Hidden Page				uint32_t
+READ_PAGE_COUNTER		uint32_t
+WRITE_PAGE_COUNTER		uint32_t
+APPEND_PAGE_COUNTER	    uint32_t
+PAGE_NUM				uint32_t
+ROOT_PAGE_NUM			uint32_t
+TOTAL_PAGE_NUM			uint32_t
+ATTRTYPE				uint32_t
+
 
 3. Index Entry Format
 - Show your index entry design (structure). 
+
+|----------------|
+| {Key, RID}     |
+|----------------|
+| Child Page Num |
+|----------------|
 
 
 4. Page Format
 - Show your internal-page (non-leaf node) design.
 
+|------------------------------------------------------------------------------|
+| ageNum | isLeafNode | isDeleted | attrType | rightNode | leftNode | KeyNum   |
+|------------------------------------------------------------------------------|
+| List of Keys -------------------->                                           |
+|------------------------------------------------------------------------------|
+
 - Show your leaf-page (leaf node) design.
+
+|------------------------------------------------------------------------------|
+| ageNum | isLeafNode | isDeleted | attrType | rightNode | leftNode | KeyNum   |
+|------------------------------------------------------------------------------|
+| List of Keys -------------------->                                           |
+|------------------------------------------------------------------------------|
+|                                                                              |
+|------------------------------------------------------------------------------|
+|                                                                              |
+|------------------------------------------------------------------------------|
+|                   <------------------  List of Child Page Num  |  Child Num  |
+|------------------------------------------------------------------------------|
 
 
 5. Implementation Detail
 - Have you added your own source file (.cc or .h)?
 
+No.
+
 - Have you implemented non-lazy deletion? Choose Yes or No: 
+
+No.
 
 - Have you implemented duplicated key handling that can span multiple pages? Choose Yes or No: 
   If yes, please explain briefly how you have implemented this feature.
+
+Yes, in order to handle duplicated key issues, we use a composite key which include actual key and RID to identify
+each node in search procedure.
 
 - Other implementation details:
 
