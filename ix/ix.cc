@@ -107,10 +107,17 @@ bool Key::operator<(const Key &k) const {
         else res = this->keyFloat < k.keyFloat;
     }
     else if(attrType == TypeVarChar) {
-        if(this->keyString.length() == k.keyString.length()) {
-            res = !strcmp(this->keyString.c_str(), k.keyString.c_str());
+        if(keyString == k.keyString) {
+            if(this->rid.pageNum == k.rid.pageNum) {
+                res = this->rid.slotNum < k.rid.slotNum;
+            }
+            else res = this->rid.pageNum < k.rid.pageNum;
         }
-        else res = this->keyString.length() < k.keyString.length();
+        else res =  keyString < k.keyString;
+        // if(this->keyString.length() == k.keyString.length()) {
+        //     res = !strcmp(this->keyString.c_str(), k.keyString.c_str());
+        // }
+        // else res = this->keyString.length() < k.keyString.length();
     }
 
     return res;
@@ -744,6 +751,7 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
             newNode.writeNode(ixFileHandle);
             // delete overflow keys in vector   
 
+            // std::cerr << "recInsert:START INDEX: " << startIndex << " " << node.keys.size() << std::endl;
             while(node.keys.size() > startIndex)
             {
                 node.keys.pop_back();
