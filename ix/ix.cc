@@ -569,7 +569,7 @@ RC BTree::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, co
 
 RC BTree::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const Key &key) {
     if (this->rootPageNum == -1) {
-        std::cerr << "No Root" <<std::endl;
+        // std::cerr << "No Root" <<std::endl;
         return -1;
     }
     else {
@@ -650,7 +650,7 @@ RC BTree::createNode(IXFileHandle &ixFileHandle, BTreeNode &node, uint32_t pageN
     offset += sizeof(uint32_t);
 
     if(offset + sizeof(uint32_t) != NODE_OFFSET) {
-        std::cerr << "Memcpy Error in BTree::createNode" << std::endl;
+        // std::cerr << "Memcpy Error in BTree::createNode" << std::endl;
     }
 
     //  update hiddenPage
@@ -697,24 +697,15 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
 
     BTreeNode node;
     node.readNode(ixFileHandle, nodePageNum);
-    // std::cerr << "BTree:recInsert " <<  node.pageNum << std::endl;
     if(node.isLeafNode) {  
-        // std::cerr << "BTree:recInsert Leaf" << std::endl;
-        // std::cerr << "FREE: " << node.getFreeSpace() << " " << "KEY SIZE: " << key.size() <<std::endl;
         if(node.getFreeSpace() > key.size()) {
             node.insertToLeaf(key);
 
-//            std::cerr << "================================"<< std::endl;
-//            std::cerr << "start" << std::endl;
             node.writeNode(ixFileHandle);
             hasSplit = false;
-//            std::cerr << "free space: \t" <<node.getFreeSpace()  << std::endl;
-//            std::cerr << "================================"<< std::endl;
             return 0;
         }
         else {
-            // std::cerr << "BTree:recInsert NEED SPLIT!!  "  << std::endl;
-
 
             BTreeNode newNode;
             uint32_t newNodePageNum = totalPageNum;
@@ -740,8 +731,6 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
 
             // prepare for upKey;
             pushEntries.push_back({node.keys[startIndex], newNodePageNum});
-            // std::cerr << "startIndex = " << startIndex << std::endl;
-            // std::cerr << "Up Key: " << temp[startIndex].keyInt << "\t Net Node Page Num: " << newNodePageNum << std::endl;
 
             for(int i = startIndex ; i < node.keys.size() ; i++)
             {
@@ -777,12 +766,6 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
             // indexManager.printBtree(ixFileHandle, {"aaa",TypeInt,4});
 
             hasSplit = true;
-            // std::cerr << "LEAF NODE SPLIT: " << std::endl;
-            // for(auto i : pushEntries) {
-            //     std::cerr << "KEY: " << i.first << ' ' << "CHILD: " << i.second << std::endl;
-            // }
-
-//            std::cerr << node.getFreeSpace() << "\tv.s.\t" << newNode.getFreeSpace() << std::endl;
             return 0;
         }
     }
@@ -822,17 +805,6 @@ RC BTree::recInsert(IXFileHandle &ixFileHandle, const uint32_t nodePageNum, cons
                 }
                 pushEntries.clear();
 
-                // for(auto i : node.keys) {
-                //     std::cerr << i << ' ';
-                // }
-                // std::cerr << std::endl;
-
-                // for( auto i : node.children) {
-                //     std::cerr << i << ' ';
-                // }
-
-                // std::cerr << std::endl;
-                
                 
                 // split index
                 int pushIndex = 0;
@@ -919,7 +891,7 @@ RC BTree::readBTreeHiddenPage(IXFileHandle &ixFileHandle) {
     // memset(hiddenPage, 0, PAGE_SIZE);
     unsigned data[HIDDEN_PAGE_VAR_NUM];
     if( ixFileHandle.fileHandle.readBTreeHiddenPage(data) != 0) {
-        std::cerr << "ReadPage fail in BTree::readBTree." << std::endl;
+        // std::cerr << "ReadPage fail in BTree::readBTree." << std::endl;
         return -1;
     }
 
@@ -980,11 +952,11 @@ RC IndexManager::closeFile(IXFileHandle &ixFileHandle) {
 RC IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
     BTree bTree;
     if(bTree.readBTreeHiddenPage(ixFileHandle) != 0) {
-        std::cerr << "IndexManager: read Hidden page fail" <<std::endl; 
+        // std::cerr << "IndexManager: read Hidden page fail" <<std::endl; 
         return -1;
     }
     if( bTree.insertEntry(ixFileHandle, attribute, Key(key, rid, attribute.type))) {
-        std::cerr << "IndexManager: Insert fail" <<std::endl; 
+        // std::cerr << "IndexManager: Insert fail" <<std::endl; 
         return -1;
     }
     //rc |= bTree.writeBTree(ixFileHandle);
@@ -994,7 +966,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixFileHandle, const Attribute &attrib
 RC IndexManager::deleteEntry(IXFileHandle &ixFileHandle, const Attribute &attribute, const void *key, const RID &rid) {
     BTree bTree;
     if( bTree.readBTreeHiddenPage(ixFileHandle) != 0) {
-        std::cerr << "IndexManager: read Hidden page fail" <<std::endl; 
+        // std::cerr << "IndexManager: read Hidden page fail" <<std::endl; 
         return -1;
     }
 
@@ -1208,7 +1180,6 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
 
     
 
-    // std::cerr << ixFileHandle << ' ' << attribute.type << ' ' <<  lowKey << " " <<  curKey << ' ' <<  highKey << ' ' << lowKeyInclusive << ' ' << highKeyInclusive << ' '  << curNodePageNum << ' ' << curIndex  << ' ' << firstValid  << std::endl;
   
 
     return 0;
