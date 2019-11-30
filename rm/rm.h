@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "../ix/ix.h"
 #include "../rbf/rbfm.h"
 
 # define RM_EOF (-1)  // end of a scan operator
@@ -18,7 +19,7 @@ public:
     // "data" follows the same format as RelationManager::insertTuple()
     RC getNextTuple(RID &rid, void *data);
 
-    RC close() { return -1; };
+    RC close();
 
     RBFM_ScanIterator rbfmScanIterator;
     FileHandle fileHandle;
@@ -32,7 +33,9 @@ public:
 
     // "key" follows the same format as in IndexManager::insertEntry()
     RC getNextEntry(RID &rid, void *key) { return RM_EOF; };    // Get next matching entry
-    RC close() { return -1; };                        // Terminate index scan
+    RC close();                        // Terminate index scan
+    IX_ScanIterator ixScan_it;
+    IXFileHandle ixFileHandle;
 };
 
 // Relation Manager
@@ -64,6 +67,9 @@ public:
 
     RC readAttribute(const std::string &tableName, const RID &rid, const std::string &attributeName, void *data);
 
+    RC insertIndexes(const std::string &tableName, const void *data, const RID &rid);
+
+    RC deleteIndexes(const std::string &tableName, const void *data, const RID &rid);
     // Scan returns an iterator to allow the caller to go through the results one by one.
     // Do not store entire results in the scan iterator.
     RC scan(const std::string &tableName,
@@ -78,7 +84,7 @@ public:
 
     void columnformat(int tableId, Attribute attribute, int columnPos, uint8_t* data);
 
-
+    void indexformat(std::string tableName, std::string attrName, uint8_t* data);
 
 
 
@@ -90,9 +96,14 @@ public:
     RC dropAttribute(const std::string &tableName, const std::string &attributeName);
 
 
-    void getRecordDescriptor(const std::string &tableName, std::vector<Attribute> &recordDescriptor);
+
+
+    // void getRecordDescriptor(const std::string &tableName, std::vector<Attribute> &recordDescriptor);
     void prepareString(const std::string &s, uint8_t* data);
+    std::string decodeString(uint8_t* data);
+    
     void prepareInt(const int i, uint8_t* data);
+    
     void tableCountInit(int count);
     void addTableCount();
     int getTableCount();
@@ -121,11 +132,13 @@ protected:
 private:
 
 
+    static const int m_indexDataSize = 108 + 1;    
     static const int m_tableDataSize = 112 + 1;
-    static const int m_columnDataSize = 70 + 1;  
+    static const int m_columnDataSize = 70 + 1;
     static RelationManager *_relation_manager;
-    static const std::vector<Attribute> m_tablesDescriptor;
 
+    static const std::vector<Attribute> m_indexDescriptor;
+    static const std::vector<Attribute> m_tablesDescriptor;
     static const std::vector<Attribute> m_collumnsDescriptor;
 };
 
