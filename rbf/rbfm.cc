@@ -399,7 +399,11 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vecto
     DataPage initPage(buffer);
 
     std::pair<uint16_t, uint16_t> indexPair = initPage.getIndexPair(rid.slotNum);
-    
+
+    // this record has been deleted
+    if (indexPair.second == 0) {
+        return -1;
+    }
     if(!initPage.isRecord(fileHandle,rid)) {
         Tombstone tombstone;
         initPage.readTombstone(tombstone, rid);
@@ -697,23 +701,26 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
         uint32_t recordLength = 0;
         uint32_t conditionLength = 0;
 
-        char* recordBuffer = new char[recordLength + 1];
-        char* conditionBuffer = new char[conditionLength + 1];
 
         memcpy(&recordLength, recordValue, sizeof(uint32_t));
         memcpy(&conditionLength, conditionValue, sizeof(uint32_t));
+        
+        char* recordBuffer = new char[recordLength + 1];
+        char* conditionBuffer = new char[conditionLength + 1];
 
         memset(recordBuffer, recordLength + 1, 0);
         memset(conditionBuffer, conditionLength + 1, 0);
 
         memcpy(recordBuffer, recordValue + sizeof(uint32_t), recordLength);
         memcpy(conditionBuffer, conditionValue + sizeof(uint32_t), conditionLength);
-
+        
         recordBuffer[recordLength] = '\0';
         conditionBuffer[conditionLength] = '\0';
 
         std::string record(recordBuffer);
         std::string condition(conditionBuffer);
+        
+
 
         delete[] recordBuffer;
         delete[] conditionBuffer;
