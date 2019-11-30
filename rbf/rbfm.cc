@@ -78,7 +78,8 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
 
     while(!foundMatchRecord) {
         char* pageBuffer = new char [PAGE_SIZE];
-
+        memset(pageBuffer, 0, PAGE_SIZE);
+        
         fileHandle->readPage(currentPageNum, pageBuffer);
         DataPage page(pageBuffer);
         delete[] pageBuffer;
@@ -605,6 +606,7 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vect
     Record record(recordDescriptor, recordBuffer, rid);
 
     //  Get Attribute
+    
     record.getAttribute(attributeName, recordDescriptor, data);
 
     delete[] pageBuffer;
@@ -713,7 +715,7 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
 
         memcpy(recordBuffer, recordValue + sizeof(uint32_t), recordLength);
         memcpy(conditionBuffer, conditionValue + sizeof(uint32_t), conditionLength);
-        
+
         recordBuffer[recordLength] = '\0';
         conditionBuffer[conditionLength] = '\0';
 
@@ -895,15 +897,15 @@ DataPage::DataPage(const void* data) {
     page = new uint8_t [PAGE_SIZE];
     memcpy(page, data, PAGE_SIZE);
     
-    pageHeader = new std::pair<uint16_t , uint16_t> [var[SLOT_NUM]];
-    memcpy(pageHeader, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM - 
-                        sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM],
-                        sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM]);
+    // pageHeader = new std::pair<uint16_t , uint16_t> [var[SLOT_NUM]];
+    // memcpy(pageHeader, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM - 
+    //                     sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM],
+    //                     sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM]);
 
 }
 
 DataPage::~DataPage() {
-    delete[] pageHeader;
+    // delete[] pageHeader;
     delete[] page;
 }
 
