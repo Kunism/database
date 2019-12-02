@@ -3,9 +3,9 @@
 
 void prepareKeyAndRid(const unsigned count, const unsigned i, char *key, RID &rid) {
     *(int *) key = count;
-    for (unsigned j = 0; j < count; j++) {
-        *(key + 4 + j) = 96 + i;
-    }
+
+    *(key + 4) = 96 + i;
+
     rid.pageNum = i;
     rid.slotNum = i;
 }
@@ -13,7 +13,7 @@ void prepareKeyAndRid(const unsigned count, const unsigned i, char *key, RID &ri
 int testCase_Private_Extra_2(const std::string &indexFileName,
                              const Attribute &attribute) {
     // Checks whether the deletion is properly managed (non-lazy deletion)
-    std::cerr << std::endl << "***** In IX Private Extra Test Case 02 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Private Extra Test Case 02 *****" << std::endl;
 
     RID rid;
     IXFileHandle ixFileHandle;
@@ -59,7 +59,7 @@ int testCase_Private_Extra_2(const std::string &indexFileName,
     rc = indexManager.deleteEntry(ixFileHandle, attribute, key, rid);
     assert(rc == success && "indexManager::deleteEntry() should not fail.");
 
-    std::cerr << std::endl << std::endl << "/////////////////" << std::endl << std::endl;
+    std::cout << std::endl << std::endl << "/////////////////" << std::endl << std::endl;
     indexManager.printBtree(ixFileHandle, attribute);
 
     // Close Index
@@ -85,10 +85,10 @@ int main() {
     indexManager.destroyFile(indexEmpNameFileName);
 
     if (testCase_Private_Extra_2(indexEmpNameFileName, attrEmpName) == success) {
-        std::cerr << "IX_Test Private Extra Case 02 finished. The result will be examined." << std::endl;
+        std::cout << "IX_Test Private Extra Case 02 finished. The result will be examined." << std::endl;
         return success;
     } else {
-        std::cerr << "IX_Test Private Extra Case 02 failed." << std::endl;
+        std::cout << "IX_Test Private Extra Case 02 failed." << std::endl;
         return fail;
     }
 

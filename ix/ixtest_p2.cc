@@ -25,7 +25,7 @@ int testCase_p2(const std::string &indexFileName1, const std::string &indexFileN
     // insert 20,000 entries to two indexes
     // scan
 
-    std::cerr << std::endl << "***** In IX Test Private Case 2 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Private Case 2 *****" << std::endl;
 
     RID rid;
     RID rid2;
@@ -71,7 +71,7 @@ int testCase_p2(const std::string &indexFileName1, const std::string &indexFileN
     for (int i = 0; i < numOfTuples; i++) {
         key = A[i];
         rid.pageNum = i + 1;
-        rid.slotNum = i + 1;
+        rid.slotNum = (i + 1) % PAGE_SIZE;
 
         rc = indexManager.insertEntry(ixFileHandle1, attribute, &key, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
@@ -80,7 +80,7 @@ int testCase_p2(const std::string &indexFileName1, const std::string &indexFileN
         assert(rc == success && "indexManager::insertEntry() should not fail.");
     }
 
-    compVal = 5000;
+    compVal = 4123;
 
     // Conduct a scan
     rc = indexManager.scan(ixFileHandle1, attribute, NULL, &compVal, true, true, ix_ScanIterator1);
@@ -94,8 +94,12 @@ int testCase_p2(const std::string &indexFileName1, const std::string &indexFileN
     while (ix_ScanIterator1.getNextEntry(rid, &key) == success) {
         if (ix_ScanIterator2.getNextEntry(rid2, &key2) != success
             || rid.pageNum != rid2.pageNum) {
+<<<<<<< HEAD
             std::cerr << "Wrong entries output...failure" << std::endl;
 
+=======
+            std::cout << "Wrong entries output...failure" << std::endl;
+>>>>>>> 1b2bdec... added Project 3 private tests
             return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2, ix_ScanIterator1,
                                  ix_ScanIterator2);
         }
@@ -109,8 +113,8 @@ int testCase_p2(const std::string &indexFileName1, const std::string &indexFileN
 
         count++;
     }
-    if (count != 5001) {
-        std::cerr << count << " - Wrong entries output...failure" << std::endl;
+    if (count != 4124) {
+        std::cout << count << " - Wrong entries output...failure" << std::endl;
         return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2, ix_ScanIterator1,
                              ix_ScanIterator2);
 
@@ -129,12 +133,12 @@ int testCase_p2(const std::string &indexFileName1, const std::string &indexFileN
     for (int i = 0; i < numOfTuples; i++) {
         B[i] = 20000 + i;
     }
-    std::random_shuffle(B, B + numOfTuples);
+    std::shuffle(B, B + numOfTuples, std::mt19937(std::random_device()()));
 
     for (int i = 0; i < numOfTuples; i++) {
         key = B[i];
-        rid.pageNum = i + 20001;
-        rid.slotNum = i + 20001;
+        rid.pageNum = i + 19999;
+        rid.slotNum = (i + 19999) % PAGE_SIZE;
 
         rc = indexManager.insertEntry(ixFileHandle1, attribute, &key, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
@@ -144,7 +148,7 @@ int testCase_p2(const std::string &indexFileName1, const std::string &indexFileN
     }
 
     // scan
-    compVal = 35000;
+    compVal = 34567;
 
     rc = indexManager.scan(ixFileHandle1, attribute, NULL, &compVal, true, true, ix_ScanIterator1);
     assert(rc == success && "indexManager::scan() should not fail.");
@@ -155,19 +159,19 @@ int testCase_p2(const std::string &indexFileName1, const std::string &indexFileN
     count = 0;
     while (ix_ScanIterator1.getNextEntry(rid, &key) == success) {
         if (ix_ScanIterator2.getNextEntry(rid2, &key) != success) {
-            std::cerr << "Wrong entries output...failure" << std::endl;
+            std::cout << "Wrong entries output...failure" << std::endl;
             return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2, ix_ScanIterator1,
                                  ix_ScanIterator2);
         }
-        if (rid.pageNum > 20000 && B[rid.pageNum - 20001] > 35000) {
-            std::cerr << "Wrong entries output...failure" << std::endl;
+        if (rid.pageNum > 20000 && B[rid.pageNum - 19999] > 34567) {
+            std::cout << "Wrong entries output...failure" << std::endl;
             return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2, ix_ScanIterator1,
                                  ix_ScanIterator2);
         }
         count++;
     }
-    if (count != 30000) {
-        std::cerr << count << " - Wrong entries output...failure" << std::endl;
+    if (count != 30444) {
+        std::cout << count << " - Wrong entries output...failure" << std::endl;
         return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2, ix_ScanIterator1,
                              ix_ScanIterator2);
     }
@@ -210,10 +214,10 @@ int main() {
     indexManager.destroyFile(indexAgeFileName2);
 
     if (testCase_p2(indexAgeFileName1, indexAgeFileName2, attrAge) == success) {
-        std::cerr << "***** IX Test Private Case 2 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Private Case 2 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Private Case 2 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Private Case 2 failed. *****" << std::endl;
         return fail;
     }
 

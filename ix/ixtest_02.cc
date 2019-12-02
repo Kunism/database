@@ -9,7 +9,7 @@ int testCase_2(const std::string &indexFileName, const Attribute &attribute) {
     // 4. print B+ Tree **
     // 5. Close Index file
     // NOTE: "**" signifies the new functions being tested in this test case.
-    std::cerr << std::endl << "***** In IX Test Case 02 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Case 02 *****" << std::endl;
 
     RID rid;
     int key = 200;
@@ -35,7 +35,7 @@ int testCase_2(const std::string &indexFileName, const Attribute &attribute) {
     rc = ixFileHandle.collectCounterValues(readPageCount, writePageCount, appendPageCount);
     assert(rc == success && "indexManager::collectCounterValues() should not fail.");
 
-    std::cerr << std::endl << "Before Insert - R W A: " << readPageCount << " " << writePageCount << " "
+    std::cout << std::endl << "Before Insert - R W A: " << readPageCount << " " << writePageCount << " "
               << appendPageCount
               << std::endl;
 
@@ -47,7 +47,7 @@ int testCase_2(const std::string &indexFileName, const Attribute &attribute) {
     rc = ixFileHandle.collectCounterValues(readPageCountAfter, writePageCountAfter, appendPageCountAfter);
     assert(rc == success && "indexManager::collectCounterValues() should not fail.");
 
-    std::cerr << "After Insert - R W A: " << readPageCountAfter << " " << writePageCountAfter << " "
+    std::cout << "After Insert - R W A: " << readPageCountAfter << " " << writePageCountAfter << " "
               << appendPageCountAfter
               << std::endl;
 
@@ -55,17 +55,17 @@ int testCase_2(const std::string &indexFileName, const Attribute &attribute) {
     writeDiff = writePageCountAfter - writePageCount;
     appendDiff = appendPageCountAfter - appendPageCount;
 
-    std::cerr << "Page I/O count of single insertion - R W A: " << readDiff << " " << writeDiff << " " << appendDiff
+    std::cout << "Page I/O count of single insertion - R W A: " << readDiff << " " << writeDiff << " " << appendDiff
               << std::endl;
 
     if (readDiff == 0 && writeDiff == 0 && appendDiff == 0) {
-        std::cerr << "Insertion should generate some page I/O. The implementation is not correct." << std::endl;
+        std::cout << "Insertion should generate some page I/O. The implementation is not correct." << std::endl;
         rc = indexManager.closeFile(ixFileHandle);
         return fail;
     }
 
     // print BTree, by this time the BTree should have only one node
-    std::cerr << std::endl;
+    std::cout << std::endl;
     indexManager.printBtree(ixFileHandle, attribute);
 
     // close index file
@@ -84,10 +84,10 @@ int main() {
     attrAge.type = TypeInt;
 
     if (testCase_2(indexFileName, attrAge) == success) {
-        std::cerr << "***** IX Test Case 02 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Case 02 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Case 02 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Case 02 failed. *****" << std::endl;
         return fail;
     }
 

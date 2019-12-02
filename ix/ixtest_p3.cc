@@ -2,7 +2,7 @@
 #include "ix_test_util.h"
 
 int testCase_p3(const std::string &indexFileName, const Attribute &attribute) {
-    std::cerr << std::endl << "***** In IX Test Private Case 3 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Private Case 3 *****" << std::endl;
 
     // Varchar index handling check
     RID rid;
@@ -35,9 +35,9 @@ int testCase_p3(const std::string &indexFileName, const Attribute &attribute) {
     }
 
     *(int *) lowKey = 6;
-    sprintf(lowKey + 4, "%06d", 90000);
+    sprintf(lowKey + 4, "011zyx");
     *(int *) highKey = 6;
-    sprintf(highKey + 4, "%06d", 100000);
+    sprintf(highKey + 4, "06abcd");
 
     // Conduct a scan
     rc = indexManager.scan(ixFileHandle, attribute, lowKey, highKey, true, true, ix_ScanIterator);
@@ -47,14 +47,14 @@ int testCase_p3(const std::string &indexFileName, const Attribute &attribute) {
     count = 0;
     while (ix_ScanIterator.getNextEntry(rid, &key) != IX_EOF) {
         key[10] = '\0';
-        if (count % 2000 == 0) {
-            fprintf(stderr, "output: %s\n", key + 4);
+        if (count % 5000 == 0) {
+            fprintf(stdout, "output: %s\n", key + 4);
         }
         count++;
     }
 
-    if (count != 10001) {
-        std::cerr << "Wrong output count! expected: 10001" << ", actual: " << count << " Failure" << std::endl;
+    if (count != 58000) {
+        std::cout << "Wrong output count! expected: 58000" << ", actual: " << count << " Failure" << std::endl;
         ix_ScanIterator.close();
         indexManager.closeFile(ixFileHandle);
         indexManager.destroyFile(indexFileName);
@@ -88,10 +88,10 @@ int main() {
     indexManager.destroyFile(indexEmpNameFileName1);
 
     if (testCase_p3(indexEmpNameFileName1, attrShortEmpName) == success) {
-        std::cerr << "***** IX Test Private Case 3 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Private Case 3 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Private Case 3 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Private Case 3 failed. *****" << std::endl;
         return fail;
     }
 

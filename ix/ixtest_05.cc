@@ -6,7 +6,7 @@ int testCase_5(const std::string &indexFileName, const Attribute &attribute) {
     // 1. Destroy Index File **
     // 2. Open Index File -- should fail
     // 3. Scan  -- should fail
-    std::cerr << std::endl << "***** In IX Test Case 05 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Case 05 *****" << std::endl;
 
     IXFileHandle ixFileHandle;
     IX_ScanIterator ix_ScanIterator;
@@ -36,10 +36,10 @@ int main() {
     attrAge.type = TypeInt;
 
     if (testCase_5(indexFileName, attrAge) == success) {
-        std::cerr << "***** IX Test Case 05 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Case 05 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Case 05 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Case 05 failed. *****" << std::endl;
         return fail;
     }
 

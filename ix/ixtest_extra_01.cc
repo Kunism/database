@@ -13,7 +13,7 @@ int testCase_extra_1(const string &indexFileName, const Attribute &attribute) {
     // 6. CloseIndex
     // 7. DestroyIndex
     // NOTE: "**" signifies the new functions being tested in this test case.
-    std::cerr << std::endl << "***** In IX Test Extra Case 01 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Extra Case 01 *****" << std::endl;
 
     RID rid;
     unsigned numOfTuples = 2000;
@@ -61,17 +61,17 @@ int testCase_extra_1(const string &indexFileName, const Attribute &attribute) {
         count++;
 
         if (rid.pageNum != rid.slotNum) {
-            std::cerr << "Wrong entries output... The test failed" << std::endl;
+            std::cout << "Wrong entries output... The test failed" << std::endl;
         }
 
         if (count % 100 == 0) {
-            std::cerr << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
+            std::cout << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
         }
     }
 
-    std::cerr << "Number of scanned entries: " << count << std::endl;
+    std::cout << "Number of scanned entries: " << count << std::endl;
     if (count != numOfTuples) {
-        std::cerr << "Wrong entries output... The test failed" << std::endl;
+        std::cout << "Wrong entries output... The test failed" << std::endl;
         rc = ix_ScanIterator.close();
         rc = indexManager.closeFile(ixFileHandle);
         rc = indexManager.destroyFile(indexFileName);
@@ -102,10 +102,10 @@ int main() {
     attrAge.type = TypeInt;
 
     if (testCase_extra_1(indexFileName, attrAge) == success) {
-        std::cerr << "IX_Test Case Extra 01 finished. The result will be examined." << std::endl;
+        std::cout << "IX_Test Case Extra 01 finished. The result will be examined." << std::endl;
         return success;
     } else {
-        std::cerr << "IX_Test Case Extra 01 failed." << std::endl;
+        std::cout << "IX_Test Case Extra 01 failed." << std::endl;
         return fail;
     }
 

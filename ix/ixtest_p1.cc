@@ -17,7 +17,7 @@ RC closeWithFail(const string &indexFileName1, const string &indexFileName2, IXF
 
 int testCase_p1(const std::string &indexFileName1, const std::string &indexFileName2, const Attribute &attribute) {
     // Check whether multiple indexes can be used at the same time.
-    std::cerr << std::endl << "***** In IX Test Private Case 1 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Private Case 1 *****" << std::endl;
 
     RID rid;
     RID rid2;
@@ -25,7 +25,7 @@ int testCase_p1(const std::string &indexFileName1, const std::string &indexFileN
     IXFileHandle ixFileHandle2;
     IX_ScanIterator ix_ScanIterator1;
     IX_ScanIterator ix_ScanIterator2;
-    unsigned numOfTuples = 2000;
+    unsigned numOfTuples = 3000;
     float key;
     float key2;
     float compVal = 6500;
@@ -48,7 +48,7 @@ int testCase_p1(const std::string &indexFileName1, const std::string &indexFileN
 
     // insert entry
     for (unsigned i = 1; i <= numOfTuples; i++) {
-        key = (float) i + 87.6;
+        key = (float) i + 91.22;
         rid.pageNum = i;
         rid.slotNum = i;
 
@@ -64,8 +64,8 @@ int testCase_p1(const std::string &indexFileName1, const std::string &indexFileN
     }
 
     // insert more entries
-    for (unsigned i = 6000; i <= numOfTuples + 6000; i++) {
-        key = (float) i + 87.6;
+    for (unsigned i = 5000; i <= numOfTuples + 5000; i++) {
+        key = (float) i + 91.22;
         rid.pageNum = i;
         rid.slotNum = i - (unsigned) 500;
 
@@ -95,24 +95,28 @@ int testCase_p1(const std::string &indexFileName1, const std::string &indexFileN
         returnedCount++;
 
         if (ix_ScanIterator2.getNextEntry(rid2, &key2) != success) {
+<<<<<<< HEAD
             std::cerr << "Wrong entries output...failure" << std::endl;
 
+=======
+            std::cout << "Wrong entries output...failure" << std::endl;
+>>>>>>> 1b2bdec... added Project 3 private tests
             return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2, ix_ScanIterator1,
                                  ix_ScanIterator2);
         }
         if (rid.pageNum != rid2.pageNum) {
-            std::cerr << "Wrong entries output...failure" << std::endl;
+            std::cout << "Wrong entries output...failure" << std::endl;
             return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2, ix_ScanIterator1,
                                  ix_ScanIterator2);
         }
         if (rid.pageNum % 1000 == 0) {
-            std::cerr << returnedCount << " - returned entries: " << rid.pageNum << " " << rid.slotNum << std::endl;
+            std::cout << returnedCount << " - returned entries: " << rid.pageNum << " " << rid.slotNum << std::endl;
         }
         outRidPageNumSum += rid.pageNum;
     }
 
     if (inRidPageNumSum != outRidPageNumSum) {
-        std::cerr << "Wrong entries output...failure" << std::endl;
+        std::cout << "Wrong entries output...failure" << std::endl;
         return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2, ix_ScanIterator1,
                              ix_ScanIterator2);
 
@@ -157,10 +161,10 @@ int main() {
     indexManager.destroyFile(indexHeightFileName2);
 
     if (testCase_p1(indexHeightFileName1, indexHeightFileName2, attrHeight) == success) {
-        std::cerr << "***** IX Test Private Case 1 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Private Case 1 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Private Case 1 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Private Case 1 failed. *****" << std::endl;
         return fail;
     }
 

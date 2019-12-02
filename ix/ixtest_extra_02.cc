@@ -3,9 +3,10 @@
 
 void prepareKeyAndRid(const unsigned count, const unsigned i, char *key, RID &rid) {
     *(unsigned *) key = count;
-    for (unsigned j = 0; j < count; j++) {
-        key[4 + j] = 'a' + i - 1;
-    }
+
+    key[4] = 'a' + (i - 1) % 26;
+    key[5] = '\0';
+
     rid.pageNum = i;
     rid.slotNum = i;
 }
@@ -21,7 +22,7 @@ int testCase_extra_2(const std::string &indexFileName,
     // 5. Delete the "unsafe one" 
     // 6. CloseIndex
     // 7. DestroyIndex
-    std::cerr << std::endl << "***** In IX Test Extra Case 01 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Extra Case 02 *****" << std::endl;
 
     RID rid;
     IXFileHandle ixFileHandle;
@@ -55,11 +56,11 @@ int testCase_extra_2(const std::string &indexFileName,
     rc = indexManager.deleteEntry(ixFileHandle, attribute, key, rid);
     assert(rc == success && "indexManager::deleteEntry() should not fail.");
 
-    std::cerr << std::endl << std::endl << "/////////////////" << std::endl << std::endl;
+    std::cout << std::endl << std::endl << "/////////////////" << std::endl << std::endl;
 
     // print BTree, by this time the BTree should have 2 level
     indexManager.printBtree(ixFileHandle, attribute);
-    std::cerr << std::endl;
+    std::cout << std::endl;
 
     // Close Index
     rc = indexManager.closeFile(ixFileHandle);
@@ -85,11 +86,11 @@ int main() {
     indexManager.destroyFile("EmpName_idx");
 
     if (testCase_extra_2(indexEmpNameFileName, attrEmpName) == success) {
-        std::cerr << "IX_Test Case Extra 02 finished. Please check the shape of B+ Tree"
+        std::cout << "IX_Test Case Extra 02 finished. Please check the shape of B+ Tree"
                      " to make sure non lazy-deletion is applied." << std::endl;
         return success;
     } else {
-        std::cerr << "IX_Test Case Extra 02 failed." << std::endl;
+        std::cout << "IX_Test Case Extra 02 failed." << std::endl;
         return fail;
     }
 

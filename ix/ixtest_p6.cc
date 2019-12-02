@@ -4,7 +4,7 @@
 int testCase_p6(const std::string &indexFileName, const Attribute &attribute) {
     // Checks whether duplicated entries in a page are handled properly.
 
-    std::cerr << std::endl << "***** In IX Test Private Case 6 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Private Case 6 *****" << std::endl;
 
     RID rid;
     IXFileHandle ixFileHandle;
@@ -28,18 +28,18 @@ int testCase_p6(const std::string &indexFileName, const Attribute &attribute) {
     rc = indexManager.openFile(indexFileName, ixFileHandle);
     assert(rc == success && "indexManager::openFile() should not fail.");
 
-
     // insert entries
     for (unsigned i = 0; i < numOfTuples; i++) {
-        sprintf(key + 4, "%05d", i % 3);
+        char k = 'A' + i % 4;
+        sprintf(key + 4, "0000%s", &k);
 
         rid.pageNum = i;
-        rid.slotNum = i % 3;
+        rid.slotNum = i % 4;
 
         rc = indexManager.insertEntry(ixFileHandle, attribute, &key, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
 
-        if (i % 3 == 1) {
+        if (i % 4 == 1) {
             inRidPageNumSum += rid.pageNum;
         }
     }
@@ -49,9 +49,9 @@ int testCase_p6(const std::string &indexFileName, const Attribute &attribute) {
     indexManager.printBtree(ixFileHandle, attribute);
 
     *(int *) lowKey = 5;
-    sprintf(lowKey + 4, "%05d", 1);
+    sprintf(lowKey + 4, "0000B");
     *(int *) highKey = 5;
-    sprintf(highKey + 4, "%05d", 1);
+    sprintf(highKey + 4, "0000B");
 
     // scan
     rc = indexManager.scan(ixFileHandle, attribute, lowKey, highKey, true, true, ix_ScanIterator);
@@ -61,7 +61,7 @@ int testCase_p6(const std::string &indexFileName, const Attribute &attribute) {
     count = 0;
     while (ix_ScanIterator.getNextEntry(rid, &key) != IX_EOF) {
         if (rid.slotNum != 1) {
-            std::cerr << "Wrong entries output...failure" << std::endl;
+            std::cout << "Wrong entries output...failure" << std::endl;
             ix_ScanIterator.close();
             indexManager.closeFile(ixFileHandle);
             indexManager.destroyFile(indexFileName);
@@ -70,9 +70,9 @@ int testCase_p6(const std::string &indexFileName, const Attribute &attribute) {
         outRidPageNumSum += rid.pageNum;
         count++;
     }
-    std::cerr << "The number of scanned entries: " << count << std::endl;
-    if (count != 30 || outRidPageNumSum != inRidPageNumSum || inRidPageNumSum == 0 || outRidPageNumSum == 0) {
-        std::cerr << "Wrong entries output...failure " << std::endl;
+    std::cout << "The number of scanned entries: " << count << std::endl;
+    if (count != 23 || outRidPageNumSum != inRidPageNumSum || inRidPageNumSum == 0 || outRidPageNumSum == 0) {
+        std::cout << "Wrong entries output...failure " << std::endl;
         indexManager.closeFile(ixFileHandle);
         indexManager.destroyFile(indexFileName);
         return fail;
@@ -100,10 +100,10 @@ int main() {
     indexManager.destroyFile(indexEmpNameFileName);
 
     if (testCase_p6(indexEmpNameFileName, attrShortEmpName) == success) {
-        std::cerr << "***** IX Test Private Case 6 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Private Case 6 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Private Case 6 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Private Case 6 failed. *****" << std::endl;
         return fail;
     }
 
