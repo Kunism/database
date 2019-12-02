@@ -147,15 +147,56 @@ bool Filter::compValue(const char *lData, const char *conditionData) {
 
 
 Project::Project(Iterator *input, const std::vector<std::string> &attrNames) {
+    this->m_input = input;
+    m_input->getAttributes(m_leftAttributes);
+
+    for(int i = 0; i < m_leftAttributes.size(); i++) {
+        for(auto it = m_leftAttributes.begin(); it != m_leftAttributes.end(); it++) {
+            if(it->name == attrNames[i]) {
+                m_projectedAttributes.push_back(*it);
+                break;
+            }
+        }
+    }
 
 }
 
 RC Project::getNextTuple(void *data) {
+    char* tuple = new char[PAGE_SIZE];
+    memset(tuple, 0, PAGE_SIZE);
 
+    if(m_input->getNextTuple(tuple) != 0) {
+        delete[] tuple;
+        return QE_EOF;
+    }
+
+    uint32_t projectedOffset = 0;
+
+    for(int i = 0; i < m_projectedAttributes.size(); i++) {
+
+        uint32_t leftOffset = 0;
+        for(auto it = m_leftAttributes.begin(); it != m_leftAttributes.end(); it++) {
+
+            uint32_t attrLength = sizeof(uint32_t);
+            if(it->type == TypeVarChar) {
+                uint32_t strLen = 0;
+                memcpy(&strLen, tuple + leftOffset, sizeof(uint32_t));
+                attrLength += strLen;
+            }
+
+            if(it->name == m_projectedAttributes[i].name) {
+                memcpy((char*)data + projectedOffset, tuple + leftOffset, attrLength);
+                projectedOffset += attrLength;
+                break;
+            }
+            leftOffset += attrLength;
+        }
+    }
 }
 
 void Project::getAttributes(std::vector<Attribute> &attrs) const {
-
+    attrs.clear();
+    attrs = m_leftAttributes;
 }
 
 

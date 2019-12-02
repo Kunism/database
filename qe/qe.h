@@ -1,7 +1,6 @@
 #ifndef _qe_h_
 #define _qe_h_
 
-#include <altivec.h>
 #include "../rbf/rbfm.h"
 #include "../rm/rm.h"
 #include "../ix/ix.h"
@@ -199,6 +198,10 @@ public:
 
     // For attribute in std::vector<Attribute>, name it as rel.attr
     void getAttributes(std::vector<Attribute> &attrs) const override;
+
+    Iterator *m_input;
+    std::vector<Attribute> m_leftAttributes;
+    std::vector<Attribute> m_projectedAttributes;
 };
 
 class BNLJoin : public Iterator {
