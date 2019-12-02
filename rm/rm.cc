@@ -9,6 +9,7 @@ RelationManager &RelationManager::instance() {
 }
 
 RC RM_ScanIterator::getNextTuple(RID &rid, void *data) {
+    // std::cerr << "RM_ScanIterator::getNextTuple" <<std::endl;
     return rbfmScanIterator.getNextRecord(rid, data);
 }
 
@@ -317,7 +318,7 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
     return 0;
 }
 
-RC RelationManager::insertIndexes(const std::string &tableName, const void *data, const RID &rid) {
+RC RelationManager::insertIndexes(const std::string &tableName, const RID &rid) {
 
     std::vector<Attribute> attrs;
     getAttributes(tableName, attrs);
@@ -354,6 +355,7 @@ RC RelationManager::insertIndexes(const std::string &tableName, const void *data
     delete[] tableNameData;
     delete[] returnData;
     rm_it.close();
+    return 0;
 }
 
 RC RelationManager::insertTuple(const std::string &tableName, const void *data, RID &rid) {
@@ -367,7 +369,7 @@ RC RelationManager::insertTuple(const std::string &tableName, const void *data, 
     this->getAttributes(tableName,attrs);
     if (rbfm.openFile(tableName, targetFile) == 0) {
         rbfm.insertRecord(targetFile, attrs, data, rid);
-        this->insertIndexes(tableName, data, rid);
+        this->insertIndexes(tableName, rid);
 
         targetFile.closeFile();
         return 0;
@@ -379,7 +381,7 @@ RC RelationManager::insertTuple(const std::string &tableName, const void *data, 
 }
 
 
-RC RelationManager::deleteIndexes(const std::string &tableName, const void *data, const RID &rid) {
+RC RelationManager::deleteIndexes(const std::string &tableName, const RID &rid) {
     std::vector<Attribute> attrs;
     getAttributes(tableName, attrs);
 
@@ -428,8 +430,7 @@ RC RelationManager::deleteTuple(const std::string &tableName, const RID &rid) {
     this->getAttributes(tableName,attrs);
     if (rbfm.openFile(tableName, targetFile) == 0) {
         uint8_t* data = new uint8_t [totalSize];
-        readTuple(tableName, rid, data);
-        if( deleteIndexes(tableName, data, rid) != 0) {
+        if( deleteIndexes(tableName, rid) != 0) {
             return -1;
         }
 
@@ -453,8 +454,20 @@ RC RelationManager::updateTuple(const std::string &tableName, const void *data, 
     //// insert index                               ///////
     ///////////////////////////////////////////////////////
     this->getAttributes(tableName,attrs);
-    if (rbfm.openFile(tableName, targetFile) == 0 &&
-        rbfm.updateRecord(targetFile, attrs, data, rid)== 0 ) {
+    if (rbfm.openFile(tableName, targetFile) == 0) {
+        if (deleteIndexes(tableName, rid) != 0) {
+            std::cerr << "delete index fail" <<std::endl;
+            return -1;
+        }
+        if(rbfm.updateRecord(targetFile, attrs, data, rid) != 0) {
+            std::cerr << "update record fail" << std::endl;
+            return -1;
+        }
+
+        if( insertIndexes(tableName, rid) != 0) {
+            std::cerr << "insert index fail " <<std::endl;
+            return -1;
+        }
         targetFile.closeFile();
         return 0;   
     }

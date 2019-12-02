@@ -33,10 +33,11 @@ public:
 
     // "key" follows the same format as in IndexManager::insertEntry()
     RC getNextEntry(RID &rid, void *key) { return RM_EOF; };    // Get next matching entry
-    RC close();                        // Terminate index scan
+    RC close() {};                         // Terminate index scan
     IX_ScanIterator ixScan_it;
     IXFileHandle ixFileHandle;
 };
+
 
 // Relation Manager
 class RelationManager {
@@ -67,9 +68,9 @@ public:
 
     RC readAttribute(const std::string &tableName, const RID &rid, const std::string &attributeName, void *data);
 
-    RC insertIndexes(const std::string &tableName, const void *data, const RID &rid);
+    RC insertIndexes(const std::string &tableName, const RID &rid);
 
-    RC deleteIndexes(const std::string &tableName, const void *data, const RID &rid);
+    RC deleteIndexes(const std::string &tableName, const RID &rid);
     // Scan returns an iterator to allow the caller to go through the results one by one.
     // Do not store entire results in the scan iterator.
     RC scan(const std::string &tableName,
