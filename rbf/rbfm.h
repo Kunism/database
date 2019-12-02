@@ -257,7 +257,7 @@ public:
 
     //HEADER_OFFSET_FROM_END, RECORD_OFFSET_FROM_BEGIN, SLOT_NUM
     uint16_t var[DATA_PAGE_VAR_NUM];
-    std::pair<uint16_t,uint16_t>* pageHeader;   //  TODO: no use
+    // std::pair<uint16_t,uint16_t>* pageHeader;   //  TODO: no use
 
 
     DataPage& operator=(const DataPage &dataPage);

@@ -1,5 +1,6 @@
 #include "rm.h"
 #include <iostream>
+#include <algorithm>
 RelationManager *RelationManager::_relation_manager = nullptr;
 
 RelationManager &RelationManager::instance() {
@@ -11,6 +12,24 @@ RC RM_ScanIterator::getNextTuple(RID &rid, void *data) {
     return rbfmScanIterator.getNextRecord(rid, data);
 }
 
+RC RM_ScanIterator::close() {
+    // rbfmScanIterator.close();
+    // fileHandle.closeFile();
+}
+
+const std::vector<Attribute> RelationManager::m_indexDescriptor = {
+    {
+        "tableName",
+        TypeVarChar,
+        (AttrLength)50
+    },
+    {
+        "AttrName", //ColumnName
+        TypeVarChar,
+        (AttrLength)50
+    }
+};
+
 const std::vector<Attribute> RelationManager::m_tablesDescriptor = {
     {
         "tableId",
@@ -20,7 +39,7 @@ const std::vector<Attribute> RelationManager::m_tablesDescriptor = {
     {
         "tableName",
         TypeVarChar,
-        (AttrLength)50,
+        (AttrLength)50
     },
     {
         "fileName",
@@ -74,7 +93,9 @@ RC RelationManager::createCatalog() {
     rbfm.createFile("Variables");
     rbfm.createFile("Tables");
     rbfm.createFile("Columns");
-
+    rbfm.createFile("Indexes");
+    
+    // Three catalog file: Tables, Columns
     this->tableCountInit(2);
 
     RID rid;
@@ -137,6 +158,7 @@ RC RelationManager::deleteCatalog() {
     rbfm.destroyFile("Variables");
     rbfm.destroyFile("Tables");
     rbfm.destroyFile("Columns");
+    rbfm.destroyFile("Indexes");
     return 0;
 }
 
@@ -188,27 +210,63 @@ RC RelationManager::deleteTable(const std::string &tableName) {
     }
 
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
-    RBFM_ScanIterator rbfm_it;
+    RBFM_ScanIterator table_it;
+    RBFM_ScanIterator column_it;
+    RBFM_ScanIterator index_it;
     FileHandle tableFile;
+    FileHandle columnFile;
+    FileHandle indexFile;
     RID deleteID;
-    uint8_t* data = new uint8_t [m_tableDataSize];
-    if (rbfm.openFile("Tables", tableFile) == 0) {
+    uint8_t* tableData = new uint8_t [m_tableDataSize];
+    uint8_t* columnData = new uint8_t [m_columnDataSize];
+    uint8_t* indexData = new uint8_t [m_indexDataSize];
+    if (rbfm.openFile("Tables", tableFile)   == 0 && 
+        rbfm.openFile("Columns", columnFile) == 0 && 
+        rbfm.openFile("Indexes", indexFile)  == 0 ) {
+        
+        // delete Table's record
         uint8_t* value = new uint8_t [tableName.size()+ sizeof(int) + 1];
         prepareString(tableName, value);
-        rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, value, {"tableName"},  rbfm_it);
-        rbfm_it.getNextRecord(deleteID, data);
+        std::cerr << "\nTABLE: " << decodeString(value) <<std::endl;
+        rbfm.scan(tableFile, m_tablesDescriptor, "tableName", EQ_OP, value, {"tableId"},  table_it);
+        if (table_it.getNextRecord(deleteID, tableData) == RBFM_EOF) {
+            return -1;
+        }
+        std::cerr << "TABLE: " << decodeString(value) <<std::endl;
         rbfm.deleteRecord(tableFile, m_tablesDescriptor, deleteID);
         rbfm.destroyFile(tableName);
+        // delete Column's record
+        rbfm.scan(columnFile, m_collumnsDescriptor, "tableId", EQ_OP, tableData+1, {"tableId"}, column_it);
+        while(column_it.getNextRecord(deleteID, columnData) != RBFM_EOF) {
+            rbfm.deleteRecord(columnFile, m_collumnsDescriptor, deleteID);
+        }
+
+        // delete Index's record
+        rbfm.scan(indexFile, m_indexDescriptor, "tableName", EQ_OP, value, {"tableName"}, index_it);
+        while( index_it.getNextRecord(deleteID, indexData) != RBFM_EOF) {
+            std::cerr << "HI" << std::endl;
+            rbfm.deleteRecord(indexFile, m_indexDescriptor, deleteID);
+        }
+
+        table_it.close();
+        column_it.close();
+        index_it.close();
+
         tableFile.closeFile();
+
+        delete [] value;
+        delete [] tableData;
+        delete [] columnData;
         return 0;
     }
-    // std::cerr << "DeleteTable fail" << std::endl;
+    delete [] tableData;
+    delete [] columnData;
     return -1;
 }
 
 RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attribute> &attrs) {
-    uint8_t* tableData = new uint8_t [m_tableDataSize+100];
-    uint8_t* columnData = new uint8_t [m_columnDataSize+100];
+    uint8_t* tableData = new uint8_t [m_tableDataSize+1];
+    uint8_t* columnData = new uint8_t [m_columnDataSize+1];
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
     RBFM_ScanIterator rbfm_TB_it;
     int tableID = 87;
@@ -259,6 +317,45 @@ RC RelationManager::getAttributes(const std::string &tableName, std::vector<Attr
     return 0;
 }
 
+RC RelationManager::insertIndexes(const std::string &tableName, const void *data, const RID &rid) {
+
+    std::vector<Attribute> attrs;
+    getAttributes(tableName, attrs);
+
+    IndexManager &ix = IndexManager::instance();
+    RM_ScanIterator rm_it;
+    uint8_t* tableNameData = new uint8_t [m_tableDataSize];    
+    prepareString(tableName, tableNameData);
+    scan("Indexes", "tableName", EQ_OP, tableNameData, {"AttrName"}, rm_it);
+    
+    RID returnRID;
+    uint8_t* returnData = new uint8_t [m_indexDataSize];
+    ////////////////////////////////////////////////////
+    // TODO:: DEAL WITH NULL ???
+    ////////////////////////////////////////////////////
+    while(rm_it.getNextTuple(returnRID, returnData) != RM_EOF) {
+        std::string attrName = decodeString(returnData+1);
+        Attribute targetAttr;
+        for(auto attr : attrs) {
+            if(attr.name == attrName) {
+                targetAttr = attr;
+            }
+        }
+        std::cerr << "HOHOLOLO" << std::endl;
+        std::string indexFileName = tableName+"_"+attrName+".index";
+        IXFileHandle ixFileHandle;
+        uint8_t* keyData = new uint8_t [targetAttr.length + 5];
+        ix.openFile(indexFileName, ixFileHandle);
+
+        readAttribute(tableName, rid, attrName, keyData);
+        ix.insertEntry(ixFileHandle, targetAttr, keyData+1, rid);
+        delete[] keyData;
+    }
+    delete[] tableNameData;
+    delete[] returnData;
+    rm_it.close();
+}
+
 RC RelationManager::insertTuple(const std::string &tableName, const void *data, RID &rid) {
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
     FileHandle targetFile;
@@ -270,6 +367,8 @@ RC RelationManager::insertTuple(const std::string &tableName, const void *data, 
     this->getAttributes(tableName,attrs);
     if (rbfm.openFile(tableName, targetFile) == 0) {
         rbfm.insertRecord(targetFile, attrs, data, rid);
+        this->insertIndexes(tableName, data, rid);
+
         targetFile.closeFile();
         return 0;
     }
@@ -277,17 +376,68 @@ RC RelationManager::insertTuple(const std::string &tableName, const void *data, 
         // std::cerr << "insertTuple: file open failed!! " <<std::endl;
         return -1;
     }
+}
 
+
+RC RelationManager::deleteIndexes(const std::string &tableName, const void *data, const RID &rid) {
+    std::vector<Attribute> attrs;
+    getAttributes(tableName, attrs);
+
+    IndexManager &ix = IndexManager::instance();
+    RM_ScanIterator rm_it;
+    uint8_t* tableNameData = new uint8_t [m_tableDataSize];    
+    prepareString(tableName, tableNameData);
+    scan("Indexes", "tableName", EQ_OP, tableNameData, {"AttrName"}, rm_it);
+
+    RID returnRID;
+    uint8_t* returnData = new uint8_t [m_indexDataSize];
+    ////////////////////////////////////////////////////
+    // DEAL WITH NULL ???
+    ////////////////////////////////////////////////////
+    while(rm_it.getNextTuple(returnRID, returnData) != RM_EOF) {
+        std::string attrName = decodeString(returnData+1);
+        Attribute targetAttr;
+        for(auto attr : attrs) {
+            if(attr.name == attrName) {
+                targetAttr = attr;
+            }
+        }
+        std::string indexFileName = tableName+"_"+attrName+".index";
+        IXFileHandle ixFileHandle;
+        uint8_t* keyData = new uint8_t [targetAttr.length + sizeof(int) + 1];
+        ix.openFile(indexFileName, ixFileHandle);
+
+        readAttribute(tableName, rid, attrName, keyData);
+        ix.deleteEntry(ixFileHandle, targetAttr, keyData+1, rid);
+    }
+
+    rm_it.close();
+    return 0;
 }
 
 RC RelationManager::deleteTuple(const std::string &tableName, const RID &rid) {
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
     FileHandle targetFile;
     std::vector<Attribute> attrs;
+
+    int totalSize = 0;
+    for(auto attr : attrs) {
+        totalSize = (attr.length + 5);
+    }
+
     this->getAttributes(tableName,attrs);
-    if (rbfm.openFile(tableName, targetFile) == 0 &&
-        rbfm.deleteRecord(targetFile, attrs, rid)== 0 ) {
-        targetFile.closeFile();    
+    if (rbfm.openFile(tableName, targetFile) == 0) {
+        uint8_t* data = new uint8_t [totalSize];
+        readTuple(tableName, rid, data);
+        if( deleteIndexes(tableName, data, rid) != 0) {
+            return -1;
+        }
+
+        if( rbfm.deleteRecord(targetFile, attrs, rid) != 0) {
+            return -1;
+        }
+        targetFile.closeFile();  
+        delete[] data;  
         return 0;   
     }
     return -1;
@@ -297,6 +447,11 @@ RC RelationManager::updateTuple(const std::string &tableName, const void *data, 
     RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
     FileHandle targetFile;
     std::vector<Attribute> attrs;
+    ///////////////////////////////////////////////////////
+    //// delete readAttr key                        ///////
+    ////  insert RID key                            ///////
+    //// insert index                               ///////
+    ///////////////////////////////////////////////////////
     this->getAttributes(tableName,attrs);
     if (rbfm.openFile(tableName, targetFile) == 0 &&
         rbfm.updateRecord(targetFile, attrs, data, rid)== 0 ) {
@@ -376,54 +531,23 @@ RC RelationManager::addAttribute(const std::string &tableName, const Attribute &
 }
 
 
-void RelationManager::getRecordDescriptor(const std::string &tableName, std::vector<Attribute> &recordDescriptor) {
-    if(tableName == "Tables") {
-        Attribute attr;
-        attr.name = "tableId";
-        attr.type = TypeInt;
-        attr.length = (AttrLength) 4;
-        recordDescriptor.push_back(attr);
+// mapping tableName to "attribute Name"
+void RelationManager::indexformat(std::string tableName, std::string attrName, uint8_t* data)
+{
+    int tableNameSize = tableName.size();
+    int attrNameSize = attrName.size();
 
-        attr.name = "tableName";
-        attr.type = TypeVarChar;
-        attr.length = (AttrLength) 50;
-        recordDescriptor.push_back(attr);
-
-        attr.name = "fileName";
-        attr.type = TypeVarChar;
-        attr.length = (AttrLength) 50;
-        recordDescriptor.push_back(attr);
-    }
-    else if(tableName == "Columns") {
-        Attribute attr;
-        attr.name = "tableId";
-        attr.type = TypeInt;
-        attr.length = (AttrLength) 4;
-        recordDescriptor.push_back(attr);
-
-        attr.name = "columnName";
-        attr.type = TypeVarChar;
-        attr.length = (AttrLength) 50;
-        recordDescriptor.push_back(attr);
-
-        attr.name = "columnType";
-        attr.type = TypeInt;
-        attr.length = (AttrLength) 4;
-        recordDescriptor.push_back(attr);
-
-        attr.name = "columnLength";
-        attr.type = TypeInt;
-        attr.length = (AttrLength) 4;
-        recordDescriptor.push_back(attr);
-
-        attr.name = "columnPosition";
-        attr.type = TypeInt;
-        attr.length = (AttrLength) 4;
-        recordDescriptor.push_back(attr);
-    }
-    else {
-
-    }
+    uint8_t nullpart = 0;
+    memcpy(data, &nullpart, sizeof(uint8_t));
+    data+=1;
+    memcpy(data, &tableNameSize, sizeof(int));
+    data+=sizeof(int);
+    memcpy(data, tableName.c_str(), tableNameSize);
+    data+=tableNameSize;
+    memcpy(data, &attrNameSize, sizeof(int));
+    data+=sizeof(int);
+    memcpy(data, attrName.c_str(), attrNameSize);
+    data+=attrNameSize;
 }
 
 void RelationManager::tableformat(int id, std::string tableName, std::string fileName, uint8_t* data) {
@@ -513,19 +637,85 @@ void RelationManager::prepareString(const std::string &s, uint8_t* data) {
     memcpy(data, s.c_str(), s.size());
 }
 
+
+// data* not include null indicator part
+std::string RelationManager::decodeString(uint8_t* data) {
+    int size = 0;
+    memcpy(&size, data, sizeof(int)); ///////////////////////////////////////////////
+    return std::string((char*)(data+4), size);
+}
+
 void RelationManager::prepareInt(const int i, uint8_t* data) {
     memcpy(data, &i, sizeof(int));
 }
 
 
 // QE IX related
+
 RC RelationManager::createIndex(const std::string &tableName, const std::string &attributeName) {
-    return -1;
+    RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+    IndexManager &ix = IndexManager::instance();
+    
+    FileHandle indexMapping;
+    IXFileHandle indexFile;
+    std::string indexFileName = tableName + "_" + attributeName + ".index";
+    if (ix.createFile(indexFileName) != 0 || ix.openFile(indexFileName, indexFile) != 0) {
+        return -1;
+    }
+    
+    RM_ScanIterator rm_it;
+    Attribute insertAttr;
+    std::vector<Attribute> attrs;
+    getAttributes(tableName, attrs);
+    for(auto attr : attrs) {
+        if(attr.name == attributeName) {
+            insertAttr = attr;
+        }
+    }
+   
+    RID rid;
+    uint8_t* key = new uint8_t [insertAttr.length + sizeof(int) + 1];
+    this->scan(tableName, "", NO_OP, NULL, {attributeName}, rm_it);
+    while (rm_it.getNextTuple(rid, key) != RM_EOF)
+    {
+        ix.insertEntry(indexFile, insertAttr, key+1, rid);
+    }
+
+    uint8_t* indexData = new uint8_t [m_indexDataSize];
+    indexformat(tableName, attributeName, indexData);
+    rbfm.openFile("Indexes", indexMapping);
+    rbfm.insertRecord(indexMapping, m_indexDescriptor, indexData, rid);
+
+
+    delete[] key;
+    delete[] indexData;
+    return 0;
 }
 
 
 RC RelationManager::destroyIndex(const std::string &tableName, const std::string &attributeName) {
-    return -1;
+    IndexManager &indexManager = IndexManager::instance();
+    std::string indexFileName = tableName + "_" + attributeName + ".index";
+    if(indexManager.destroyFile(indexFileName) != 0) {
+        return -1;
+    }
+    RID rid;
+    RM_ScanIterator rm_it;
+    uint8_t* tableNameData = new uint8_t [tableName.size()+ sizeof(int) + 1];
+    uint8_t* returnData = new uint8_t [m_indexDataSize];
+    prepareString(tableName, tableNameData);
+    scan("Indexes", "tableName", EQ_OP, tableNameData, {"AttrName"}, rm_it);
+
+    //////////////////////////////////////////////////////////////
+    //////////////////////TOODOOOOOOOOOO//////////////////////////
+    //////////////////////////////////////////////////////////////
+    while(rm_it.getNextTuple(rid, returnData) != RM_EOF) {
+        if(memcmp(returnData+sizeof(int)+1, attributeName.c_str(), attributeName.size()) == 0) {
+            deleteTuple("Indexes", rid);
+        }
+    }
+
+    return 0;
 }
 
 RC RelationManager::indexScan(const std::string &tableName,
@@ -535,6 +725,24 @@ RC RelationManager::indexScan(const std::string &tableName,
                               bool lowKeyInclusive,
                               bool highKeyInclusive,
                               RM_IndexScanIterator &rm_IndexScanIterator) {
-    return -1;
+
+    std::vector<Attribute> attrs;
+    getAttributes(tableName, attrs);
+    Attribute targetAttr;
+    for(auto attr : attrs) {
+        if(attr.name == attributeName) {
+            targetAttr = attr;
+        }
+    }
+    IndexManager &indexManager = IndexManager::instance();
+    if(indexManager.openFile(tableName+".index", rm_IndexScanIterator.ixFileHandle) != 0) {
+        return -1;
+    }
+
+    indexManager.scan(rm_IndexScanIterator.ixFileHandle,  targetAttr, lowKey , highKey, lowKeyInclusive, highKeyInclusive,  rm_IndexScanIterator.ixScan_it);
 }
+
+
+
+
 

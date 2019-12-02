@@ -78,7 +78,8 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
 
     while(!foundMatchRecord) {
         char* pageBuffer = new char [PAGE_SIZE];
-
+        memset(pageBuffer, 0, PAGE_SIZE);
+        
         fileHandle->readPage(currentPageNum, pageBuffer);
         DataPage page(pageBuffer);
         delete[] pageBuffer;
@@ -399,7 +400,11 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const std::vecto
     DataPage initPage(buffer);
 
     std::pair<uint16_t, uint16_t> indexPair = initPage.getIndexPair(rid.slotNum);
-    
+
+    // this record has been deleted
+    if (indexPair.second == 0) {
+        return -1;
+    }
     if(!initPage.isRecord(fileHandle,rid)) {
         Tombstone tombstone;
         initPage.readTombstone(tombstone, rid);
@@ -601,6 +606,7 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vect
     Record record(recordDescriptor, recordBuffer, rid);
 
     //  Get Attribute
+    
     record.getAttribute(attributeName, recordDescriptor, data);
 
     delete[] pageBuffer;
@@ -714,6 +720,8 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
 
         std::string record(recordBuffer);
         std::string condition(conditionBuffer);
+        
+
 
         delete[] recordBuffer;
         delete[] conditionBuffer;
@@ -888,15 +896,15 @@ DataPage::DataPage(const void* data) {
     page = new uint8_t [PAGE_SIZE];
     memcpy(page, data, PAGE_SIZE);
     
-    pageHeader = new std::pair<uint16_t , uint16_t> [var[SLOT_NUM]];
-    memcpy(pageHeader, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM - 
-                        sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM],
-                        sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM]);
+    // pageHeader = new std::pair<uint16_t , uint16_t> [var[SLOT_NUM]];
+    // memcpy(pageHeader, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM - 
+    //                     sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM],
+    //                     sizeof(std::pair<uint16_t, uint16_t>) * var[SLOT_NUM]);
 
 }
 
 DataPage::~DataPage() {
-    delete[] pageHeader;
+    // delete[] pageHeader;
     delete[] page;
 }
 

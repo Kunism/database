@@ -1206,19 +1206,6 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
    }
 
 
-   
-   
-//    if(this->curIndex < node.keys.size() && !(this->curKey == node.keys[this->curIndex])) {
-//         this->curKey = node.keys[this->curIndex];
-//         if(curKey < highKey) {
-//             curKey.toData(key);
-//             rid = curKey.rid;
-//             return 0;
-//         }
-//         else {
-//             return IX_EOF;
-//         }
-//    }
     
     // next element 
     while(true) {
@@ -1245,78 +1232,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
             // this->curIndex = -1;
         }
     }
-        
-        
-        
-        // if (node.rightNode != -1) {
-        //     this->curNodePageNum = node.rightNode;
-        //     node.readNode(*ixFileHandle, curNodePageNum);
-        //     if (node.keys.size() == 0) {
-        //         this->curNodePageNum = node.rightNode;
-        //     }
-        //     else {
-        //         this->curIndex = 0;
-        //         this->curKey = node.keys[this->curIndex];
-        //         if(curKey < highKey) {
-        //         // return value
-        //             curKey.toData(key);
-        //             rid = curKey.rid;
-        //             return 0;
-        //         }
-        //         else {
-        //             return IX_EOF;
-        //         }
-        //     }
-        // }
-        // else {
-        //     return IX_EOF;
-        // }
-    
-   
 
-    // if(finished) {
-    //     return IX_EOF;
-    // }
-    // //  first time to call getNext, so search tree and return the left most leaf
-    // else if(curNodePageNum == -1) {
-    //     if(lowKey == NULL) {
-
-    //         bTree.readBTreeHiddenPage(*ixFileHandle);
-    //         curNodePageNum = bTree.recSearch(*ixFileHandle, Key(key, {0, 0}, attribute.type), bTree.rootPageNum);
-
-    //         BTreeNode node;
-    //         node.readNode(*ixFileHandle, curNodePageNum);
-    //         curIndex = node.searchKey(Key(key, {0, 0}, attribute.type));
-
-    //     }
-    //     else {
-    //         bTree.readBTreeHiddenPage(*ixFileHandle);
-    //         curNodePageNum = bTree.recSearch(*ixFileHandle, Key(lowKey, {0, 0}, attribute.type), bTree.rootPageNum);
-
-    //         BTreeNode node;
-    //         node.readNode(*ixFileHandle, curNodePageNum);
-    //         curIndex = node.searchKey(Key(lowKey, {0, 0}, attribute.type));
-    //     }
-
-
-
-    // }
-    // //  iterator already on leaf node, so keep read more key in leaf node, or go to next leaf node
-    // else {
-    //     BTreeNode node;
-    //     node.readNode(*ixFileHandle, curNodePageNum);
-    // }
-
-
-//    rid = node.keys[curIndex].rid;
-//
-//    curIndex++;
-//    if(curIndex >= node.keys.size()) {
-//        curIndex = 0;
-//        curNodePageNum = node.rightNode;
-//    }
-
-    // return -1;
 }
 
 RC IX_ScanIterator::close() {
