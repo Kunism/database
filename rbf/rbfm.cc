@@ -697,11 +697,11 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
         uint32_t recordLength = 0;
         uint32_t conditionLength = 0;
 
-        char* recordBuffer = new char[recordLength + 1];
-        char* conditionBuffer = new char[conditionLength + 1];
-
         memcpy(&recordLength, recordValue, sizeof(uint32_t));
         memcpy(&conditionLength, conditionValue, sizeof(uint32_t));
+
+        char* recordBuffer = new char[recordLength + 1];
+        char* conditionBuffer = new char[conditionLength + 1];
 
         memset(recordBuffer, recordLength + 1, 0);
         memset(conditionBuffer, conditionLength + 1, 0);

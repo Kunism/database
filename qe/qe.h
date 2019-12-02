@@ -1,6 +1,7 @@
 #ifndef _qe_h_
 #define _qe_h_
 
+#include <altivec.h>
 #include "../rbf/rbfm.h"
 #include "../rm/rm.h"
 #include "../ix/ix.h"
@@ -37,6 +38,8 @@ public:
     virtual void getAttributes(std::vector<Attribute> &attrs) const = 0;
 
     virtual ~Iterator() = default;
+
+    //RC getAttribute(std::vector<Attribute> &attrs, );
 };
 
 class TableScan : public Iterator {
@@ -173,23 +176,29 @@ public:
 
     ~Filter() override = default;
 
-    RC getNextTuple(void *data) override { return QE_EOF; };
-
+    RC getNextTuple(void *data) override ;
+    RC getAttribute(const std::vector<Attribute> &attrs, const std::string attrName, const void* tupleData, char* attrData, AttrType &attrType);
     // For attribute in std::vector<Attribute>, name it as rel.attr
-    void getAttributes(std::vector<Attribute> &attrs) const override {};
+    void getAttributes(std::vector<Attribute> &attrs) const override;
+    uint32_t getAttributeMaxLength(std::vector<Attribute> &attrs, const std::string attrName);
+    bool compValue(const char* lData, const char* conditionData);
+
+    Iterator *m_input;
+    Condition m_condition;
+    AttrType m_attrType;
 };
 
 class Project : public Iterator {
     // Projection operator
 public:
     Project(Iterator *input,                    // Iterator of input R
-            const std::vector<std::string> &attrNames) {};   // std::vector containing attribute names
+            const std::vector<std::string> &attrNames);   // std::vector containing attribute names
     ~Project() override = default;
 
-    RC getNextTuple(void *data) override { return QE_EOF; };
+    RC getNextTuple(void *data) override;
 
     // For attribute in std::vector<Attribute>, name it as rel.attr
-    void getAttributes(std::vector<Attribute> &attrs) const override {};
+    void getAttributes(std::vector<Attribute> &attrs) const override;
 };
 
 class BNLJoin : public Iterator {
