@@ -602,6 +602,7 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vect
 
 
     void* recordBuffer = new char [indexPair.second];
+    memset(recordBuffer, 0, indexPair.second);
     readRecord(fileHandle, recordDescriptor, rid, recordBuffer);
     Record record(recordDescriptor, recordBuffer, rid);
 
@@ -859,6 +860,7 @@ void Record::convertData(const std::vector<Attribute> &descriptor, const void* _
             // byte to int
             uint32_t varCharSize; 
             memcpy(&varCharSize, pos, sizeof(uint32_t));
+            //std::cerr << "ConvertData:: varCharSize = " << varCharSize << std::endl;
             pos +=  (sizeof(uint32_t) + varCharSize);
             size += (sizeof(uint32_t) + varCharSize);
         }
