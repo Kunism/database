@@ -40,7 +40,7 @@ Key::Key(const void *key, const RID &rid, AttrType attrType) {
         char* strBuffer = new char [strLen + 1];
         memcpy(strBuffer, (char*)key + sizeof(uint32_t), strLen);
         strBuffer[strLen] = '\0';
-        keyString = std::string(strBuffer);
+        keyString = std::string(strBuffer, strLen);
         delete[] strBuffer;
 
         memcpy(&this->rid, &rid, sizeof(RID));
@@ -77,7 +77,7 @@ Key::Key(char *data, AttrType attrType) {
         char* strBuffer = new char [actualKeyLen + 1];
         memcpy(strBuffer, data + sizeof(uint32_t), actualKeyLen);
         strBuffer[actualKeyLen] = '\0';
-        keyString = std::string(strBuffer);
+        keyString = std::string(strBuffer, actualKeyLen);
 
         //  read rid
         memcpy(&rid, data + sizeof(uint32_t) + actualKeyLen, sizeof(RID));
