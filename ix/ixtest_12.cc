@@ -20,7 +20,7 @@ int testCase_12(const std::string &indexFileName, const Attribute &attribute) {
     // 6. CloseIndex File
     // 7. DestroyIndex File
     // NOTE: "**" signifies the new functions being tested in this test case.
-    std::cerr << std::endl << "***** In IX Test Case 12 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Case 12 *****" << std::endl;
 
     RID rid;
     IXFileHandle ixFileHandle;
@@ -58,12 +58,12 @@ int testCase_12(const std::string &indexFileName, const Attribute &attribute) {
         count++;
 
         if (count % 100 == 0) {
-            std::cerr << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
+            std::cout << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
         }
         RC rc = indexManager.deleteEntry(ixFileHandle, attribute, &key, rid);
         assert(rc == success && "indexManager::deleteEntry() should not fail.");
     }
-    std::cerr << std::endl;
+    std::cout << std::endl;
 
     // close scan and open scan again
     rc = ix_ScanIterator.close();
@@ -74,7 +74,7 @@ int testCase_12(const std::string &indexFileName, const Attribute &attribute) {
 
     // iterate - should fail
     while (ix_ScanIterator.getNextEntry(rid, &key) == success) {
-        std::cerr << "Wrong entry returned: " << rid.pageNum << " " << rid.slotNum << " --- The test failed."
+        std::cout << "Wrong entry returned: " << rid.pageNum << " " << rid.slotNum << " --- The test failed."
                   << std::endl;
         rc = ix_ScanIterator.close();
         rc = indexManager.closeFile(ixFileHandle);
@@ -110,10 +110,10 @@ int main() {
 
     RC result = testCase_12(indexFileName, attrHeight);
     if (result == success) {
-        std::cerr << "***** IX Test Case 12 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Case 12 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Case 12 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Case 12 failed. *****" << std::endl;
         return fail;
     }
 

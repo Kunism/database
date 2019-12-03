@@ -3,9 +3,8 @@
 
 void prepareKeyAndRid(const unsigned count, const unsigned i, char *key, RID &rid) {
     *(int *) key = count;
-    for (unsigned j = 0; j < count; j++) {
-        key[4 + j] = 'a' + i - 1;
-    }
+    key[4] = 'a' + (i - 1) % 26;
+    key[5] = '\0';
     rid.pageNum = i;
     rid.slotNum = i;
 }
@@ -21,7 +20,7 @@ int testCase_14(const std::string &indexFileName,
     // 5. Insert one more entries to watch the shape of the BTree
     // 6. CloseIndex
     // 7. DestroyIndex
-    std::cerr << std::endl << "***** In IX Test Case 14 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Case 14 *****" << std::endl;
 
     RID rid;
     IXFileHandle ixFileHandle;
@@ -49,17 +48,17 @@ int testCase_14(const std::string &indexFileName,
 
         if (i == 5) {
             // print BTree, by this time the BTree should have 2 level - one root (c*) with two leaf nodes (a*b*, c*d*e*)
-            std::cerr << std::endl;
+            std::cout << std::endl;
             indexManager.printBtree(ixFileHandle, attribute);
-            std::cerr << std::endl;
+            std::cout << std::endl;
         }
     }
 
 
     // print BTree, by this time the BTree should have 3 level
-    std::cerr << std::endl << std::endl << "////////////////////////////" << std::endl << std::endl;
+    std::cout << std::endl << std::endl << "////////////////////////////" << std::endl << std::endl;
     indexManager.printBtree(ixFileHandle, attribute);
-    std::cerr << std::endl;
+    std::cout << std::endl;
 
     // Close Index
     rc = indexManager.closeFile(ixFileHandle);
@@ -87,10 +86,10 @@ int main() {
     indexManager.destroyFile("EmpName_idx");
 
     if (testCase_14(indexEmpNameFileName, attrEmpName) == success) {
-        std::cerr << "***** IX Test Case 14 finished. Please check the shape of the B+ Tree. *****" << std::endl;
+        std::cout << "***** IX Test Case 14 finished. Please check the shape of the B+ Tree. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Case 14 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Case 14 failed. *****" << std::endl;
         return fail;
     }
 

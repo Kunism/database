@@ -3,15 +3,15 @@
 
 int testCase_extra_1(const std::string &indexFileName, const Attribute &attribute) {
     // Checks whether duplicated entries spanning multiple page are handled properly or not.
-    std::cerr << std::endl << "***** In IX Private Test Extra Case 01 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Private Test Extra Case 01 *****" << std::endl;
 
     RID rid;
-    unsigned numOfTuples = 10000;
-    unsigned numExtra = 5000;
+    unsigned numOfTuples = 12000;
+    unsigned numExtra = 6000;
     unsigned key;
     IXFileHandle ixFileHandle;
     IX_ScanIterator ix_ScanIterator;
-    int compVal1 = 9, compVal2 = 15;
+    int compVal1 = 7, compVal2 = 13;
     int count = 0;
 
     //create index file(s)
@@ -24,7 +24,7 @@ int testCase_extra_1(const std::string &indexFileName, const Attribute &attribut
 
     // insert entry
     for (unsigned i = 1; i <= numOfTuples; i++) {
-        key = i % 10;
+        key = i % 12;
         rid.pageNum = i;
         rid.slotNum = i;
 
@@ -33,9 +33,9 @@ int testCase_extra_1(const std::string &indexFileName, const Attribute &attribut
     }
 
     for (unsigned i = numOfTuples; i < numOfTuples + numExtra; i++) {
-        key = i % 10 + 10;
+        key = i % 12 + 13;
         rid.pageNum = i;
-        rid.slotNum = i + 10;
+        rid.slotNum = i + 5;
 
         rc = indexManager.insertEntry(ixFileHandle, attribute, &key, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
@@ -51,17 +51,22 @@ int testCase_extra_1(const std::string &indexFileName, const Attribute &attribut
         count++;
 
         if (rid.pageNum != rid.slotNum || key != compVal1) {
-            std::cerr << "Wrong entries output... The test failed" << std::endl;
+            std::cout << "Wrong entries output... The test failed" << std::endl;
+            ix_ScanIterator.close();
+            indexManager.closeFile(ixFileHandle);
+            indexManager.destroyFile(indexFileName);
+            return fail;
         }
 
         if (count % 100 == 0) {
-            std::cerr << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
+            std::cout << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
         }
     }
 
-    std::cerr << "Number of scanned entries: " << count << std::endl << std::endl;
+    std::cout << "Number of scanned entries: " << count << std::endl << std::endl;
     if (count != 1000) {
-        std::cerr << "Wrong entries output... The test failed" << std::endl;
+
+        std::cout << "Wrong count output... The test failed. expected: " << " actual:" << count << std::endl;
         ix_ScanIterator.close();
         indexManager.closeFile(ixFileHandle);
         indexManager.destroyFile(indexFileName);
@@ -80,18 +85,22 @@ int testCase_extra_1(const std::string &indexFileName, const Attribute &attribut
     while (ix_ScanIterator.getNextEntry(rid, &key) == success) {
         count++;
 
-        if (rid.pageNum != (rid.slotNum - 10) || key != compVal2) {
-            std::cerr << "Wrong entries output... The test failed" << std::endl;
+        if (rid.pageNum != (rid.slotNum - 5) || key != compVal2) {
+            std::cout << "Wrong entries output... The test failed" << std::endl;
+            ix_ScanIterator.close();
+            indexManager.closeFile(ixFileHandle);
+            indexManager.destroyFile(indexFileName);
+            return fail;
         }
 
         if (count % 100 == 0) {
-            std::cerr << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
+            std::cout << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
         }
     }
 
-    std::cerr << "Number of scanned entries: " << count << std::endl;
+    std::cout << "Number of scanned entries: " << count << std::endl;
     if (count != 500) {
-        std::cerr << "Wrong entries output... The test failed" << std::endl;
+        std::cout << "Wrong entries output... The test failed" << std::endl;
         ix_ScanIterator.close();
         indexManager.closeFile(ixFileHandle);
         indexManager.destroyFile(indexFileName);
@@ -124,10 +133,10 @@ int main() {
     indexManager.destroyFile(indexFileName);
 
     if (testCase_extra_1(indexFileName, attrAge) == success) {
-        std::cerr << "IX_Test Private Extra Case 01 finished. The result will be examined." << std::endl;
+        std::cout << "IX_Test Private Extra Case 01 finished. The result will be examined." << std::endl;
         return success;
     } else {
-        std::cerr << "IX_Test Private Extra Case 01 failed." << std::endl;
+        std::cout << "IX_Test Private Extra Case 01 failed." << std::endl;
         return fail;
     }
 

@@ -9,7 +9,7 @@ RC testCase_1(const std::string &indexFileName) {
     // 4. Open Index File ** -- when a file handle is already opened **
     // 5. Close Index File **
     // NOTE: "**" signifies the new functions being tested in this test case.
-    std::cerr << std::endl << "***** In IX Test Case 01 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Case 01 *****" << std::endl;
 
     // create index file
     RC rc = indexManager.createFile(indexFileName);
@@ -41,10 +41,10 @@ int main() {
     indexManager.destroyFile("age_idx");
 
     if (testCase_1(indexFileName) == success) {
-        std::cerr << "***** IX Test Case 01 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Case 01 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Case 01 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Case 01 failed. *****" << std::endl;
         return fail;
     }
 }

@@ -7,7 +7,7 @@ int testCase_4(const std::string &indexFileName, const Attribute &attribute) {
     // 2. Disk I/O check of deleteEntry - CollectCounterValues **
     // 3. Close Index file
     // NOTE: "**" signifies the new functions being tested in this test case.
-    std::cerr << std::endl << "***** In IX Test Case 04 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Case 04 *****" << std::endl;
 
     RID rid;
     int key = 200;
@@ -33,7 +33,7 @@ int testCase_4(const std::string &indexFileName, const Attribute &attribute) {
     rc = ixFileHandle.collectCounterValues(readPageCount, writePageCount, appendPageCount);
     assert(rc == success && "indexManager::collectCounterValues() should not fail.");
 
-    std::cerr << "Before DeleteEntry - R W A: " << readPageCount << " " << writePageCount << " " << appendPageCount
+    std::cout << "Before DeleteEntry - R W A: " << readPageCount << " " << writePageCount << " " << appendPageCount
               << std::endl;
 
     // delete entry
@@ -43,7 +43,7 @@ int testCase_4(const std::string &indexFileName, const Attribute &attribute) {
     rc = ixFileHandle.collectCounterValues(readPageCountAfter, writePageCountAfter, appendPageCountAfter);
     assert(rc == success && "indexManager::collectCounterValues() should not fail.");
 
-    std::cerr << "After DeleteEntry - R W A: " << readPageCountAfter << " " << writePageCountAfter << " "
+    std::cout << "After DeleteEntry - R W A: " << readPageCountAfter << " " << writePageCountAfter << " "
               << appendPageCountAfter << std::endl;
 
     // collect counters
@@ -51,11 +51,11 @@ int testCase_4(const std::string &indexFileName, const Attribute &attribute) {
     writeDiff = writePageCountAfter - writePageCount;
     appendDiff = appendPageCountAfter - appendPageCount;
 
-    std::cerr << "Page I/O count of single deletion - R W A: " << readDiff << " " << writeDiff << " " << appendDiff
+    std::cout << "Page I/O count of single deletion - R W A: " << readDiff << " " << writeDiff << " " << appendDiff
               << std::endl;
 
     if (readDiff == 0 && writeDiff == 0 && appendDiff == 0) {
-        std::cerr << "Deletion should generate some page I/O. The implementation is not correct." << std::endl;
+        std::cout << "Deletion should generate some page I/O. The implementation is not correct." << std::endl;
         rc = indexManager.closeFile(ixFileHandle);
         return fail;
     }
@@ -80,10 +80,10 @@ int main() {
     attrAge.type = TypeInt;
 
     if (testCase_4(indexFileName, attrAge) == success) {
-        std::cerr << "***** IX Test Case 04 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Case 04 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Case 04 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Case 04 failed. *****" << std::endl;
         return fail;
     }
 

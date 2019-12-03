@@ -14,7 +14,7 @@ int testCase_13(const std::string &indexFileName, const Attribute &attribute) {
     // 7. Close Scan
     // 8. Close Index
     // 9. Destroy Index
-    std::cerr << std::endl << "***** In IX Test Case 13 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Case 13 *****" << std::endl;
 
     RID rid;
     IXFileHandle ixFileHandle;
@@ -78,7 +78,7 @@ int testCase_13(const std::string &indexFileName, const Attribute &attribute) {
     rc = ixFileHandle.collectCounterValues(readPageCount, writePageCount, appendPageCount);
     assert(rc == success && "indexManager::collectCounterValues() should not fail.");
 
-    std::cerr << "IO count after insertion: R W A - "
+    std::cout << "IO count after insertion: R W A - "
               << readPageCount
               << " " << writePageCount
               << " " << appendPageCount << std::endl;
@@ -95,22 +95,22 @@ int testCase_13(const std::string &indexFileName, const Attribute &attribute) {
 
     int count1 = 0;
     //iterate
-    std::cerr << std::endl;
+    std::cout << std::endl;
     while (ix_ScanIterator.getNextEntry(rid, &key) == success) {
         if (((rid.pageNum - 1) % 26 + 1) != offset) {
-            std::cerr << "Wrong entry output... " << rid.pageNum << " " << rid.slotNum << " " << " - The test failed..."
+            std::cout << "Wrong entry output... " << rid.pageNum << " " << rid.slotNum << " " << " - The test failed..."
                       << std::endl;
             return fail;
         }
         count1++;
         if (count1 % 20 == 0) {
-            std::cerr << count1 << " scanned - returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
+            std::cout << count1 << " scanned - returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
         }
     }
-    std::cerr << std::endl;
+    std::cout << std::endl;
 
     if (count1 != numOfTuplesTobeScanned) {
-        std::cerr << "Wrong entry output... The test failed..." << std::endl;
+        std::cout << "Wrong entry output... The test failed..." << std::endl;
         rc = ix_ScanIterator.close();
         rc = indexManager.closeFile(ixFileHandle);
         rc = indexManager.destroyFile(indexFileName);
@@ -121,7 +121,7 @@ int testCase_13(const std::string &indexFileName, const Attribute &attribute) {
     rc = ixFileHandle.collectCounterValues(readPageCount, writePageCount, appendPageCount);
     assert(rc == success && "indexManager::collectCounterValues() should not fail.");
 
-    std::cerr << "IO count after scan: R W A - "
+    std::cout << "IO count after scan: R W A - "
               << readPageCount
               << " " << writePageCount
               << " " << appendPageCount << std::endl;
@@ -153,10 +153,10 @@ int main() {
     indexManager.destroyFile("EmpName_idx");
 
     if (testCase_13(indexEmpNameFileName, attrEmpName) == success) {
-        std::cerr << "***** IX Test Case 13 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Case 13 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Case 13 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Case 13 failed. *****" << std::endl;
         return fail;
     }
 

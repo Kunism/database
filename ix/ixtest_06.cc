@@ -10,7 +10,7 @@ int testCase_6(const std::string &indexFileName, const Attribute &attribute) {
     // 5. Scan close **
     // 6. Close Index File
     // NOTE: "**" signifies the new functions being tested in this test case.
-    std::cerr << std::endl << "***** In IX Test Case 06 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Case 06 *****" << std::endl;
 
     RID rid;
     IXFileHandle ixFileHandle;
@@ -50,14 +50,14 @@ int testCase_6(const std::string &indexFileName, const Attribute &attribute) {
         count++;
 
         if (rid.pageNum % 200 == 0) {
-            std::cerr << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
+            std::cout << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << std::endl;
         }
         outRidSlotNumSum += rid.slotNum;
     }
 
     // Inconsistency between insert and scan?
     if (inRidSlotNumSum != outRidSlotNumSum) {
-        std::cerr << "Wrong entries output... The test failed." << std::endl;
+        std::cout << "Wrong entries output... The test failed." << std::endl;
         rc = ix_ScanIterator.close();
         rc = indexManager.closeFile(ixFileHandle);
 
@@ -86,10 +86,10 @@ int main() {
     indexManager.destroyFile("age_idx");
 
     if (testCase_6(indexFileName, attrAge) == success) {
-        std::cerr << "***** IX Test Case 06 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Case 06 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Case 06 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Case 06 failed. *****" << std::endl;
         return fail;
     }
 

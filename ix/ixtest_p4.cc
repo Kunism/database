@@ -16,7 +16,7 @@ RC closeWithFail(const string &indexFileName1, const string &indexFileName2, IXF
 int testCase_p4(const std::string &indexFileName1, const Attribute &attribute1, const std::string &indexFileName2,
                 const Attribute &attribute2) {
     // Checks whether varchar key is handled properly.
-    std::cerr << std::endl << "***** In IX Test Private Case 4 *****" << std::endl;
+    std::cout << std::endl << "***** In IX Test Private Case 4 *****" << std::endl;
 
     RID rid;
     IXFileHandle ixFileHandle1;
@@ -77,20 +77,20 @@ int testCase_p4(const std::string &indexFileName1, const Attribute &attribute1, 
     assert(rc == success && "indexManager::collectCounterValues() should not fail.");
 
     if (writePage1 < 1) {
-        std::cerr << "Did not use disk at all. Test failed." << std::endl;
+        std::cout << "Did not use disk at all. Test failed." << std::endl;
         return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2);
     }
 
     // Actually, there should be no difference.
     if (writePage2 + appendPage2 - writePage1 - appendPage1 > 10) {
-        std::cerr << "Failed to handle space nicely for VarChar keys..." << std::endl;
+        std::cout << "Failed to handle space nicely for VarChar keys..." << std::endl;
         return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2);
     }
 
     *(int *) lowKey = 5;
-    sprintf(lowKey + 4, "%05d", 30801);
+    sprintf(lowKey + 4, "%05d", 3001);
     *(int *) highKey = 5;
-    sprintf(highKey + 4, "%05d", 30900);
+    sprintf(highKey + 4, "%05d", 35000);
 
     rc = indexManager.scan(ixFileHandle1, attribute1, lowKey, highKey, true, true, ix_ScanIterator1);
     assert(rc == success && "indexManager::scan() should not fail.");
@@ -101,14 +101,15 @@ int testCase_p4(const std::string &indexFileName1, const Attribute &attribute1, 
     //iterate
     count = 0;
     while (ix_ScanIterator1.getNextEntry(rid, &key) != IX_EOF) {
-        if (ix_ScanIterator2.getNextEntry(rid, &key) != success) {
-            std::cerr << "Wrong entries output...failure" << std::endl;
+        int temp = atoi(key + 4);
+        if ((ix_ScanIterator2.getNextEntry(rid, &key) != success) || (temp != atoi(key + 4))) {
+            std::cout << "Wrong entries output...failure" << std::endl;
             return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2);
         }
         count++;
     }
-    if (count != 100) {
-        std::cerr << "Wrong output count! expected: 100, actual: " << count << " ...Failure" << std::endl;
+    if (count != 32000) {
+        std::cout << "Wrong output count! expected: 32000, actual: " << count << " ...Failure" << std::endl;
         return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2);
     }
 
@@ -144,11 +145,11 @@ int main() {
     const std::string indexEmpNameFileName1 = "private_empname_shortidx";
     const std::string indexEmpNameFileName2 = "private_empname_longidx";
     Attribute attrShortEmpName;
-    attrShortEmpName.length = 10;
+    attrShortEmpName.length = 15;
     attrShortEmpName.name = "ShortEmpName";
     attrShortEmpName.type = TypeVarChar;
     Attribute attrLongEmpName;
-    attrLongEmpName.length = 100;
+    attrLongEmpName.length = 300;
     attrLongEmpName.name = "LongEmpName";
     attrLongEmpName.type = TypeVarChar;
 
@@ -156,10 +157,10 @@ int main() {
     indexManager.destroyFile(indexEmpNameFileName2);
 
     if (testCase_p4(indexEmpNameFileName1, attrShortEmpName, indexEmpNameFileName2, attrLongEmpName) == success) {
-        std::cerr << "***** IX Test Private Case 4 finished. The result will be examined. *****" << std::endl;
+        std::cout << "***** IX Test Private Case 4 finished. The result will be examined. *****" << std::endl;
         return success;
     } else {
-        std::cerr << "***** [FAIL] IX Test Private Case 4 failed. *****" << std::endl;
+        std::cout << "***** [FAIL] IX Test Private Case 4 failed. *****" << std::endl;
         return fail;
     }
 }
