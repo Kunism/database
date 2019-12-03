@@ -249,4 +249,27 @@ void Project::getAttributes(std::vector<Attribute> &attrs) const {
 }
 
 
+
+INLJoin::INLJoin(Iterator *leftIn, IndexScan *rightIn, const Condition &condition) {
+    this->m_leftInput = leftIn;
+    this->m_rightInput = rightIn;
+    this->m_condition = condition;
+
+    m_leftInput->getAttributes(m_leftAttribute);
+    m_rightInput->getAttributes(m_rightAttribute);
+}
+
+INLJoin::~INLJoin() {
+
+}
+
+RC INLJoin::getNextTuple(void *data) {
+
+}
+
+void INLJoin::getAttributes(std::vector<Attribute> &attrs) const {
+
+}
+
+
 // ... the rest of your implementations go here
