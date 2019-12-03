@@ -99,21 +99,22 @@ void Filter::getAttributes(std::vector<Attribute> &attrs) const {
 }
 
 uint32_t Filter::getAttributeMaxLength(std::vector<Attribute> &attrs, const std::string attrName) {
+    uint32_t maxLength = sizeof(uint8_t);   //  nullIndicator
     for(int i = 0; i < attrs.size(); i++) {
         if(attrs[i].name == attrName) {
             if(attrs[i].type == TypeVarChar) {
-                return attrs[i].length + sizeof(int);
+                maxLength += attrs[i].length + sizeof(int);
             }
             else {
-                return attrs[i].length;
+                maxLength += attrs[i].length;
             }
         }
     }
-    return 0;
+    return maxLength;
 }
 
 bool Filter::compValue(const char *lData, const char *conditionData) {
-    //std::cerr << *(int*)lData << "#####" << *(int*)conditionData << "Tail" << std::endl;
+    //std::cerr << *((int*)((const char*)lData + 1)) << "#####" << *(int*)conditionData << "Tail" << std::endl;
 
     uint8_t nullIndicator = 0x80;
     if(memcmp(&nullIndicator, lData, sizeof(uint8_t)) == 0) {
