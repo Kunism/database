@@ -37,7 +37,7 @@ const std::vector<Attribute> RelationManager::m_indexDescriptor = {
         (AttrLength)50
     },
     {
-        "AttrName", //ColumnName
+        "attrName", //ColumnName
         TypeVarChar,
         (AttrLength)50
     }
@@ -108,8 +108,8 @@ RC RelationManager::createCatalog() {
     rbfm.createFile("Columns");
     rbfm.createFile("Indexes");
     
-    // Three catalog file: Tables, Columns
-    this->tableCountInit(2);
+    // Three catalog file: Tables, Columns, Indexes
+    this->tableCountInit(3);
 
     RID rid;
     // insert Tables
@@ -120,6 +120,9 @@ RC RelationManager::createCatalog() {
     rbfm.insertRecord(tableFile,m_tablesDescriptor,tableData,rid);
     memset(tableData,0,m_tableDataSize);
     tableformat(2, "Columns", "Columns", tableData);
+    rbfm.insertRecord(tableFile,m_tablesDescriptor,tableData,rid);
+    memset(tableData,0,m_tableDataSize);
+    tableformat(3, "Indexes", "Indexes", tableData);
     rbfm.insertRecord(tableFile,m_tablesDescriptor,tableData,rid);
     rbfm.closeFile(tableFile);
     
@@ -159,6 +162,13 @@ RC RelationManager::createCatalog() {
     columnformat(2, {"column-position", TypeInt, 4}, 5, columnData);
     rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
     memset(columnData, 0, m_columnDataSize);
+
+    columnformat(3, {"tableName", TypeVarChar, 50}, 1, columnData);
+    rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
+    memset(columnData, 0, m_columnDataSize);
+
+    columnformat(3, {"attrName", TypeVarChar, 50}, 2, columnData);
+    rbfm.insertRecord(columnFile, m_collumnsDescriptor, columnData, rid);
     columnFile.closeFile();
 
     delete[] tableData;
@@ -339,7 +349,7 @@ RC RelationManager::insertIndexes(const std::string &tableName, const RID &rid) 
     RM_ScanIterator rm_it;
     uint8_t* tableNameData = new uint8_t [m_tableDataSize];    
     prepareString(tableName, tableNameData);
-    scan("Indexes", "tableName", EQ_OP, tableNameData, {"AttrName"}, rm_it);
+    scan("Indexes", "tableName", EQ_OP, tableNameData, {"attrName"}, rm_it);
     
     RID returnRID;
     uint8_t* returnData = new uint8_t [m_indexDataSize];
@@ -348,6 +358,7 @@ RC RelationManager::insertIndexes(const std::string &tableName, const RID &rid) 
     ////////////////////////////////////////////////////
     while(rm_it.getNextTuple(returnRID, returnData) != RM_EOF) {
         std::string attrName = decodeString(returnData+1);
+        // std::cerr << "Get Index Name: " << attrName << std::endl;
         Attribute targetAttr;
         for(auto attr : attrs) {
             if(attr.name == attrName) {
@@ -357,10 +368,20 @@ RC RelationManager::insertIndexes(const std::string &tableName, const RID &rid) 
         std::string indexFileName = tableName+"_"+attrName+".index";
         IXFileHandle ixFileHandle;
         uint8_t* keyData = new uint8_t [targetAttr.length + sizeof(int) + 1];
-        ix.openFile(indexFileName, ixFileHandle);
+        if(ix.openFile(indexFileName, ixFileHandle) != 0) {
+            std::cerr << "RelationManager::insertIndexes open file fail" <<std::endl;
+            return -1;
+        }
 
-        readAttribute(tableName, rid, attrName, keyData);
-        ix.insertEntry(ixFileHandle, targetAttr, keyData+1, rid);
+        if(readAttribute(tableName, rid, attrName, keyData) != 0) {
+            std::cerr << "RelationManager::insertIndexes readAttribute fail" <<std::endl;
+            return -1;
+        }
+
+        if(ix.insertEntry(ixFileHandle, targetAttr, keyData+1, rid) != 0) {
+            std::cerr << "RelationManager::insertIndexes insertEntry fail" <<std::endl;
+            return -1;
+        }
         delete[] keyData;
     }
     delete[] tableNameData;
@@ -400,7 +421,7 @@ RC RelationManager::deleteIndexes(const std::string &tableName, const RID &rid) 
     RM_ScanIterator rm_it;
     uint8_t* tableNameData = new uint8_t [m_tableDataSize];    
     prepareString(tableName, tableNameData);
-    scan("Indexes", "tableName", EQ_OP, tableNameData, {"AttrName"}, rm_it);
+    scan("Indexes", "tableName", EQ_OP, tableNameData, {"attrName"}, rm_it);
 
     RID returnRID;
     uint8_t* returnData = new uint8_t [m_indexDataSize];
@@ -728,7 +749,7 @@ RC RelationManager::destroyIndex(const std::string &tableName, const std::string
     uint8_t* tableNameData = new uint8_t [tableName.size()+ sizeof(int) + 1];
     uint8_t* returnData = new uint8_t [m_indexDataSize];
     prepareString(tableName, tableNameData);
-    scan("Indexes", "tableName", EQ_OP, tableNameData, {"AttrName"}, rm_it);
+    scan("Indexes", "tableName", EQ_OP, tableNameData, {"attrName"}, rm_it);
 
     //////////////////////////////////////////////////////////////
     //////////////////////TOODOOOOOOOOOO//////////////////////////
