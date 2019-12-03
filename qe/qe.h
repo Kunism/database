@@ -5,6 +5,8 @@
 #include "../rm/rm.h"
 #include "../ix/ix.h"
 
+#include <iostream>
+
 #define QE_EOF (-1)  // end of the index scan
 
 typedef enum {
@@ -27,6 +29,8 @@ struct Condition {
     bool bRhsIsAttr;            // TRUE if right-hand side is an attribute and not a value; FALSE, otherwise.
     std::string rhsAttr;        // right-hand side attribute if bRhsIsAttr = TRUE
     Value rhsValue;             // right-hand side value if bRhsIsAttr = FALSE
+
+    Condition operator= (const Condition &rCondition);
 };
 
 class Iterator {
@@ -141,6 +145,7 @@ public:
 
     RC getNextTuple(void *data) override {
         int rc = iter->getNextEntry(rid, key);
+        std::cerr << "Index getNextEntry RC = " << rc << std::endl;
         if (rc == 0) {
             rc = rm.readTuple(tableName, rid, data);
         }
@@ -176,7 +181,7 @@ public:
     ~Filter() override = default;
 
     RC getNextTuple(void *data) override ;
-    RC getAttribute(const std::vector<Attribute> &attrs, const std::string attrName, const void* tupleData, char* attrData, AttrType &attrType);
+    RC readAttribute(const std::vector<Attribute> &attrs, const std::string attrName, const void* tupleData, char* attrData, AttrType &attrType);
     // For attribute in std::vector<Attribute>, name it as rel.attr
     void getAttributes(std::vector<Attribute> &attrs) const override;
     uint32_t getAttributeMaxLength(std::vector<Attribute> &attrs, const std::string attrName);

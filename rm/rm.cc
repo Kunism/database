@@ -18,6 +18,18 @@ RC RM_ScanIterator::close() {
     // fileHandle.closeFile();
 }
 
+RC RM_IndexScanIterator::getNextEntry(RID &rid, void *key) {
+    if(ixScan_it.getNextEntry(rid, key) != 0) {
+        return RM_EOF;
+    }
+    return 0;
+}
+
+RC RM_IndexScanIterator::close() {
+    //  TODO
+    return RM_EOF;
+}
+
 const std::vector<Attribute> RelationManager::m_indexDescriptor = {
     {
         "tableName",
