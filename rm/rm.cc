@@ -342,10 +342,9 @@ RC RelationManager::insertIndexes(const std::string &tableName, const RID &rid) 
                 targetAttr = attr;
             }
         }
-        std::cerr << "HOHOLOLO" << std::endl;
         std::string indexFileName = tableName+"_"+attrName+".index";
         IXFileHandle ixFileHandle;
-        uint8_t* keyData = new uint8_t [targetAttr.length + 5];
+        uint8_t* keyData = new uint8_t [targetAttr.length + sizeof(int) + 1];
         ix.openFile(indexFileName, ixFileHandle);
 
         readAttribute(tableName, rid, attrName, keyData);
@@ -741,18 +740,22 @@ RC RelationManager::indexScan(const std::string &tableName,
 
     std::vector<Attribute> attrs;
     getAttributes(tableName, attrs);
+
     Attribute targetAttr;
     for(auto attr : attrs) {
         if(attr.name == attributeName) {
             targetAttr = attr;
         }
     }
+
     IndexManager &indexManager = IndexManager::instance();
-    if(indexManager.openFile(tableName+".index", rm_IndexScanIterator.ixFileHandle) != 0) {
+    std::string indexFileName = tableName + "_" + attributeName+ ".index";
+    if(indexManager.openFile(indexFileName, rm_IndexScanIterator.ixFileHandle) != 0) {
         return -1;
     }
 
-    indexManager.scan(rm_IndexScanIterator.ixFileHandle,  targetAttr, lowKey , highKey, lowKeyInclusive, highKeyInclusive,  rm_IndexScanIterator.ixScan_it);
+    indexManager.scan(rm_IndexScanIterator.ixFileHandle, targetAttr, lowKey, highKey, lowKeyInclusive, highKeyInclusive,  rm_IndexScanIterator.ixScan_it);
+    return 0;
 }
 
 
