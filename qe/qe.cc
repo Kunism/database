@@ -2,9 +2,36 @@
 #include "qe.h"
 #include <iostream>
 
+Condition Condition::operator= (const Condition &rCondition) {
+    this->lhsAttr = rCondition.lhsAttr;
+    this->op = rCondition.op;
+    this->bRhsIsAttr = rCondition.bRhsIsAttr;
+    this->rhsAttr = rCondition.rhsAttr;
+
+    this->rhsValue.type = rCondition.rhsValue.type;
+    if(rCondition.rhsValue.type == TypeVarChar) {
+        uint32_t strLen = 0;
+        memcpy(&strLen, rCondition.rhsValue.data, sizeof(uint32_t));
+
+        this->rhsValue.data = new char [strLen + sizeof(uint32_t)];
+        memcpy(this->rhsValue.data, rCondition.rhsValue.data, strLen + sizeof(uint32_t));
+    }
+    else {
+        this->rhsValue.data = new char [sizeof(uint32_t)];
+        memcpy(this->rhsValue.data, rCondition.rhsValue.data, sizeof(uint32_t));
+    }
+
+    return *this;
+}
+
+
 Filter::Filter(Iterator *input, const Condition &condition) {
     this->m_input = input;
     this->m_condition = condition;
+
+//    std::cerr << "condition=" << condition.rhsValue.data << "###m_condition=" << m_condition.rhsValue.data << std::endl;
+//    std::cerr << *(int*)condition.rhsValue.data << "###" << *(int*)m_condition.rhsValue.data << std::endl;
+    //std::cerr << condition.rhsValue.
 }
 
 RC Filter::getNextTuple(void *data) {
@@ -16,26 +43,34 @@ RC Filter::getNextTuple(void *data) {
         std::vector<Attribute> attributes;
         m_input->getAttributes(attributes);
 
-        uint32_t attrDataMaxLen = getAttributeMaxLength(attributes, m_condition.lhsAttr);
-        char* attrData = new char [attrDataMaxLen];
+        //std::cerr << "attrs size = " << attributes.size() << std::endl;
 
-        if(getAttribute(attributes, m_condition.lhsAttr, (const void*)data, attrData, m_attrType) == -1) {
+        uint32_t attrDataMaxLen = getAttributeMaxLength(attributes, m_condition.lhsAttr);
+
+        //std::cerr << "attrDataMaxLen = " << attrDataMaxLen << std::endl;
+
+        char* attrData = new char [attrDataMaxLen];
+        memset(attrData, 0, attrDataMaxLen);
+
+        if(readAttribute(attributes, m_condition.lhsAttr, (const void*)data, attrData, m_attrType) == -1) {
             delete[] attrData;
             return QE_EOF;
         }
 
         if(compValue(attrData, (const char*)m_condition.rhsValue.data)) {
+            delete[] attrData;
             return 0;
         }
     }
 }
 
-RC Filter::getAttribute(const std::vector<Attribute> &attrs, const std::string attrName, const void *tupleData, char* attrData, AttrType &attrType) {
+RC Filter::readAttribute(const std::vector<Attribute> &attrs, const std::string attrName, const void *tupleData, char* attrData, AttrType &attrType) {
 
     Record record(attrs, tupleData, ((TableScan*)m_input)->rid);
     record.getAttribute(attrName, attrs, attrData);
+//    std::cerr << "Filter::getAttribute attrData=" << *( (int*) ((char*)attrData + 1)   ) << std::endl;
 
-//    uint32_t attrOffset = 0;
+//    uint32_t attrOffset = sizeof(uint8_t);
 //
 //    for(int i = 0; i < attrs.size(); i++) {
 //
@@ -43,19 +78,20 @@ RC Filter::getAttribute(const std::vector<Attribute> &attrs, const std::string a
 //
 //        if(attrs[i].type == TypeVarChar) {
 //            uint32_t strLen = 0;
-//            memcpy(&strLen, tupleData + attrOffset, sizeof(uint32_t));
+//            memcpy(&strLen, (const char*)tupleData + attrOffset, sizeof(uint32_t));
 //
 //            dataLength += strLen;
 //        }
 //
 //        if(attrs[i].name == attrName) {
-//            memcpy(attrData, tupleData + attrOffset, dataLength);
+//            memcpy(attrData, (const char*)tupleData + attrOffset, dataLength);
+//            std::cerr << "Filter::getAttribute attrData=" << *((int*)attrData) << std::endl;
 //            return 0;
 //        }
 //
 //        attrOffset += dataLength;
 //    }
-//    return -1;
+    return 0;
 }
 
 void Filter::getAttributes(std::vector<Attribute> &attrs) const {
@@ -65,15 +101,27 @@ void Filter::getAttributes(std::vector<Attribute> &attrs) const {
 uint32_t Filter::getAttributeMaxLength(std::vector<Attribute> &attrs, const std::string attrName) {
     for(int i = 0; i < attrs.size(); i++) {
         if(attrs[i].name == attrName) {
-            return attrs[i].length;
+            if(attrs[i].type == TypeVarChar) {
+                return attrs[i].length + sizeof(int);
+            }
+            else {
+                return attrs[i].length;
+            }
         }
     }
     return 0;
 }
 
 bool Filter::compValue(const char *lData, const char *conditionData) {
+    //std::cerr << *(int*)lData << "#####" << *(int*)conditionData << "Tail" << std::endl;
+
+    uint8_t nullIndicator = 0x80;
+    if(memcmp(&nullIndicator, lData, sizeof(uint8_t)) == 0) {
+        return false;
+    }
+
     Record record(0);
-    return record.isMatch(m_attrType, lData, conditionData, m_condition.op);
+    return record.isMatch(m_attrType, lData + sizeof(uint8_t) , conditionData, m_condition.op);
 //    if(m_condition.rhsValue.type == TypeInt) {
 //        int lValue = 0;
 //        int condition = 0;
