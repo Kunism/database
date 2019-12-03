@@ -95,17 +95,10 @@ int testCase_p5(const std::string &indexFileName, const Attribute &attribute) {
               << appendPageCountIterate - appendPageCountScan << std::endl;
 
     unsigned roughLeafReadCount = readPageCountScan - readPageCountInsert;
-<<<<<<< HEAD
-    // If the B+Tree index is 3 level: 3 I/O + 9 scan I/O per entry at maximum  = 12 
-    // If the B+Tree index is 2 level: 2 I/O + 9 scan I/O per entry at maximum  = 11 
-    if (roughLeafReadCount > 12) {
-        std::cerr << "Too many read I/Os for scan: " << roughLeafReadCount << ", the leaf nodes should be linked."
-=======
     // If the B+Tree index is 3 level: 1 hidden-page + 3 I/O + 9 scan I/O per entry at maximum  = 13
     // If the B+Tree index is 2 level: 1 hidden-page + 2 I/O + 9 scan I/O per entry at maximum  = 12
     if (roughLeafReadCount > 13) {
         std::cout << "Too many read I/Os for scan: " << roughLeafReadCount << ", the leaf nodes should be linked."
->>>>>>> 1b2bdec... added Project 3 private tests
                   << std::endl;
         std::cout << "Check the print out B+ Tree to validate the pages" << std::endl;
         indexManager.printBtree(ixFileHandle, attribute);

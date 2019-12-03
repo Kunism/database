@@ -95,12 +95,7 @@ int testCase_p1(const std::string &indexFileName1, const std::string &indexFileN
         returnedCount++;
 
         if (ix_ScanIterator2.getNextEntry(rid2, &key2) != success) {
-<<<<<<< HEAD
-            std::cerr << "Wrong entries output...failure" << std::endl;
-
-=======
             std::cout << "Wrong entries output...failure" << std::endl;
->>>>>>> 1b2bdec... added Project 3 private tests
             return closeWithFail(indexFileName1, indexFileName2, ixFileHandle1, ixFileHandle2, ix_ScanIterator1,
                                  ix_ScanIterator2);
         }
