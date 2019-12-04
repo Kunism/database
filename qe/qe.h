@@ -42,7 +42,7 @@ public:
 
     virtual ~Iterator() = default;
 
-    //RC getAttribute(std::vector<Attribute> &attrs, );
+    RC mergeTwoTuple(const std::vector<Attribute> &leftAttribute, const char *leftTuple, const std::vector<Attribute> &rightAttrbute, const char *rightTuple, void *mergedTuple);
 };
 
 class TableScan : public Iterator {
@@ -240,7 +240,9 @@ public:
     RC getNextTuple(void *data) override;
 
     // For attribute in std::vector<Attribute>, name it as rel.attr
-    void getAttributes(std::vector<Attribute> &attrs) const;
+    void getAttributes(std::vector<Attribute> &attrs) const override ;
+
+
 
     Iterator *m_leftInput;
     IndexScan *m_rightInput;
@@ -248,7 +250,11 @@ public:
     std::vector<Attribute> m_leftAttribute;
     std::vector<Attribute> m_rightAttribute;
 
+    char* m_leftTupleData;
+    char* m_rightTupleData;
+
     Condition m_condition;
+    bool m_isFirstScan;
 
 };
 

@@ -76,6 +76,7 @@ RC FileHandle::readPage(PageNum pageNum, void *data) {
 RC FileHandle::writePage(PageNum pageNum, const void *data) {
     if (pageNum < hiddenPage->var[PAGE_NUM]) {
         char* buffer = new char [PAGE_SIZE];
+        memset(buffer, 0, PAGE_SIZE);
         std::memcpy(buffer,data, PAGE_SIZE);
         file.seekp((PAGE_OFFSET + pageNum) * PAGE_SIZE);
         file.write( buffer, PAGE_SIZE);

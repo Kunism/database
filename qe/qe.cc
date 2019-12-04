@@ -3,27 +3,46 @@
 #include <iostream>
 
 Condition Condition::operator= (const Condition &rCondition) {
+    std::cerr << __LINE__ << std::endl;
     this->lhsAttr = rCondition.lhsAttr;
     this->op = rCondition.op;
     this->bRhsIsAttr = rCondition.bRhsIsAttr;
     this->rhsAttr = rCondition.rhsAttr;
 
     this->rhsValue.type = rCondition.rhsValue.type;
-    if(rCondition.rhsValue.type == TypeVarChar) {
-        uint32_t strLen = 0;
-        memcpy(&strLen, rCondition.rhsValue.data, sizeof(uint32_t));
 
-        this->rhsValue.data = new char [strLen + sizeof(uint32_t)];
-        memcpy(this->rhsValue.data, rCondition.rhsValue.data, strLen + sizeof(uint32_t));
-    }
-    else {
-        this->rhsValue.data = new char [sizeof(uint32_t)];
-        memcpy(this->rhsValue.data, rCondition.rhsValue.data, sizeof(uint32_t));
-    }
+    if(rCondition.bRhsIsAttr == false) {
+        if (rCondition.rhsValue.type == TypeVarChar) {
+            uint32_t strLen = 0;
+            memcpy(&strLen, rCondition.rhsValue.data, sizeof(uint32_t));
 
+            this->rhsValue.data = new char[strLen + sizeof(uint32_t)];
+            memcpy(this->rhsValue.data, rCondition.rhsValue.data, strLen + sizeof(uint32_t));
+        } else {
+            this->rhsValue.data = new char[sizeof(uint32_t)];
+            memcpy(this->rhsValue.data, rCondition.rhsValue.data, sizeof(uint32_t));
+        }
+    }
     return *this;
 }
 
+RC Iterator::mergeTwoTuple(const std::vector<Attribute> &leftAttribute, const char *leftTuple,
+                           const std::vector<Attribute> &rightAttrbute, const char *rightTuple, void *mergedTuple) {
+
+    Record leftRecord(leftAttribute, leftTuple, {0, 0});
+    Record rightRecord(rightAttrbute, rightTuple, {0, 0});
+
+    uint32_t offset = 0;
+    memset(mergedTuple, 0, leftRecord.recordSize + rightRecord.recordSize);
+
+    memcpy((char*)mergedTuple + offset, leftTuple, leftRecord.recordSize);
+    offset += leftRecord.recordSize;
+
+    memcpy((char*)mergedTuple + offset, rightTuple, rightRecord.recordSize);
+    offset += rightRecord.recordSize;
+
+    return 0;
+}
 
 Filter::Filter(Iterator *input, const Condition &condition) {
     this->m_input = input;
@@ -254,9 +273,17 @@ INLJoin::INLJoin(Iterator *leftIn, IndexScan *rightIn, const Condition &conditio
     this->m_leftInput = leftIn;
     this->m_rightInput = rightIn;
     this->m_condition = condition;
+    this->m_isFirstScan = true;
 
     m_leftInput->getAttributes(m_leftAttribute);
     m_rightInput->getAttributes(m_rightAttribute);
+
+    m_leftTupleData = new char [PAGE_SIZE];
+    m_rightTupleData = new char [PAGE_SIZE];
+
+    memset(m_leftTupleData, 0, PAGE_SIZE);
+    memset(m_rightTupleData, 0, PAGE_SIZE);
+
 }
 
 INLJoin::~INLJoin() {
@@ -265,10 +292,65 @@ INLJoin::~INLJoin() {
 
 RC INLJoin::getNextTuple(void *data) {
 
+
+    memset(m_rightTupleData, 0, PAGE_SIZE);
+    if(!m_isFirstScan && m_rightInput->getNextTuple(m_rightTupleData) != QE_EOF) {
+
+        mergeTwoTuple(m_leftAttribute, m_leftTupleData, m_rightAttribute, m_rightTupleData, data);
+
+//        //RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
+//        Record leftTuple(m_leftAttribute, m_leftTupleData, {0, 0});
+//        Record rightTuple(m_rightAttribute, m_rightTupleData, {0, 0});
+//
+//        uint32_t offset = 0;
+//        memset(data, 0, leftTuple.recordSize + rightTuple.recordSize);
+//
+//        memcpy((char*)data + offset, m_leftTupleData, leftTuple.recordSize);
+//        offset += leftTuple.recordSize;
+//
+//        memcpy((char*)data + offset, m_rightTupleData, rightTuple.recordSize);
+//        offset += rightTuple.recordSize;
+
+        return 0;
+    }
+
+
+    memset(m_leftTupleData, 0, PAGE_SIZE);
+    do{
+        if(m_leftInput->getNextTuple(m_leftTupleData) == QE_EOF) {
+            return QE_EOF;
+        }
+
+        char* leftAttrData = new char [PAGE_SIZE];
+        memset(leftAttrData, 0, PAGE_SIZE);
+
+        Record leftTuple(m_leftAttribute, m_leftTupleData, {0, 0});
+        leftTuple.getAttribute(m_condition.lhsAttr, m_leftAttribute, leftAttrData);
+
+        //  return value of getAttribute contains nullIndicator
+        //  , but underlying key constructor does not expect nullIndicator
+        m_rightInput->setIterator(leftAttrData + sizeof(uint8_t), leftAttrData + sizeof(uint8_t), true, true);
+
+        delete[] leftAttrData;
+
+    }while(m_rightInput->getNextTuple(m_rightTupleData) == QE_EOF);
+
+    mergeTwoTuple(m_leftAttribute, m_leftTupleData, m_rightAttribute, m_rightTupleData, data);
+    m_isFirstScan = false;
+
+    return 0;
 }
 
 void INLJoin::getAttributes(std::vector<Attribute> &attrs) const {
+    attrs.clear();
 
+    for(int i = 0; i < m_leftAttribute.size(); i++) {
+        attrs.push_back(m_leftAttribute[i]);
+    }
+
+    for(int i = 0; i < m_rightAttribute.size(); i++) {
+        attrs.push_back(m_rightAttribute[i]);
+    }
 }
 
 
