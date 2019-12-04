@@ -6,6 +6,8 @@
 #include "../ix/ix.h"
 
 #include <iostream>
+#include <vector>
+#include <map>
 
 #define QE_EOF (-1)  // end of the index scan
 
@@ -219,14 +221,30 @@ public:
             const Condition &condition,   // Join condition
             const unsigned numPages       // # of pages that can be loaded into memory,
             //   i.e., memory block size (decided by the optimizer)
-    ) {};
+    );
 
-    ~BNLJoin() override = default;;
+    ~BNLJoin() override;
 
-    RC getNextTuple(void *data) override { return QE_EOF; };
+    RC getNextTuple(void *data) override;
 
     // For attribute in std::vector<Attribute>, name it as rel.attr
-    void getAttributes(std::vector<Attribute> &attrs) const override {};
+    void getAttributes(std::vector<Attribute> &attrs) const override;
+
+    Iterator*  m_leftInput;
+    TableScan* m_rightInput;
+    Condition  m_condition;
+    unsigned   m_numPages;
+    unsigned   m_hashTableSize;
+    unsigned  m_nextIndicator;
+    // unsigned   m_numRecords;
+    
+    std::vector<Attribute> m_leftAttribute;
+    std::vector<Attribute> m_rightAttribute;
+
+    uint8_t* m_leftInputData;
+    uint8_t* m_rightInputData;
+
+    std::map<Key, std::vector<Record>> m_hashtable;
 };
 
 class INLJoin : public Iterator {

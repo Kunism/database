@@ -892,6 +892,14 @@ const uint8_t* Record::getRecord() const {
     return this->recordHead;
 } 
 
+
+void Record::decode(uint8_t* data) const {
+    uint16_t byteOffset = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField;
+    uint8_t* dataPos = recordHead + byteOffset;
+    memcpy(data, this->nullData, this->indicatorSize);
+    memcpy((uint8_t*)data + this->indicatorSize, dataPos, this->recordSize - byteOffset - Record::paddingSize);
+}
+
 DataPage::DataPage(const void* data) {
     memcpy(&var, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
 
