@@ -2,29 +2,51 @@
 #include "qe.h"
 #include <iostream>
 
-Condition Condition::operator= (const Condition &rCondition) {
-    std::cerr << __LINE__ << std::endl;
-    this->lhsAttr = rCondition.lhsAttr;
-    this->op = rCondition.op;
-    this->bRhsIsAttr = rCondition.bRhsIsAttr;
-    this->rhsAttr = rCondition.rhsAttr;
-
-    this->rhsValue.type = rCondition.rhsValue.type;
-
-    if(rCondition.bRhsIsAttr == false) {
-        if (rCondition.rhsValue.type == TypeVarChar) {
-            uint32_t strLen = 0;
-            memcpy(&strLen, rCondition.rhsValue.data, sizeof(uint32_t));
-
-            this->rhsValue.data = new char[strLen + sizeof(uint32_t)];
-            memcpy(this->rhsValue.data, rCondition.rhsValue.data, strLen + sizeof(uint32_t));
-        } else {
-            this->rhsValue.data = new char[sizeof(uint32_t)];
-            memcpy(this->rhsValue.data, rCondition.rhsValue.data, sizeof(uint32_t));
-        }
-    }
-    return *this;
-}
+//Condition::Condition() {
+//
+//}
+//
+//Condition::~Condition() {
+//    if(this->bRhsIsAttr == false) {
+//        delete[] this->rhsValue.data;
+//    }
+//}
+//
+//Condition Condition::operator= (const Condition &rCondition) {
+//
+//    this->lhsAttr = rCondition.lhsAttr;
+//    this->op = rCondition.op;
+//    this->bRhsIsAttr = rCondition.bRhsIsAttr;
+//    this->rhsAttr = rCondition.rhsAttr;
+//
+//    //this->rhsValue.type = rCondition.rhsValue.type;
+//
+//    if(rCondition.bRhsIsAttr == false) {
+//        this->rhsValue.type = rCondition.rhsValue.type;
+//        this->rhsValue.data = new char [PAGE_SIZE];
+//        memset(this->rhsValue.data, 0, PAGE_SIZE);
+//
+//        uint32_t conditionDataLen = sizeof(uint32_t);
+//        if(rCondition.rhsValue.type == TypeVarChar) {
+//            uint32_t strLen = 0;
+//            memcpy(&strLen, rCondition.rhsValue.data, sizeof(uint32_t));
+//            conditionDataLen += strLen;
+//        }
+//        memcpy(this->rhsValue.data, rCondition.rhsValue.data, conditionDataLen);
+//
+////        if (rCondition.rhsValue.type == TypeVarChar) {
+////            uint32_t strLen = 0;
+////            memcpy(&strLen, rCondition.rhsValue.data, sizeof(uint32_t));
+////
+////            this->rhsValue.data = new char[strLen + sizeof(uint32_t)];
+////            memcpy(this->rhsValue.data, rCondition.rhsValue.data, strLen + sizeof(uint32_t));
+////        } else {
+////            this->rhsValue.data = new char[sizeof(uint32_t)];
+////            memcpy(this->rhsValue.data, rCondition.rhsValue.data, sizeof(uint32_t));
+////        }
+//    }
+//    return *this;
+//}
 
 RC Iterator::mergeTwoTuple(const std::vector<Attribute> &leftAttribute, const char *leftTuple,
                            const std::vector<Attribute> &rightAttrbute, const char *rightTuple, void *mergedTuple) {
@@ -62,11 +84,14 @@ RC Filter::getNextTuple(void *data) {
         std::vector<Attribute> attributes;
         m_input->getAttributes(attributes);
 
-        //std::cerr << "attrs size = " << attributes.size() << std::endl;
+        for(auto it = attributes.begin(); it != attributes.end(); it++) {
+            if(it->name == m_condition.lhsAttr) {
+                m_attrType = it->type;
+            }
+        }
+
 
         uint32_t attrDataMaxLen = getAttributeMaxLength(attributes, m_condition.lhsAttr);
-
-        //std::cerr << "attrDataMaxLen = " << attrDataMaxLen << std::endl;
 
         char* attrData = new char [attrDataMaxLen];
         memset(attrData, 0, attrDataMaxLen);
@@ -142,11 +167,14 @@ bool Filter::compValue(const char *lData, const char *conditionData) {
 
     Record record(0);
     return record.isMatch(m_attrType, lData + sizeof(uint8_t) , conditionData, m_condition.op);
+
+//    unsigned offset = sizeof(uint8_t);
+//
 //    if(m_condition.rhsValue.type == TypeInt) {
 //        int lValue = 0;
 //        int condition = 0;
 //
-//        memcpy(&lValue, lData, sizeof(int));
+//        memcpy(&lValue, lData + offset, sizeof(int));
 //        memcpy(&condition, conditionData, sizeof(int));
 //
 //        switch(m_condition.op) {
@@ -186,8 +214,8 @@ bool Filter::compValue(const char *lData, const char *conditionData) {
 //        char* lValueBuffer = new char[lValueLength + 1];
 //        char* conditionBuffer = new char[conditionLength + 1];
 //
-//        memset(lValueBuffer, lValueLength + 1, 0);
-//        memset(conditionBuffer, conditionLength + 1, 0);
+//        memset(lValueBuffer, 0, lValueLength + 1);
+//        memset(conditionBuffer, 0, conditionLength + 1);
 //
 //        memcpy(lValueBuffer, lData + sizeof(uint32_t), lValueLength);
 //        memcpy(conditionBuffer, conditionData + sizeof(uint32_t), conditionLength);
@@ -195,8 +223,8 @@ bool Filter::compValue(const char *lData, const char *conditionData) {
 //        lValueBuffer[lValueLength] = '\0';
 //        conditionBuffer[conditionLength] = '\0';
 //
-//        std::string record(lValueBuffer);
-//        std::string condition(conditionBuffer);
+//        std::string record(lValueBuffer, lValueLength);
+//        std::string condition(conditionBuffer, conditionLength);
 //
 //        delete[] lValueBuffer;
 //        delete[] conditionBuffer;
@@ -294,8 +322,9 @@ RC INLJoin::getNextTuple(void *data) {
 
 
     memset(m_rightTupleData, 0, PAGE_SIZE);
+    std::cerr << "Begin INLJoin::getNxtTuple" << std::endl;
     if(!m_isFirstScan && m_rightInput->getNextTuple(m_rightTupleData) != QE_EOF) {
-
+        std::cerr << "Got tuple from right" << std::endl;
         mergeTwoTuple(m_leftAttribute, m_leftTupleData, m_rightAttribute, m_rightTupleData, data);
 
 //        //RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
@@ -314,10 +343,12 @@ RC INLJoin::getNextTuple(void *data) {
         return 0;
     }
 
-
+    std::cerr << "First in" << std::endl;
     memset(m_leftTupleData, 0, PAGE_SIZE);
     do{
+        std::cerr << "Try to getNext from left" << std::endl;
         if(m_leftInput->getNextTuple(m_leftTupleData) == QE_EOF) {
+            std::cerr << "Left is over" << std::endl;
             return QE_EOF;
         }
 

@@ -710,8 +710,8 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
         char* recordBuffer = new char[recordLength + 1];
         char* conditionBuffer = new char[conditionLength + 1];
 
-        memset(recordBuffer, recordLength + 1, 0);
-        memset(conditionBuffer, conditionLength + 1, 0);
+        memset(recordBuffer, 0, recordLength + 1);
+        memset(conditionBuffer, 0, conditionLength + 1);
 
         memcpy(recordBuffer, recordValue + sizeof(uint32_t), recordLength);
         memcpy(conditionBuffer, conditionValue + sizeof(uint32_t), conditionLength);
@@ -719,8 +719,8 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
         recordBuffer[recordLength] = '\0';
         conditionBuffer[conditionLength] = '\0';
 
-        std::string record(recordBuffer);
-        std::string condition(conditionBuffer);
+        std::string record(recordBuffer, recordLength);
+        std::string condition(conditionBuffer, conditionLength);
         
 
 
@@ -775,7 +775,7 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
 
     }
     else {
-        // std::cerr << "error in isMatch" << std::endl;
+        std::cerr << "###Type Error###" << std::endl;
         return false;
     }
 }

@@ -30,7 +30,9 @@ struct Condition {
     std::string rhsAttr;        // right-hand side attribute if bRhsIsAttr = TRUE
     Value rhsValue;             // right-hand side value if bRhsIsAttr = FALSE
 
-    Condition operator= (const Condition &rCondition);
+//    Condition();
+//    ~Condition();
+//    Condition operator= (const Condition &rCondition);
 };
 
 class Iterator {
