@@ -193,8 +193,10 @@ public:
     bool isMatch(AttrType type, const char* recordValue, const char* conditionValue, const CompOp comOp);
     void getAttribute(const std::string attrName, const std::vector<Attribute> &recordDescriptor, void* attr);
     uint32_t getAttributeSize(const std::string attrName, const std::vector<Attribute> &recordDescriptor);
-    // convert Raw data to void*
+    // get void* for write Page
     const uint8_t* getRecord() const;
+    // convert Raw data to void*
+    void decode(uint8_t* data) const;
 
     // Record ID
     RID rid;

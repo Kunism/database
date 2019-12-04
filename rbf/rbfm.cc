@@ -710,8 +710,8 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
         char* recordBuffer = new char[recordLength + 1];
         char* conditionBuffer = new char[conditionLength + 1];
 
-        memset(recordBuffer, recordLength + 1, 0);
-        memset(conditionBuffer, conditionLength + 1, 0);
+        memset(recordBuffer, 0, recordLength + 1);
+        memset(conditionBuffer, 0,conditionLength + 1);
 
         memcpy(recordBuffer, recordValue + sizeof(uint32_t), recordLength);
         memcpy(conditionBuffer, conditionValue + sizeof(uint32_t), conditionLength);
@@ -719,8 +719,8 @@ bool Record::isMatch(AttrType type, const char *recordValue, const char *conditi
         recordBuffer[recordLength] = '\0';
         conditionBuffer[conditionLength] = '\0';
 
-        std::string record(recordBuffer);
-        std::string condition(conditionBuffer);
+        std::string record(recordBuffer, recordLength);
+        std::string condition(conditionBuffer, conditionLength);
         
 
 
@@ -891,6 +891,14 @@ void Record::convertData(const std::vector<Attribute> &descriptor, const void* _
 const uint8_t* Record::getRecord() const {
     return this->recordHead;
 } 
+
+
+void Record::decode(uint8_t* data) const {
+    uint16_t byteOffset = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField;
+    uint8_t* dataPos = recordHead + byteOffset;
+    memcpy(data, this->nullData, this->indicatorSize);
+    memcpy((uint8_t*)data + this->indicatorSize, dataPos, this->recordSize - byteOffset - Record::paddingSize);
+}
 
 DataPage::DataPage(const void* data) {
     memcpy(&var, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
