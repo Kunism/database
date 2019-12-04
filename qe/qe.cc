@@ -1,6 +1,7 @@
 
 #include "qe.h"
 #include <iostream>
+#include <cmath>
 
 //Condition::Condition() {
 //
@@ -51,11 +52,33 @@
 RC Iterator::mergeTwoTuple(const std::vector<Attribute> &leftAttribute, const char *leftTuple,
                            const std::vector<Attribute> &rightAttrbute, const char *rightTuple, void *mergedTuple) {
 
+
+
+    uint32_t leftNullIndicatorSize = ceil(leftAttribute.size() / 8.0);
+    uint32_t rightNullIndicatorSize = ceil(rightAttrbute.size() / 8.0);
+    uint32_t totalNullIndicatorSize = ceil((leftAttribute.size() + rightAttrbute.size()) / 8.0);
+
+    char* nullIndicator = new char [totalNullIndicatorSize];
+    memset(nullIndicator, 0, totalNullIndicatorSize);
+
+
     Record leftRecord(leftAttribute, leftTuple, {0, 0});
     Record rightRecord(rightAttrbute, rightTuple, {0, 0});
 
+    uint32_t nullIndex = 0;
+    for(int i = 0; i < leftAttribute.size(); i++) {
+        if(leftRecord.isNull(i)) {
+
+        }
+    }
+
+    uint32_t mergedTupleSize = totalNullIndicatorSize + leftRecord.recordSize - leftNullIndicatorSize + rightRecord.recordSize - rightNullIndicatorSize;
+
     uint32_t offset = 0;
-    memset(mergedTuple, 0, leftRecord.recordSize + rightRecord.recordSize);
+    memset(mergedTuple, 0, mergedTupleSize);
+
+
+
 
     memcpy((char*)mergedTuple + offset, leftTuple, leftRecord.recordSize);
     offset += leftRecord.recordSize;
