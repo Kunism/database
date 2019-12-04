@@ -475,7 +475,7 @@ RC BNLJoin::getNextTuple(void *data) {
                         m_hashtable[key][m_nextIndicator].decode(leftRecord);
                         Iterator::mergeTwoTuple(m_leftAttribute, (char*)leftRecord, m_rightAttribute, (char*)m_rightInputData, data);
                         m_nextIndicator++;
-                        return;
+                        return 0;
                     }
                     else {
                         m_nextIndicator = 0;

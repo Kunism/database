@@ -225,7 +225,7 @@ public:
 
     ~BNLJoin() override;
 
-    RC getNextTuple(void *data) override { return QE_EOF; };
+    RC getNextTuple(void *data) override;
 
     // For attribute in std::vector<Attribute>, name it as rel.attr
     void getAttributes(std::vector<Attribute> &attrs) const override;
