@@ -900,6 +900,10 @@ void Record::decode(uint8_t* data) const {
     memcpy((uint8_t*)data + this->indicatorSize, dataPos, this->recordSize - byteOffset - Record::paddingSize);
 }
 
+uint32_t Record::getDataSize() {
+    return recordSize - indicatorSize - indexSize - indexSize * numOfField - paddingSize;
+}
+
 DataPage::DataPage(const void* data) {
     memcpy(&var, (char*)data + PAGE_SIZE - sizeof(unsigned) * DATA_PAGE_VAR_NUM, sizeof(unsigned) * DATA_PAGE_VAR_NUM);
 

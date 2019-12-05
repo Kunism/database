@@ -324,4 +324,10 @@ public:
     void getAttributes(std::vector<Attribute> &attrs) const override {};
 };
 
+class Utility {
+public:
+    static Attribute getAttributeByName(std::string attrName, std::vector<Attribute> &attrs);
+    static uint32_t getAttrIndexByName(std::string attrName, std::vector<Attribute> &attrs);
+};
+
 #endif

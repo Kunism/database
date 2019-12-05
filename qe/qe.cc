@@ -53,7 +53,6 @@ RC Iterator::mergeTwoTuple(const std::vector<Attribute> &leftAttribute, const ch
                            const std::vector<Attribute> &rightAttrbute, const char *rightTuple, void *mergedTuple) {
 
 
-
     uint32_t leftNullIndicatorSize = ceil(leftAttribute.size() / 8.0);
     uint32_t rightNullIndicatorSize = ceil(rightAttrbute.size() / 8.0);
     uint32_t totalNullIndicatorSize = ceil((leftAttribute.size() + rightAttrbute.size()) / 8.0);
@@ -61,30 +60,64 @@ RC Iterator::mergeTwoTuple(const std::vector<Attribute> &leftAttribute, const ch
     char* nullIndicator = new char [totalNullIndicatorSize];
     memset(nullIndicator, 0, totalNullIndicatorSize);
 
-
     Record leftRecord(leftAttribute, leftTuple, {0, 0});
     Record rightRecord(rightAttrbute, rightTuple, {0, 0});
 
-    uint32_t nullIndex = 0;
     for(int i = 0; i < leftAttribute.size(); i++) {
-        if(leftRecord.isNull(i)) {
 
+        uint8_t nullIndicatorBuffer = 0;
+        uint8_t byteOffset = i / CHAR_BIT;
+        uint8_t bitOffset = i % CHAR_BIT;
+        memcpy(&nullIndicatorBuffer, nullIndicator + byteOffset, sizeof(uint8_t));
+
+        if(leftRecord.isNull(i)) {
+            nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset);
+            nullIndicatorBuffer = nullIndicatorBuffer | 1;
+            nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset);
+            memcpy(nullIndicator + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
+        }
+        else {
+            nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset);
+            nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset);
+            memcpy(nullIndicator + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
         }
     }
 
-    uint32_t mergedTupleSize = totalNullIndicatorSize + leftRecord.recordSize - leftNullIndicatorSize + rightRecord.recordSize - rightNullIndicatorSize;
+    for(int i = 0; i < rightAttrbute.size(); i++) {
+        uint8_t nullIndicatorBuffer = 0;
+        uint8_t byteOffset = (leftAttribute.size() + i) / CHAR_BIT;
+        uint8_t bitOffset = (leftAttribute.size() + i) % CHAR_BIT;
+        memcpy(&nullIndicatorBuffer, nullIndicator + byteOffset, sizeof(uint8_t));
+
+        if(leftRecord.isNull(i)) {
+            nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset);
+            nullIndicatorBuffer = nullIndicatorBuffer | 1;
+            nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset);
+            memcpy(nullIndicator + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
+        }
+        else {
+            nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset);
+            nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset);
+            memcpy(nullIndicator + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
+        }
+    }
+
+    uint8_t tmp = *(uint8_t*)nullIndicator;
+    //std::cerr << "Merged nullindicator = " << (unsigned)tmp << std::endl;
+
+    uint32_t mergedTupleSize = totalNullIndicatorSize + leftRecord.getDataSize() + rightRecord.getDataSize();
 
     uint32_t offset = 0;
     memset(mergedTuple, 0, mergedTupleSize);
 
+    memcpy((char*)mergedTuple + offset, nullIndicator, totalNullIndicatorSize);
+    offset += totalNullIndicatorSize;
 
+    memcpy((char*)mergedTuple + offset, leftTuple + leftNullIndicatorSize, leftRecord.getDataSize());
+    offset += leftRecord.getDataSize();
 
-
-    memcpy((char*)mergedTuple + offset, leftTuple, leftRecord.recordSize);
-    offset += leftRecord.recordSize;
-
-    memcpy((char*)mergedTuple + offset, rightTuple, rightRecord.recordSize);
-    offset += rightRecord.recordSize;
+    memcpy((char*)mergedTuple + offset, rightTuple + rightNullIndicatorSize, rightRecord.getDataSize());
+    offset += rightRecord.getDataSize();
 
     return 0;
 }
@@ -107,11 +140,12 @@ RC Filter::getNextTuple(void *data) {
         std::vector<Attribute> attributes;
         m_input->getAttributes(attributes);
 
-        for(auto it = attributes.begin(); it != attributes.end(); it++) {
-            if(it->name == m_condition.lhsAttr) {
-                m_attrType = it->type;
-            }
-        }
+        m_attrType = Utility::getAttributeByName(m_condition.lhsAttr, attributes).type;
+//        for(auto it = attributes.begin(); it != attributes.end(); it++) {
+//            if(it->name == m_condition.lhsAttr) {
+//                m_attrType = it->type;
+//            }
+//        }
 
 
         uint32_t attrDataMaxLen = getAttributeMaxLength(attributes, m_condition.lhsAttr);
@@ -167,17 +201,27 @@ void Filter::getAttributes(std::vector<Attribute> &attrs) const {
 
 uint32_t Filter::getAttributeMaxLength(std::vector<Attribute> &attrs, const std::string attrName) {
     uint32_t maxLength = sizeof(uint8_t);   //  nullIndicator
-    for(int i = 0; i < attrs.size(); i++) {
-        if(attrs[i].name == attrName) {
-            if(attrs[i].type == TypeVarChar) {
-                maxLength += attrs[i].length + sizeof(int);
-            }
-            else {
-                maxLength += attrs[i].length;
-            }
-        }
+
+    Attribute attribute = Utility::getAttributeByName(attrName, attrs);
+    if(attribute.type == TypeVarChar) {
+        maxLength += attribute.length + sizeof(int);
+    }
+    else {
+        maxLength += attribute.length;
     }
     return maxLength;
+
+//    for(int i = 0; i < attrs.size(); i++) {
+//        if(attrs[i].name == attrName) {
+//            if(attrs[i].type == TypeVarChar) {
+//                maxLength += attrs[i].length + sizeof(int);
+//            }
+//            else {
+//                maxLength += attrs[i].length;
+//            }
+//        }
+//    }
+//    return maxLength;
 }
 
 bool Filter::compValue(const char *lData, const char *conditionData) {
@@ -269,13 +313,8 @@ Project::Project(Iterator *input, const std::vector<std::string> &attrNames) {
     this->m_input = input;
     m_input->getAttributes(m_leftAttributes);
 
-    for(int i = 0; i < m_leftAttributes.size(); i++) {
-        for(auto it = m_leftAttributes.begin(); it != m_leftAttributes.end(); it++) {
-            if(it->name == attrNames[i]) {
-                m_projectedAttributes.push_back(*it);
-                break;
-            }
-        }
+    for(int i = 0; i < attrNames.size(); i++) {
+        m_projectedAttributes.push_back(Utility::getAttributeByName(attrNames[i], m_leftAttributes));
     }
 
 }
@@ -289,27 +328,51 @@ RC Project::getNextTuple(void *data) {
         return QE_EOF;
     }
 
-    uint32_t projectedOffset = 0;
+    Record record(m_leftAttributes, tuple, {0, 0});
+    uint32_t nullIndicatorSize = ceil(m_projectedAttributes.size() / 8.0);
+
+
+    uint32_t projectedOffset = nullIndicatorSize;
 
     for(int i = 0; i < m_projectedAttributes.size(); i++) {
+        uint8_t nullIndicatorBuffer = 0;
+        uint8_t byteOffset = i / CHAR_BIT;
+        uint8_t bitOffset = i % CHAR_BIT;
 
-        uint32_t leftOffset = 0;
-        for(auto it = m_leftAttributes.begin(); it != m_leftAttributes.end(); it++) {
+        memcpy(&nullIndicatorBuffer, (char*)data + byteOffset, sizeof(uint8_t));
 
-            uint32_t attrLength = sizeof(uint32_t);
-            if(it->type == TypeVarChar) {
-                uint32_t strLen = 0;
-                memcpy(&strLen, tuple + leftOffset, sizeof(uint32_t));
-                attrLength += strLen;
-            }
-
-            if(it->name == m_projectedAttributes[i].name) {
-                memcpy((char*)data + projectedOffset, tuple + leftOffset, attrLength);
-                projectedOffset += attrLength;
-                break;
-            }
-            leftOffset += attrLength;
+        if(record.isNull(Utility::getAttrIndexByName(m_projectedAttributes[i].name, m_leftAttributes))) {
+            nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset - 1);
+            nullIndicatorBuffer = nullIndicatorBuffer | 1;
+            nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset - 1);
+            memcpy((char*)data + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
         }
+        else {
+            nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset);
+            nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset);
+            memcpy((char*)data + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
+
+            uint32_t leftOffset = nullIndicatorSize;
+            for(auto it = m_leftAttributes.begin(); it != m_leftAttributes.end(); it++) {
+
+                uint32_t attrLength = sizeof(uint32_t);
+                if(it->type == TypeVarChar) {
+                    uint32_t strLen = 0;
+                    memcpy(&strLen, tuple + leftOffset, sizeof(uint32_t));
+                    attrLength += strLen;
+                }
+
+                if(it->name == m_projectedAttributes[i].name) {
+                    memcpy((char*)data + projectedOffset, tuple + leftOffset, attrLength);
+                    projectedOffset += attrLength;
+
+                    uint8_t tmp = *(uint8_t*)data;
+                    break;
+                }
+                leftOffset += attrLength;
+            }
+        }
+
     }
 }
 
@@ -345,9 +408,10 @@ RC INLJoin::getNextTuple(void *data) {
 
 
     memset(m_rightTupleData, 0, PAGE_SIZE);
-    std::cerr << "Begin INLJoin::getNxtTuple" << std::endl;
+    //std::cerr << "Begin INLJoin::getNxtTuple" << std::endl;
+
     if(!m_isFirstScan && m_rightInput->getNextTuple(m_rightTupleData) != QE_EOF) {
-        std::cerr << "Got tuple from right" << std::endl;
+        //std::cerr << "Got tuple from right" << std::endl;
         mergeTwoTuple(m_leftAttribute, m_leftTupleData, m_rightAttribute, m_rightTupleData, data);
 
 //        //RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
@@ -366,12 +430,12 @@ RC INLJoin::getNextTuple(void *data) {
         return 0;
     }
 
-    std::cerr << "First in" << std::endl;
+    //std::cerr << "First in" << std::endl;
     memset(m_leftTupleData, 0, PAGE_SIZE);
     do{
-        std::cerr << "Try to getNext from left" << std::endl;
+        //std::cerr << "Try to getNext from left" << std::endl;
         if(m_leftInput->getNextTuple(m_leftTupleData) == QE_EOF) {
-            std::cerr << "Left is over" << std::endl;
+            //std::cerr << "Left is over" << std::endl;
             return QE_EOF;
         }
 
@@ -509,9 +573,21 @@ RC BNLJoin::getNextTuple(void *data) {
 
 
     }
-   
+        
+}
 
-       
-        
-        
+Attribute Utility::getAttributeByName(std::string attrName, std::vector<Attribute> &attrs) {
+    for(int i = 0; i < attrs.size(); i++) {
+        if(attrs[i].name == attrName) {
+            return attrs[i];
+        }
+    }
+}
+
+uint32_t Utility::getAttrIndexByName(std::string attrName, std::vector<Attribute> &attrs) {
+    for(int i = 0; i < attrs.size(); i++) {
+        if(attrs[i].name == attrName) {
+            return i;
+        }
+    }
 }

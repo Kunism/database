@@ -197,6 +197,7 @@ public:
     const uint8_t* getRecord() const;
     // convert Raw data to void*
     void decode(uint8_t* data) const;
+    uint32_t getDataSize();
 
     // Record ID
     RID rid;
