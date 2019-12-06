@@ -46,7 +46,8 @@ public:
 
     virtual ~Iterator() = default;
 
-    RC mergeTwoTuple(const std::vector<Attribute> &leftAttribute, const char *leftTuple, const std::vector<Attribute> &rightAttrbute, const char *rightTuple, void *mergedTuple);
+    static RC mergeTwoTuple(const std::vector<Attribute> &leftAttribute, const char *leftTuple, const std::vector<Attribute> &rightAttrbute, const char *rightTuple, void *mergedTuple);
+    static RC searchAttribute(const std::vector<Attribute> &attrs, const std::string &attrName, Attribute &attr);
 };
 
 class TableScan : public Iterator {
@@ -230,6 +231,7 @@ public:
     // For attribute in std::vector<Attribute>, name it as rel.attr
     void getAttributes(std::vector<Attribute> &attrs) const override;
 
+    bool finishFlag;
     Iterator*  m_leftInput;
     TableScan* m_rightInput;
     Condition  m_condition;
