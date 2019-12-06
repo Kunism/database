@@ -192,7 +192,7 @@ public:
     Record& operator=(const Record& r);
     ~Record();
     bool isNull(int fieldNum);
-    bool isMatch(AttrType type, const char* recordValue, const char* conditionValue, const CompOp comOp);
+    static bool isMatch(AttrType type, const char* recordValue, const char* conditionValue, const CompOp comOp);
     void getAttribute(const std::string attrName, const std::vector<Attribute> &recordDescriptor, void* attr);
     uint32_t getAttributeSize(const std::string attrName, const std::vector<Attribute> &recordDescriptor);
     // get void* for write Page

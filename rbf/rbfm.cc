@@ -131,7 +131,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
         memset(attrBuffer, 0, sizeof(uint8_t) + attrSize);
         record.getAttribute(conditionAttribute, recordDescriptor, attrBuffer);
 
-        if(record.isMatch(conditionType, attrBuffer + sizeof(uint8_t), conditionValue, comOp)) {
+        if(Record::isMatch(conditionType, attrBuffer + sizeof(uint8_t), conditionValue, comOp)) {
             foundMatchRecord = true;
 
             uint16_t nullIndicatorSize = ceil(selectedAttributeNames.size() / 8.0);
@@ -638,7 +638,7 @@ RC RecordBasedFileManager::writeRecordFromTombstone(Record& record, FileHandle& 
 Record::Record(int none)
 :numOfField(0),indicatorSize(0), nullData(nullptr),indexData(nullptr)
 {
-    this->recordSize = 0;
+    this->recordSize = 1;
     this->recordHead = new uint8_t (1);
 }
 
