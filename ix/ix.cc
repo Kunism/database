@@ -1163,6 +1163,13 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
         if(node.keys.size()>0 && !(node.keys[0] < lowKey)) {
             firstValid = true;
             curKey = node.keys[0];
+
+
+//            std::cerr << "High key = " << highKey << "\tLow key = " << lowKey << std::endl;
+//            std::cerr << "High RID = {" << highRID.pageNum << "," << highRID.slotNum << "}" << "\tLow RID = " << "{"<< lowRID.pageNum << "," << lowRID.slotNum << "}" << std::endl;
+//            std::cerr << "Current Index = " << curIndex << "\tCurrent Key = " << curKey << std::endl;
+//            std::cerr << "==========================================" << std::endl;
+
             return 0;
         }
         for(int i = 0 ; i < node.keys.size() ; i++) {
@@ -1172,8 +1179,16 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
             {
                 this->curIndex = i;
                 curKey = node.keys[i];
+
+//                std::cerr << "node key i = " << node.keys[i] << "\tlowKey = " << lowKey << std::endl;
+//                std::cerr << "==========================================" << std::endl;
             }
         }
+
+//        std::cerr << "High key = " << highKey << "\tLow key = " << lowKey << std::endl;
+//        std::cerr << "High RID = {" << highRID.pageNum << "," << highRID.slotNum << "}" << "\tLow RID = " << "{"<< lowRID.pageNum << "," << lowRID.slotNum << "}" << std::endl;
+//        std::cerr << "Current Index = " << curIndex << "\tCurrent Key = " << curKey << std::endl;
+//        std::cerr << "==========================================" << std::endl;
     }
 
     

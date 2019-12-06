@@ -787,7 +787,10 @@ RC RelationManager::indexScan(const std::string &tableName,
         return -1;
     }
 
-    indexManager.scan(rm_IndexScanIterator.ixFileHandle, targetAttr, lowKey, highKey, lowKeyInclusive, highKeyInclusive,  rm_IndexScanIterator.ixScan_it);
+    if(indexManager.scan(rm_IndexScanIterator.ixFileHandle, targetAttr, lowKey, highKey, lowKeyInclusive, highKeyInclusive,  rm_IndexScanIterator.ixScan_it) == -1) {
+        //std::cerr << "RM::indexScan scan return -1" << std::endl;
+        return -1;
+    }
     return 0;
 }
 
