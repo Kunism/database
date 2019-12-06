@@ -27,7 +27,7 @@ RC RM_IndexScanIterator::getNextEntry(RID &rid, void *key) {
 
 RC RM_IndexScanIterator::close() {
     //  TODO
-    return RM_EOF;
+    return 0;
 }
 
 const std::vector<Attribute> RelationManager::m_indexDescriptor = {
@@ -770,7 +770,7 @@ RC RelationManager::indexScan(const std::string &tableName,
                               bool lowKeyInclusive,
                               bool highKeyInclusive,
                               RM_IndexScanIterator &rm_IndexScanIterator) {
-
+    std::cerr << "RM:IX:SCAN " << std::endl;                                  
     std::vector<Attribute> attrs;
     getAttributes(tableName, attrs);
 
@@ -784,6 +784,7 @@ RC RelationManager::indexScan(const std::string &tableName,
     IndexManager &indexManager = IndexManager::instance();
     std::string indexFileName = tableName + "_" + attributeName+ ".index";
     if(indexManager.openFile(indexFileName, rm_IndexScanIterator.ixFileHandle) != 0) {
+        std::cerr<< "open file fail" <<std::endl;
         return -1;
     }
 
