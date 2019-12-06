@@ -310,7 +310,7 @@ public:
     Aggregate(Iterator *input,          // Iterator of input R
               const Attribute &aggAttr,        // The attribute over which we are computing an aggregate
               AggregateOp op            // Aggregate operation
-    ) {};
+    );
 
     // Optional for everyone: 5 extra-credit points
     // Group-based hash aggregation
@@ -322,18 +322,29 @@ public:
 
     ~Aggregate() override = default;
 
-    RC getNextTuple(void *data) override { return QE_EOF; };
+    RC getNextTuple(void *data) override;
 
     // Please name the output attribute as aggregateOp(aggAttr)
     // E.g. Relation=rel, attribute=attr, aggregateOp=MAX
     // output attrname = "MAX(rel.attr)"
-    void getAttributes(std::vector<Attribute> &attrs) const override {};
+    void getAttributes(std::vector<Attribute> &attrs) const override;
+    void updateComparatorIfNeeded(const void *tuple, char *comparator, std::string attrName, AggregateOp op);
+    void updateCumulatorIfNeeded(const void *tuple, char *cumulator, std::string attrName);
+
+    std::string getAggrOpName(AggregateOp aggregateOp) const;
+
+    Iterator *m_input;
+    Attribute m_aggAttribute;
+    AggregateOp m_aggreOp;
+    std::vector<Attribute> m_attributes;
+    bool m_end;
 };
 
 class Utility {
 public:
-    static Attribute getAttributeByName(std::string attrName, std::vector<Attribute> &attrs);
+    static Attribute getAttributeByName(std::string attrName, std::vector<Attribute> attrs);
     static uint32_t getAttrIndexByName(std::string attrName, std::vector<Attribute> &attrs);
+    static bool isNullByName(std::string attrName, const void *tuple, std::vector<Attribute> &attrs);
 };
 
 #endif

@@ -418,7 +418,7 @@ RC INLJoin::getNextTuple(void *data) {
 
 
     memset(m_rightTupleData, 0, PAGE_SIZE);
-    //std::cerr << "Begin INLJoin::getNxtTuple" << std::endl;
+    std::cerr << "Begin INLJoin::getNxtTuple" << std::endl;
 
     if(!m_isFirstScan && m_rightInput->getNextTuple(m_rightTupleData) != QE_EOF) {
         //std::cerr << "Got tuple from right" << std::endl;
@@ -427,7 +427,7 @@ RC INLJoin::getNextTuple(void *data) {
         return 0;
     }
 
-    //std::cerr << "First in" << std::endl;
+    std::cerr << "First in" << std::endl;
     memset(m_leftTupleData, 0, PAGE_SIZE);
     do{
         // std::cerr << "Try to getNext from left" << std::endl;
@@ -585,9 +585,186 @@ RC BNLJoin::getNextTuple(void *data) {
     }
     return QE_EOF;
 }
-        
 
-Attribute Utility::getAttributeByName(std::string attrName, std::vector<Attribute> &attrs) {
+Aggregate::Aggregate(Iterator *input, const Attribute &aggAttr, AggregateOp op) {
+    this->m_input = input;
+    this->m_aggAttribute = aggAttr;
+    this->m_aggreOp = op;
+    this->m_end = false;
+
+    input->getAttributes(m_attributes);
+
+}
+
+RC Aggregate::getNextTuple(void *data) {
+
+    if(m_end) {
+        return QE_EOF;
+    }
+
+    char* tuple = new char [PAGE_SIZE];
+    memset(tuple, 0, PAGE_SIZE);
+
+    switch(m_aggreOp) {
+        case MIN:
+        case MAX: {
+            //  init comparator to null
+            char* comparator = new char [sizeof(int) + sizeof(uint8_t)];
+            memset(comparator, 0, sizeof(int) + sizeof(uint8_t));
+
+            uint8_t nullIndicator = 0;
+            memcpy(&nullIndicator, comparator, sizeof(uint8_t));
+            nullIndicator |= ( 1 << (CHAR_BIT - 1));
+
+            memcpy(comparator, &nullIndicator, sizeof(uint8_t));
+
+            //  start iterative comparison
+            while(m_input->getNextTuple(tuple) != QE_EOF) {
+                if(!Utility::isNullByName(m_aggAttribute.name, tuple, m_attributes)) {
+                    updateComparatorIfNeeded(tuple, comparator, m_aggAttribute.name, m_aggreOp);
+                }
+            }
+
+            memcpy(data, comparator, sizeof(float) + sizeof(uint8_t));
+
+            delete[] tuple;
+            delete[] comparator;
+            m_end = true;
+            return 0;
+        }
+        case COUNT: {
+
+        }
+        case SUM:
+        case AVG: {
+            char* cumulator = new char [sizeof(double) + sizeof(uint8_t)];
+            memset(cumulator, 0, sizeof(double) + sizeof(uint8_t));
+
+            uint8_t nullIndicator = 0;
+            memcpy(&nullIndicator, cumulator, sizeof(uint8_t));
+            nullIndicator |= ( 1 << (CHAR_BIT - 1));
+
+            memcpy(cumulator, &nullIndicator, sizeof(uint8_t));
+
+            //  start iterative comparison
+            while(m_input->getNextTuple(tuple) != QE_EOF) {
+                if(!Utility::isNullByName(m_aggAttribute.name, tuple, m_attributes)) {
+                    updateCumulatorIfNeeded(tuple, cumulator, m_aggAttribute.name);
+                }
+            }
+        }
+        default: {
+
+        }
+    }
+
+}
+
+void Aggregate::getAttributes(std::vector<Attribute> &attrs) const {
+
+    attrs.clear();
+
+    Attribute attribute = Utility::getAttributeByName(m_aggAttribute.name, m_attributes);
+    std::string name = getAggrOpName(m_aggreOp) + "(" + attribute.name + ")";
+    attribute.name = name;
+    attribute.type = TypeReal;
+
+    attrs.push_back(attribute);
+}
+
+void Aggregate::updateComparatorIfNeeded(const void *tuple, char *comparator, std::string attrName, AggregateOp op) {
+
+    Record record(m_attributes, tuple, {0,0});
+    char* tupleData = new char [PAGE_SIZE];
+    memset(tupleData, 0, PAGE_SIZE);
+    record.getAttribute(attrName, m_attributes, tupleData);
+
+
+    uint8_t nullIndicator = *comparator;
+    if(signed(nullIndicator) == 0) {
+
+        if(m_aggAttribute.type == TypeInt) {
+            int tupleInt = 0;
+            float tupleFloat = 0.0;
+            float comparatorFloat = 0.0;
+
+            memcpy(&tupleInt, (const char*)tupleData + sizeof(uint8_t), sizeof(int));
+            memcpy(&comparatorFloat, comparator + sizeof(uint8_t), sizeof(float));
+
+            tupleFloat = (float)tupleInt;
+
+            if(op == MIN) {
+                if(tupleFloat < comparatorFloat) {
+                    //memset(comparator, 0, sizeof(int) + sizeof(uint8_t));
+                    memcpy(comparator + sizeof(uint8_t), &tupleFloat, sizeof(float));
+                }
+            }
+            else if(op == MAX) {
+                if(tupleFloat > comparatorFloat) {
+                    //memset(comparator, 0, sizeof(int) + sizeof(uint8_t));
+                    memcpy(comparator + sizeof(uint8_t), &tupleFloat, sizeof(float));
+                }
+            }
+
+        }
+        else if(m_aggAttribute.type == TypeReal) {
+            float tupleFloat = 0.0;
+            float comparatorFloat = 0.0;
+
+            memcpy(&tupleFloat, (const char*)tupleData + sizeof(uint8_t), sizeof(float));
+            memcpy(&comparatorFloat, comparator + sizeof(uint8_t), sizeof(float));
+
+            if(op == MIN) {
+                if(tupleFloat < comparatorFloat) {
+                    memcpy(comparator + sizeof(uint8_t), &tupleFloat, sizeof(float));
+                }
+            }
+            else if(op == MAX) {
+                if(tupleFloat > comparatorFloat) {
+                    memcpy(comparator + sizeof(uint8_t), &tupleFloat, sizeof(float));
+                }
+            }
+        }
+    }
+    else {
+        memset(comparator, 0, sizeof(int) + sizeof(uint8_t));
+        if(m_aggAttribute.type == TypeInt) {
+            int tupleInt = 0;
+            float tupleFloat = 0.0;
+            memcpy(&tupleInt, (const char*)tupleData + sizeof(uint8_t), sizeof(int));
+            tupleFloat = (float)tupleInt;
+
+            memset(comparator, 0, sizeof(uint8_t) + sizeof(int));
+            memcpy(comparator + sizeof(uint8_t), &tupleFloat, sizeof(float));
+        }
+        else if(m_aggAttribute.type == TypeReal) {
+            memcpy(comparator, tupleData, sizeof(int) + sizeof(uint8_t));
+        }
+    }
+
+    delete[] tupleData;
+}
+
+void Aggregate::updateCumulatorIfNeeded(const void *tuple, char *cumulator, std::string attrName) {
+
+}
+
+std::string Aggregate::getAggrOpName(AggregateOp aggregateOp) const{
+    switch(aggregateOp) {
+        case MIN: return "MIN";
+        case MAX: return "MAX";
+        case SUM: return "SUM";
+        case AVG: return "AVG";
+        case COUNT: return "COUNT";
+        default: return "";
+    }
+}
+
+void Aggregate::updateCumulatorIfNeeded(const void *tuple, char *cumulator, std::string attrName) {
+
+}
+
+Attribute Utility::getAttributeByName(std::string attrName, std::vector<Attribute> attrs) {
     for(int i = 0; i < attrs.size(); i++) {
         if(attrs[i].name == attrName) {
             return attrs[i];
@@ -601,4 +778,9 @@ uint32_t Utility::getAttrIndexByName(std::string attrName, std::vector<Attribute
             return i;
         }
     }
+}
+
+bool Utility::isNullByName(std::string attrName, const void *tuple, std::vector<Attribute> &attrs) {
+    Record record(attrs, tuple, {0, 0});
+    return record.isNull(getAttrIndexByName(attrName, attrs));
 }
