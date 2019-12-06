@@ -82,9 +82,9 @@ RC Iterator::mergeTwoTuple(const std::vector<Attribute> &leftAttribute, const ch
         memcpy(&nullIndicatorBuffer, nullIndicator + byteOffset, sizeof(uint8_t));
 
         if(leftRecord.isNull(i)) {
-            nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset);
+            nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset - 1);
             nullIndicatorBuffer = nullIndicatorBuffer | 1;
-            nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset);
+            nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset - 1);
             memcpy(nullIndicator + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
         }
         else {
@@ -101,9 +101,9 @@ RC Iterator::mergeTwoTuple(const std::vector<Attribute> &leftAttribute, const ch
         memcpy(&nullIndicatorBuffer, nullIndicator + byteOffset, sizeof(uint8_t));
 
         if(leftRecord.isNull(i)) {
-            nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset);
+            nullIndicatorBuffer = nullIndicatorBuffer >> (CHAR_BIT - bitOffset - 1);
             nullIndicatorBuffer = nullIndicatorBuffer | 1;
-            nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset);
+            nullIndicatorBuffer = nullIndicatorBuffer << (CHAR_BIT - bitOffset - 1);
             memcpy(nullIndicator + byteOffset, &nullIndicatorBuffer, sizeof(uint8_t));
         }
         else {
@@ -147,7 +147,6 @@ RC Filter::getNextTuple(void *data) {
         if(m_input->getNextTuple(data) == QE_EOF) {
             return QE_EOF;
         }
-
         std::vector<Attribute> attributes;
         m_input->getAttributes(attributes);
 
@@ -178,7 +177,7 @@ RC Filter::getNextTuple(void *data) {
 
 RC Filter::readAttribute(const std::vector<Attribute> &attrs, const std::string attrName, const void *tupleData, char* attrData, AttrType &attrType) {
 
-    Record record(attrs, tupleData, ((TableScan*)m_input)->rid);
+    Record record(attrs, tupleData, {0, 0});
     record.getAttribute(attrName, attrs, attrData);
 //    std::cerr << "Filter::getAttribute attrData=" << *( (int*) ((char*)attrData + 1)   ) << std::endl;
 
@@ -338,7 +337,7 @@ RC Project::getNextTuple(void *data) {
         delete[] tuple;
         return QE_EOF;
     }
-
+    //std::cerr << "Project::getNextTuple Success" << std::endl;
     Record record(m_leftAttributes, tuple, {0, 0});
     uint32_t nullIndicatorSize = ceil(m_projectedAttributes.size() / 8.0);
 
@@ -425,19 +424,6 @@ RC INLJoin::getNextTuple(void *data) {
         //std::cerr << "Got tuple from right" << std::endl;
         mergeTwoTuple(m_leftAttribute, m_leftTupleData, m_rightAttribute, m_rightTupleData, data);
 
-//        //RecordBasedFileManager &rbfm = RecordBasedFileManager::instance();
-//        Record leftTuple(m_leftAttribute, m_leftTupleData, {0, 0});
-//        Record rightTuple(m_rightAttribute, m_rightTupleData, {0, 0});
-//
-//        uint32_t offset = 0;
-//        memset(data, 0, leftTuple.recordSize + rightTuple.recordSize);
-//
-//        memcpy((char*)data + offset, m_leftTupleData, leftTuple.recordSize);
-//        offset += leftTuple.recordSize;
-//
-//        memcpy((char*)data + offset, m_rightTupleData, rightTuple.recordSize);
-//        offset += rightTuple.recordSize;
-
         return 0;
     }
 
@@ -449,7 +435,7 @@ RC INLJoin::getNextTuple(void *data) {
             //std::cerr << "Left is over" << std::endl;
             return QE_EOF;
         }
-
+        //std::cerr << "INLJoin::getNextTuple Success" << std::endl;
         char* leftAttrData = new char [PAGE_SIZE];
         memset(leftAttrData, 0, PAGE_SIZE);
 
