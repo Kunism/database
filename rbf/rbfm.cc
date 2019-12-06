@@ -652,6 +652,31 @@ Record::Record(const std::vector<Attribute> &_descriptor, const void* _data, con
     convertData(_descriptor,_data);
 }
 
+Record::Record(const Record& r) {
+    this->rid = r.rid;
+    this->numOfField = r.numOfField;
+    this->recordSize = r.recordSize;
+    this->indicatorSize = r.indicatorSize;
+    this->recordHead = new uint8_t [this->recordSize];
+    memcpy(recordHead, r.getRecord(), r.recordSize);
+    this->nullData = this->recordHead + Record::indexSize;
+    this->indexData = reinterpret_cast<uint16_t*>(recordHead + Record::indexSize + this->indicatorSize);
+}
+
+Record& Record::operator=(const Record& r) {
+    delete[] recordHead;
+    recordHead = nullptr;
+    this->rid = r.rid;
+    this->numOfField = r.numOfField;
+    this->recordSize = r.recordSize;
+    this->indicatorSize = r.indicatorSize;
+    this->recordHead = new uint8_t [this->recordSize];
+    memcpy(recordHead, r.getRecord(), r.recordSize);
+    this->nullData = this->recordHead + Record::indexSize;
+    this->indexData = reinterpret_cast<uint16_t*>(recordHead + Record::indexSize + this->indicatorSize);
+    return *this;
+}
+
 bool Record::isNull(int fieldNum) {
     int byteOffset = fieldNum / CHAR_BIT;
     int bitOffset = fieldNum % CHAR_BIT;
@@ -893,7 +918,7 @@ const uint8_t* Record::getRecord() const {
 } 
 
 
-void Record::decode(uint8_t* data) const {
+void Record::decode(void* data) const {
     uint16_t byteOffset = Record::indexSize + this->indicatorSize + Record::indexSize * this->numOfField;
     uint8_t* dataPos = recordHead + byteOffset;
     memcpy(data, this->nullData, this->indicatorSize);

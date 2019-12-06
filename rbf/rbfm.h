@@ -187,7 +187,9 @@ private:
 class Record {
 public:
     Record(int none);
+    Record(const Record&);
     Record(const std::vector<Attribute> &_descriptor, const void* _data, const RID &_rid);
+    Record& operator=(const Record& r);
     ~Record();
     bool isNull(int fieldNum);
     bool isMatch(AttrType type, const char* recordValue, const char* conditionValue, const CompOp comOp);
@@ -196,7 +198,7 @@ public:
     // get void* for write Page
     const uint8_t* getRecord() const;
     // convert Raw data to void*
-    void decode(uint8_t* data) const;
+    void decode(void* data) const;
     uint32_t getDataSize();
 
     // Record ID
