@@ -149,7 +149,6 @@ public:
 
     RC getNextTuple(void *data) override {
         int rc = iter->getNextEntry(rid, key);
-        std::cerr << "Index getNextEntry RC = " << rc << std::endl;
         if (rc == 0) {
             rc = rm.readTuple(tableName, rid, data);
         }

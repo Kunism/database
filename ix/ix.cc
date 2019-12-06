@@ -1190,10 +1190,10 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
     node.readNode(*ixFileHandle, curNodePageNum);
 
     
-
+    //std::cerr << "IX_ScanIterator::getNextEntry" << std::endl;
     if(firstValid) {
        this->curKey = node.keys[this->curIndex];
-    //    std::cerr << curKey << " v.s " << highKey << ' ' << (curKey < highKey) << std::endl;
+       //std::cerr << curKey << " v.s " << highKey << ' ' << (curKey < highKey) << std::endl;
        if(curKey < highKey) {
             curKey.toData(key);
             rid = curKey.rid;
