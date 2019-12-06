@@ -512,18 +512,19 @@ void BNLJoin::getAttributes(std::vector<Attribute> &attrs) const {
 
 RC BNLJoin::getNextTuple(void *data) { 
 
-    if(recordBuffer.size() != 0) {
-        auto lastRecordPair = recordBuffer.back();
-        char* leftRecord = new char [lastRecordPair.first.recordSize];
-        char* rightRecord = new char [lastRecordPair.second.recordSize];
-        lastRecordPair.first.decode(leftRecord);
-        lastRecordPair.second.decode(rightRecord);
-        Iterator::mergeTwoTuple(m_leftAttribute, leftRecord, m_rightAttribute, rightRecord, data);
-        recordBuffer.pop_back();
-        return 0;
-    }
-    while(!finishFlag) {
-        // read hash table
+    
+    while(true) {
+        if(recordBuffer.size() != 0) {
+            auto lastRecordPair = recordBuffer.back();
+            char* leftRecord = new char [lastRecordPair.first.recordSize];
+            char* rightRecord = new char [lastRecordPair.second.recordSize];
+            lastRecordPair.first.decode(leftRecord);
+            lastRecordPair.second.decode(rightRecord);
+            Iterator::mergeTwoTuple(m_leftAttribute, leftRecord, m_rightAttribute, rightRecord, data);
+            recordBuffer.pop_back();
+            return 0;
+        }
+
         while(m_hashTableSize < m_numPages * PAGE_SIZE) {
               
             if(m_leftInput->getNextTuple(m_leftInputData) != QE_EOF) {
@@ -542,13 +543,15 @@ RC BNLJoin::getNextTuple(void *data) {
                 }
                 delete[] attrData;
             } 
-            else {
+            else if(m_hashTableSize == 0) {
                 finishFlag = true;
+                return QE_EOF;
+            }
+            else {
                 break;
             }
-            
         }
-        
+
         while(m_rightInput->getNextTuple(m_rightInputData) != QE_EOF) {
             Record rightRecord(m_rightAttribute, m_rightInputData, {0,0});
 
@@ -565,17 +568,6 @@ RC BNLJoin::getNextTuple(void *data) {
                 if(m_hashtable.find(key) != m_hashtable.end()) {
                     for(auto r : m_hashtable[key]) {
                         recordBuffer.push_back({r, rightRecord});
-                    }
-
-                    if(recordBuffer.size() != 0) {
-                        auto lastRecordPair = recordBuffer.back();
-                        char* leftRecord = new char [lastRecordPair.first.recordSize];
-                        char* rightRecord = new char [lastRecordPair.second.recordSize];
-                        lastRecordPair.first.decode(leftRecord);
-                        lastRecordPair.second.decode(rightRecord);
-                        Iterator::mergeTwoTuple(m_leftAttribute, leftRecord, m_rightAttribute, rightRecord, data);
-                        recordBuffer.pop_back();
-                        return 0;
                     }
                 }
             }
