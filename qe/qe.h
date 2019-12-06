@@ -134,7 +134,9 @@ public:
 
         // Call rm indexScan to get iterator
         iter = new RM_IndexScanIterator();
-        rm.indexScan(tableName, attrName, NULL, NULL, true, true, *iter);
+        if(rm.indexScan(tableName, attrName, NULL, NULL, true, true, *iter)!= 0) {
+            // std::cerr << "SCAN DAMN FUCK" <<std::endl;
+        }
 
         // Set alias
         if (alias) this->tableName = alias;
@@ -150,6 +152,8 @@ public:
 
     RC getNextTuple(void *data) override {
         int rc = iter->getNextEntry(rid, key);
+        // std::cerr << "IndexScan:getNextTuple: " << ((int*)key)[0] << " " << rc << 
+        // std::endl;
         if (rc == 0) {
             rc = rm.readTuple(tableName, rid, data);
         }

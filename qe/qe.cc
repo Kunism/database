@@ -242,8 +242,8 @@ bool Filter::compValue(const char *lData, const char *conditionData) {
         return false;
     }
 
-    Record record(0);
-    return record.isMatch(m_attrType, lData + sizeof(uint8_t) , conditionData, m_condition.op);
+    // Record record(0);
+    return Record::isMatch(m_attrType, lData + sizeof(uint8_t) , conditionData, m_condition.op);
 
 //    unsigned offset = sizeof(uint8_t);
 //
@@ -430,21 +430,27 @@ RC INLJoin::getNextTuple(void *data) {
     std::cerr << "First in" << std::endl;
     memset(m_leftTupleData, 0, PAGE_SIZE);
     do{
-        std::cerr << "Try to getNext from left" << std::endl;
+        // std::cerr << "Try to getNext from left" << std::endl;
         if(m_leftInput->getNextTuple(m_leftTupleData) == QE_EOF) {
-            std::cerr << "Left is over" << std::endl;
+            // std::cerr << "Left is over" << std::endl;
             return QE_EOF;
         }
-        std::cerr << "INLJoin::getNextTuple Success" << std::endl;
+        // std::cerr << "INLJoin::getNextTuple Success" << std::endl;
         char* leftAttrData = new char [PAGE_SIZE];
         memset(leftAttrData, 0, PAGE_SIZE);
-
+        auto &rm = RelationManager::instance();
+        // std::cerr << "Print Left tuple" << std::endl;
+        rm.printTuple(m_leftAttribute,m_leftTupleData);
         Record leftTuple(m_leftAttribute, m_leftTupleData, {0, 0});
         leftTuple.getAttribute(m_condition.lhsAttr, m_leftAttribute, leftAttrData);
 
         //  return value of getAttribute contains nullIndicator
         //  , but underlying key constructor does not expect nullIndicator
+        // std::cerr << "RIGHT SET IT -----------------------------------" << std::endl;
+        // std::cerr << "LOW: " << ((int*)leftAttrData + sizeof(uint8_t))[0] << std::endl;
         m_rightInput->setIterator(leftAttrData + sizeof(uint8_t), leftAttrData + sizeof(uint8_t), true, true);
+        // std::cerr << "RIGHT SET IT END-----------------------------------" << std::endl;
+
 
         delete[] leftAttrData;
 
