@@ -512,8 +512,19 @@ void BNLJoin::getAttributes(std::vector<Attribute> &attrs) const {
 
 RC BNLJoin::getNextTuple(void *data) { 
 
-    while(!finishFlag) {
-        // read hash table
+    
+    while(true) {
+        if(recordBuffer.size() != 0) {
+            auto lastRecordPair = recordBuffer.back();
+            char* leftRecord = new char [lastRecordPair.first.recordSize];
+            char* rightRecord = new char [lastRecordPair.second.recordSize];
+            lastRecordPair.first.decode(leftRecord);
+            lastRecordPair.second.decode(rightRecord);
+            Iterator::mergeTwoTuple(m_leftAttribute, leftRecord, m_rightAttribute, rightRecord, data);
+            recordBuffer.pop_back();
+            return 0;
+        }
+
         while(m_hashTableSize < m_numPages * PAGE_SIZE) {
               
             if(m_leftInput->getNextTuple(m_leftInputData) != QE_EOF) {
@@ -532,14 +543,16 @@ RC BNLJoin::getNextTuple(void *data) {
                 }
                 delete[] attrData;
             } 
-            else {
+            else if(m_hashTableSize == 0) {
                 finishFlag = true;
+                return QE_EOF;
+            }
+            else {
                 break;
             }
-            
         }
+
         while(m_rightInput->getNextTuple(m_rightInputData) != QE_EOF) {
-            // last iterator not used up ?????????
             Record rightRecord(m_rightAttribute, m_rightInputData, {0,0});
 
             uint8_t* attrData = new uint8_t [PAGE_SIZE];
@@ -553,23 +566,18 @@ RC BNLJoin::getNextTuple(void *data) {
 
                 Key key(attrData+1, {0,0}, targetAttr.type);
                 if(m_hashtable.find(key) != m_hashtable.end()) {
-                    if (m_nextIndicator < m_hashtable[key].size()) {
-                        uint8_t* leftRecord = new uint8_t [  m_hashtable[key][m_nextIndicator].recordSize];
-                        m_hashtable[key][m_nextIndicator].decode(leftRecord);
-                        Iterator::mergeTwoTuple(m_leftAttribute, (char*)leftRecord, m_rightAttribute, (char*)m_rightInputData, data);
-                        m_nextIndicator++;
-                        return 0;
-                    }
-                    else {
-                        m_nextIndicator = 0;
+                    for(auto r : m_hashtable[key]) {
+                        recordBuffer.push_back({r, rightRecord});
                     }
                 }
             }
         }
 
-        // clear map
-
+        m_hashtable.clear();
+        m_hashTableSize = 0;
+        m_rightInput->setIterator();
     }
+    return QE_EOF;
 }
         
 

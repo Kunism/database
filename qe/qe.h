@@ -246,6 +246,7 @@ public:
     uint8_t* m_rightInputData;
 
     std::map<Key, std::vector<Record>> m_hashtable;
+    std::vector<std::pair<Record, Record>> recordBuffer; 
 };
 
 class INLJoin : public Iterator {
