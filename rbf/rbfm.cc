@@ -601,7 +601,7 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const std::vect
     std::pair<uint16_t,uint16_t> indexPair = page.getIndexPair(rid.slotNum);
 
 
-    void* recordBuffer = new char [indexPair.second];
+    char* recordBuffer = new char [indexPair.second];
     memset(recordBuffer, 0, indexPair.second);
     readRecord(fileHandle, recordDescriptor, rid, recordBuffer);
     Record record(recordDescriptor, recordBuffer, rid);
