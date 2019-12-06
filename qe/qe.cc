@@ -585,6 +585,7 @@ Aggregate::Aggregate(Iterator *input, const Attribute &aggAttr, AggregateOp op) 
     this->m_aggAttribute = aggAttr;
     this->m_aggreOp = op;
     this->m_end = false;
+    this->m_tupleNum = 0.0;
 
     input->getAttributes(m_attributes);
 
@@ -618,7 +619,7 @@ RC Aggregate::getNextTuple(void *data) {
                     updateComparatorIfNeeded(tuple, comparator, m_aggAttribute.name, m_aggreOp);
                 }
             }
-
+            memset(data, 0, sizeof(float) + sizeof(uint8_t));
             memcpy(data, comparator, sizeof(float) + sizeof(uint8_t));
 
             delete[] tuple;
@@ -627,12 +628,23 @@ RC Aggregate::getNextTuple(void *data) {
             return 0;
         }
         case COUNT: {
+            while(m_input->getNextTuple(tuple) != QE_EOF) {
+                if(!Utility::isNullByName(m_aggAttribute.name, tuple, m_attributes)) {
+                    this->m_tupleNum++;
+                }
+            }
 
+            memset(data, 0, sizeof(float) + sizeof(uint8_t));
+            memcpy((char*)data + sizeof(uint8_t), &this->m_tupleNum, sizeof(float));
+
+            delete[] tuple;
+            m_end = true;
+            return 0;
         }
         case SUM:
         case AVG: {
-            char* cumulator = new char [sizeof(double) + sizeof(uint8_t)];
-            memset(cumulator, 0, sizeof(double) + sizeof(uint8_t));
+            char* cumulator = new char [sizeof(float) + sizeof(uint8_t)];
+            memset(cumulator, 0, sizeof(float) + sizeof(uint8_t));
 
             uint8_t nullIndicator = 0;
             memcpy(&nullIndicator, cumulator, sizeof(uint8_t));
@@ -643,9 +655,34 @@ RC Aggregate::getNextTuple(void *data) {
             //  start iterative comparison
             while(m_input->getNextTuple(tuple) != QE_EOF) {
                 if(!Utility::isNullByName(m_aggAttribute.name, tuple, m_attributes)) {
-                    updateCumulatorIfNeeded(tuple, cumulator, m_aggAttribute.name, m_aggreOp);
+                    updateCumulator(tuple, cumulator, m_aggAttribute.name);
+                    this->m_tupleNum++;
                 }
             }
+
+            if(m_aggreOp == SUM) {
+                memcpy(data, cumulator, sizeof(float) + sizeof(uint8_t));
+            }
+            else if(m_aggreOp == AVG) {
+                if(m_tupleNum == 0) {
+                    memset(data, 0, sizeof(float) + sizeof(uint8_t));
+                    memcpy(data, cumulator, sizeof(float) + sizeof(uint8_t));
+                }
+                else {
+                    float sum = 0.0;
+                    memcpy(&sum, cumulator + sizeof(uint8_t), sizeof(float));
+
+                    float avg = sum / m_tupleNum;
+                    memset(data, 0, sizeof(float) + sizeof(uint8_t));
+                    memcpy((char*)data + sizeof(uint8_t), &avg, sizeof(float));
+                }
+            }
+
+            //std::cerr << "Num of tuple = " << m_tupleNum << std::endl;
+            delete[] tuple;
+            delete[] cumulator;
+            m_end = true;
+            return 0;
         }
         default: {
 
@@ -739,8 +776,55 @@ void Aggregate::updateComparatorIfNeeded(const void *tuple, char *comparator, st
     delete[] tupleData;
 }
 
-void Aggregate::updateCumulatorIfNeeded(const void *tuple, char *cumulator, std::string attrName) {
+void Aggregate::updateCumulator(const void *tuple, char *cumulator, std::string attrName) {
 
+    Record record(m_attributes, tuple, {0,0});
+    char* tupleData = new char [PAGE_SIZE];
+    memset(tupleData, 0, PAGE_SIZE);
+    record.getAttribute(attrName, m_attributes, tupleData);
+
+    uint8_t nullIndicator = *cumulator;
+    if(signed(nullIndicator) == 0) {
+        if(m_aggAttribute.type == TypeInt) {
+            int tupleInt = 0;
+            float tupleFloat = 0.0;
+            float cumulatorFloat = 0.0;
+
+            memcpy(&tupleInt, (const char*)tupleData + sizeof(uint8_t), sizeof(int));
+            memcpy(&cumulatorFloat, cumulator + sizeof(uint8_t), sizeof(float));
+
+            tupleFloat = (float)tupleInt;
+            cumulatorFloat += tupleFloat;
+            memcpy(cumulator + sizeof(uint8_t), &cumulatorFloat, sizeof(float));
+        }
+        else if(m_aggAttribute.type == TypeReal) {
+            float tupleFloat = 0.0;
+            float cumulatorFloat = 0.0;
+
+            memcpy(&tupleFloat, (const char*)tupleData + sizeof(uint8_t), sizeof(float));
+            memcpy(&cumulatorFloat, cumulator + sizeof(uint8_t), sizeof(float));
+
+            cumulatorFloat += tupleFloat;
+            memcpy(cumulator + sizeof(uint8_t), &cumulatorFloat, sizeof(float));
+        }
+    }
+    else {
+        if(m_aggAttribute.type == TypeInt) {
+            int tupleInt = 0;
+            float tupleFloat = 0.0;
+            memcpy(&tupleInt, (const char*)tupleData + sizeof(uint8_t), sizeof(int));
+            tupleFloat = (float)tupleInt;
+
+            memset(cumulator, 0, sizeof(uint8_t) + sizeof(float));
+            memcpy(cumulator + sizeof(uint8_t), &tupleFloat, sizeof(float));
+        }
+        else if(m_aggAttribute.type == TypeReal) {
+            memset(cumulator, 0, sizeof(uint8_t) + sizeof(float));
+            memcpy(cumulator, tupleData, sizeof(float) + sizeof(uint8_t));
+        }
+    }
+
+    delete[] tupleData;
 }
 
 std::string Aggregate::getAggrOpName(AggregateOp aggregateOp) const{
@@ -752,10 +836,6 @@ std::string Aggregate::getAggrOpName(AggregateOp aggregateOp) const{
         case COUNT: return "COUNT";
         default: return "";
     }
-}
-
-void Aggregate::updateCumulatorIfNeeded(const void *tuple, char *cumulator, std::string attrName) {
-
 }
 
 Attribute Utility::getAttributeByName(std::string attrName, std::vector<Attribute> attrs) {
