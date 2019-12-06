@@ -49,6 +49,17 @@
 //    return *this;
 //}
 
+// given attrs and attrName return returnAttr. 
+RC Iterator::searchAttribute(const std::vector<Attribute> &attrs, const std::string &attrName, Attribute &returnAttr) {
+    for(auto attr : attrs) {
+        if( attr.name == attrName) {
+            returnAttr = attr;
+            return 0;
+        }
+    }
+    return -1;
+}
+
 RC Iterator::mergeTwoTuple(const std::vector<Attribute> &leftAttribute, const char *leftTuple,
                            const std::vector<Attribute> &rightAttrbute, const char *rightTuple, void *mergedTuple) {
 
@@ -463,6 +474,7 @@ BNLJoin::BNLJoin(Iterator *leftIn, // Iterator of input R
             const Condition &condition,  // Join condition
             const unsigned numPages) {    // # of pages that can be 
 
+    finishFlag = false;
     m_leftInput = leftIn;
     m_rightInput = rightIn;
     m_condition = condition;
@@ -500,32 +512,33 @@ void BNLJoin::getAttributes(std::vector<Attribute> &attrs) const {
 
 RC BNLJoin::getNextTuple(void *data) { 
 
-    while(true) {
+    while(!finishFlag) {
         // read hash table
-        while(m_hashTableSize < m_numPages * PAGE_SIZE && 
-              m_leftInput->getNextTuple(m_leftInputData) != QE_EOF ) {
-            Record nextRecord(m_leftAttribute, m_leftInputData, {0,0});
+        while(m_hashTableSize < m_numPages * PAGE_SIZE) {
+              
+            if(m_leftInput->getNextTuple(m_leftInputData) != QE_EOF) {
+                Record nextRecord(m_leftAttribute, m_leftInputData, {0,0});
 
-            uint8_t* attrData = new uint8_t [PAGE_SIZE];
-            memset(attrData, 0, PAGE_SIZE);
-            nextRecord.getAttribute(m_condition.lhsAttr, m_leftAttribute, attrData);
-            uint8_t nullFlag = 0x80;
-            if(memcmp(attrData, &nullFlag, sizeof(uint8_t)) != 0) {
-                Attribute targetAttr;
-                for(auto attr : m_leftAttribute) {
-                    if(attr.name == m_condition.lhsAttr) {
-                        targetAttr = attr;
-                    }
+                uint8_t* attrData = new uint8_t [PAGE_SIZE];
+                memset(attrData, 0, PAGE_SIZE);
+                nextRecord.getAttribute(m_condition.lhsAttr, m_leftAttribute, attrData);
+                uint8_t nullFlag = 0x80;
+                if(memcmp(attrData, &nullFlag, sizeof(uint8_t)) != 0) {
+                    Attribute targetAttr;
+                    searchAttribute(m_leftAttribute, m_condition.lhsAttr, targetAttr);
+                    Key key(attrData+1, {0,0}, targetAttr.type);    
+                    m_hashtable[key].push_back(nextRecord);
+                    m_hashTableSize += nextRecord.recordSize;
                 }
-                Key key(attrData+1, {0,0}, targetAttr.type);    
-                m_hashtable[key].push_back(nextRecord);
-                m_hashTableSize += nextRecord.recordSize;
+                delete[] attrData;
+            } 
+            else {
+                finishFlag = true;
+                break;
             }
-            delete[] attrData;
+            
         }
-        // what if left used up ?????????????????????//
         while(m_rightInput->getNextTuple(m_rightInputData) != QE_EOF) {
-
             // last iterator not used up ?????????
             Record rightRecord(m_rightAttribute, m_rightInputData, {0,0});
 
@@ -533,13 +546,10 @@ RC BNLJoin::getNextTuple(void *data) {
             memset(attrData, 0, PAGE_SIZE);
             rightRecord.getAttribute(m_condition.rhsAttr, m_rightAttribute, attrData);
             uint8_t nullFlag = 0x80;
+
             if(memcmp(attrData, &nullFlag, sizeof(uint8_t)) != 0) {
                 Attribute targetAttr;
-                for(auto attr : m_rightAttribute) {
-                    if(attr.name == m_condition.rhsAttr) {
-                        targetAttr = attr;
-                    }
-                }
+                searchAttribute(m_rightAttribute, m_condition.rhsAttr, targetAttr);
 
                 Key key(attrData+1, {0,0}, targetAttr.type);
                 if(m_hashtable.find(key) != m_hashtable.end()) {
@@ -557,10 +567,11 @@ RC BNLJoin::getNextTuple(void *data) {
             }
         }
 
+        // clear map
 
     }
-        
 }
+        
 
 Attribute Utility::getAttributeByName(std::string attrName, std::vector<Attribute> &attrs) {
     for(int i = 0; i < attrs.size(); i++) {
