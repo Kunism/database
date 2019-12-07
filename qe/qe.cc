@@ -617,10 +617,10 @@ Aggregate::Aggregate(Iterator *input,               // Iterator of input R
 
 RC Aggregate::getNextTuple(void *data) {
     if(groupFlag) {
-        return getNextTupleWithoutGroup(data);
+        return getNextTupleWithGroup(data);
     }
     else {
-        return getNextTupleWithGroup(data);
+        return getNextTupleWithoutGroup(data);
     }
     return -1;
 }
@@ -734,27 +734,73 @@ RC Aggregate::getNextTupleWithGroup(void *data) {
         Key key(attrData+1, {0,0}, m_groupAttr.type);
       
 
-        if(groupValue.find(key) != groupValue.end()) {
-            switch(m_aggreOp) {
-                case MIN:
-                case MAX: {
-                    if(!Utility::isNullByName(m_aggAttribute.name, tupleData, m_attributes)) {
+        if(groupValue.find(key) == groupValue.end()) {
+            char* buffer = new char [sizeof(int) + 1];
+            memset(buffer, 0, sizeof(int) + 1);
+            *buffer = 0x80; 
+            groupValue.insert({key,{buffer, 0.0}});
+        }
+
+        switch(m_aggreOp) {
+            case MIN:
+            case MAX: {
+                if(!Utility::isNullByName(m_aggAttribute.name, tupleData, m_attributes)) {
                     updateComparatorIfNeeded(tupleData, (char*)groupValue[key].first, m_aggAttribute.name, m_aggreOp);
-                }
-                }
-
-
-                 {
 
                 }
+                mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, (char*)groupValue[key].first, data);
+                delete[] attrData;
+                return 0;
+            }
+
+            case COUNT: {
+                if(!Utility::isNullByName(m_aggAttribute.name, tupleData, m_attributes)) {
+                    groupValue[key].second++;
+                }
+                char* temp = new char [sizeof(float) + 1];
+                memset(temp, 0, sizeof(float) + 1);
+                memcpy(temp+1, &(groupValue[key].second), sizeof(float));
+                mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, temp, data);
+                delete[] temp;
+                delete[] attrData;
+                return 0;
+            }
+            case SUM:
+            case AVG: {
+                if(!Utility::isNullByName(m_aggAttribute.name, tupleData, m_attributes)) {
+                    updateCumulator(tupleData, (char*)groupValue[key].first, m_aggAttribute.name);
+                    groupValue[key].second++;
+                }
+
+                if(m_aggreOp == SUM) {
+                    mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, (char*)groupValue[key].first, data);
+                    delete[] attrData;
+                    return 0;
+                }
+                else if(groupValue[key].second == 0.0){
+                    mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, (char*)groupValue[key].first, data);
+                    delete[] attrData;
+                    return 0;
+                }
+                else {
+                    float sum = 0.0f;
+                    memcpy(&sum, groupValue[key].first + sizeof(uint8_t), sizeof(float));
+
+                    float avg = sum / groupValue[key].second;
+
+                    char* temp = new char [sizeof(float) + 1];
+                    memset(temp, 0, sizeof(float) + 1);
+                    memcpy(temp+1, &avg, sizeof(float));
+                    mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, (char*)temp, data);
+                    delete[] temp;
+                    delete[] attrData;
+                    return 0;
+                } 
+
             }
         }
-        else {
-
-        }
-
-
     }
+    return QE_EOF;
 }
 
 
@@ -763,6 +809,9 @@ RC Aggregate::getNextTupleWithGroup(void *data) {
 void Aggregate::getAttributes(std::vector<Attribute> &attrs) const {
 
     attrs.clear();
+    if(groupFlag) {
+        attrs.push_back(m_groupAttr);
+    }
 
     Attribute attribute = Utility::getAttributeByName(m_aggAttribute.name, m_attributes);
     std::string name = getAggrOpName(m_aggreOp) + "(" + attribute.name + ")";

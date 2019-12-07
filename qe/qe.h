@@ -343,7 +343,7 @@ public:
     bool m_end;
 
     bool groupFlag;
-    std::map<Key, std::pair<uint8_t*,int>> groupValue;
+    std::map<Key, std::pair<char*,float>> groupValue;
     uint8_t* tupleData;
     float m_tupleNum;
 
