@@ -318,11 +318,13 @@ public:
               const Attribute &aggAttr,           // The attribute over which we are computing an aggregate
               const Attribute &groupAttr,         // The attribute over which we are grouping the tuples
               AggregateOp op              // Aggregate operation
-    ) {};
+    );
 
     ~Aggregate() override = default;
 
     RC getNextTuple(void *data) override;
+    RC getNextTupleWithoutGroup(void *data);
+    RC getNextTupleWithGroup(void *data);
 
     // Please name the output attribute as aggregateOp(aggAttr)
     // E.g. Relation=rel, attribute=attr, aggregateOp=MAX
@@ -335,9 +337,15 @@ public:
 
     Iterator *m_input;
     Attribute m_aggAttribute;
+    Attribute m_groupAttr;
     AggregateOp m_aggreOp;
     std::vector<Attribute> m_attributes;
     bool m_end;
+    bool groupFlag;
+
+    std::map<Key, std::pair<uint8_t*,int>> groupValue;
+    uint8_t* tupleData;
+
 };
 
 class Utility {

@@ -593,11 +593,38 @@ Aggregate::Aggregate(Iterator *input, const Attribute &aggAttr, AggregateOp op) 
     this->m_end = false;
 
     input->getAttributes(m_attributes);
+    this->groupFlag = false;
+    this->tupleData = new uint8_t [PAGE_SIZE];
+    memset(tupleData, 0, PAGE_SIZE);
 
 }
 
-RC Aggregate::getNextTuple(void *data) {
 
+Aggregate::Aggregate(Iterator *input,               // Iterator of input R
+              const Attribute &aggAttr,             // The attribute over which we are computing an aggregate
+              const Attribute &groupAttr,           // The attribute over which we are grouping the tuples
+              AggregateOp op) {                     // Aggregate operation
+    this->m_input = input;
+    this->m_aggAttribute = aggAttr;
+    this->m_groupAttr = groupAttr;
+    this->m_aggreOp = op;
+    input->getAttributes(m_attributes);
+    this->groupFlag = true;
+    this->tupleData = new uint8_t [PAGE_SIZE];
+    memset(tupleData, 0, PAGE_SIZE);
+};
+
+RC Aggregate::getNextTuple(void *data) {
+    if(groupFlag) {
+        return getNextTupleWithoutGroup(data);
+    }
+    else {
+        return getNextTupleWithGroup(data);
+    }
+    return -1;
+}
+
+RC Aggregate::getNextTupleWithoutGroup(void *data) {
     if(m_end) {
         return QE_EOF;
     }
@@ -657,8 +684,44 @@ RC Aggregate::getNextTuple(void *data) {
 
         }
     }
-
 }
+
+RC Aggregate::getNextTupleWithGroup(void *data) {
+    
+    while(m_input->getNextTuple(tupleData) != QE_EOF) {
+        Record nextRecord(m_attributes, tupleData, {0,0});
+        
+        uint8_t* attrData = new uint8_t [PAGE_SIZE];
+        memset(attrData, 0, PAGE_SIZE);
+        nextRecord.getAttribute(m_groupAttr.name, m_attributes, attrData);
+        Key key(attrData+1, {0,0}, m_groupAttr.type);
+      
+
+        if(groupValue.find(key) != groupValue.end()) {
+            switch(m_aggreOp) {
+                case MIN:
+                case MAX: {
+                    if(!Utility::isNullByName(m_aggAttribute.name, tupleData, m_attributes)) {
+                    updateComparatorIfNeeded(tupleData, (char*)groupValue[key].first, m_aggAttribute.name, m_aggreOp);
+                }
+                }
+
+
+                 {
+
+                }
+            }
+        }
+        else {
+
+        }
+
+
+    }
+}
+
+
+
 
 void Aggregate::getAttributes(std::vector<Attribute> &attrs) const {
 
@@ -760,9 +823,9 @@ std::string Aggregate::getAggrOpName(AggregateOp aggregateOp) const{
     }
 }
 
-void Aggregate::updateCumulatorIfNeeded(const void *tuple, char *cumulator, std::string attrName) {
+// void Aggregate::updateCumulatorIfNeeded(const void *tuple, char *cumulator, std::string attrName) {
 
-}
+// }
 
 Attribute Utility::getAttributeByName(std::string attrName, std::vector<Attribute> attrs) {
     for(int i = 0; i < attrs.size(); i++) {
