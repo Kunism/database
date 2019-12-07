@@ -1,11 +1,11 @@
 1. Basic information
-Team number (e.g., 01) : 
-#1 Student ID : 
-#1 Student Name : 
-#2 Student ID : 
-#2 Student Name : 
-OS (bit) :
-gcc version :
+Team number (e.g., 01) : 11
+#1 Student ID : 92968380
+#1 Student Name : Cheng-Liang Hsieh
+#2 Student ID : 66927079
+#2 Student Name : Po-Wei Huang
+OS (bit) : CentOS Linux 7 x86_64
+gcc version : GCC - 5.4
 
 
 2. Catalog information about Index
@@ -33,6 +33,9 @@ If rightInput->getNextTuple return QE_EOF, clear std::map and load another PAG_S
 4. Index Nested Loop Join (If you have implemented this feature)
 - Describe how your grace hash join works.
 
+The main idea of index nested loop join is similar to simple nested loop join. The difference between them is that
+we use indexScan as the source of right table rather than normal tableScan iterator. Therefore, for each tuple we got
+from left table we can quickly find out tuples with same value on specified attribute from right table.
 
 5. Grace Hash Join (If you have implemented this feature)
 - Describe how your grace hash join works (especially, in-memory structure).
@@ -41,6 +44,9 @@ If rightInput->getNextTuple return QE_EOF, clear std::map and load another PAG_S
 6. Aggregation
 - Describe how your aggregation (basic, group-based hash) works.
 
+Basic: For MIN and MAX, we use a comparator to store current maximun value or current minimun value. If we find a bigger
+ or smaller value, we update this comparator. For SUM and COUNT, we use a cumulator to store current sum and a number to
+ sotre the number of tuple. For COUNT, just maintain tupleNum when we get a valid tuple.
 
 
 groupBy:
@@ -58,6 +64,8 @@ In addition, using a iterator to maintain the last return position.
 
 7. Implementation Detail
 - Have you added your own source file (.cc or .h)?
+
+No.
 
 - Have you implemented any optional features? Then, describe them here.
 

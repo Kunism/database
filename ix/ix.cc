@@ -1070,9 +1070,9 @@ IX_ScanIterator::~IX_ScanIterator() {
 
 RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribute, const void *_lowKey,
                          const void *_highKey, bool _lowKeyInclusive, bool _highKeyInclusive) {
-    std::cerr << "IX:INIT " << std::endl;                             
+    //std::cerr << "IX:INIT " << std::endl;
     if(_ixFileHandle.fileHandle.isOpen() != 0) {
-        std::cerr << "SCAN file open error" <<std::endl;
+        //std::cerr << "SCAN file open error" <<std::endl;
         return -1;
     }
     
@@ -1151,7 +1151,7 @@ RC IX_ScanIterator::init(IXFileHandle &_ixFileHandle, const Attribute &_attribut
 
 
     if( bTree.readBTreeHiddenPage(*ixFileHandle) != 0) {
-        std::cerr << "SCAN BTREE FAIL" <<std::endl;
+        //std::cerr << "SCAN BTREE FAIL" <<std::endl;
         return -1;
     }
     this->curNodePageNum = bTree.recSearch(*ixFileHandle, lowKey, bTree.rootPageNum);
@@ -1205,7 +1205,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
     
     //std::cerr << "IX_ScanIterator::getNextEntry" << std::endl;
     if(firstValid) {
-        std::cerr << "FIRST VALID" <<std::endl;
+        //std::cerr << "FIRST VALID" <<std::endl;
        this->curKey = node.keys[this->curIndex];
        //std::cerr << curKey << " v.s " << highKey << ' ' << (curKey < highKey) << std::endl;
        if(curKey < highKey) {
