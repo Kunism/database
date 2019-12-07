@@ -159,7 +159,7 @@ uint32_t Key::size() const {
     return size;
 }
 
-void Key::toData(void *_key) {
+void Key::toData(void *_key) const {
     if(attrType == TypeInt) {
         memcpy(_key, &keyInt, sizeof(int));
     }

@@ -42,7 +42,7 @@ public:
     bool operator == (const Key &k) const;
     void operator = (const Key &k);
     uint32_t size() const;
-    void toData(void* _key);
+    void toData(void* _key) const;
 
     friend std::ostream& operator<<(std::ostream& os, const Key& key);
 };

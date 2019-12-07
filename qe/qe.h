@@ -325,6 +325,7 @@ public:
     RC getNextTuple(void *data) override;
     RC getNextTupleWithoutGroup(void *data);
     RC getNextTupleWithGroup(void *data);
+    RC calculateGroupBy();
 
     // Please name the output attribute as aggregateOp(aggAttr)
     // E.g. Relation=rel, attribute=attr, aggregateOp=MAX
@@ -344,6 +345,7 @@ public:
 
     bool groupFlag;
     std::map<Key, std::pair<char*,float>> groupValue;
+    // std::map<Key, std::pair<char*,float>>::iterator groupIt;
     uint8_t* tupleData;
     float m_tupleNum;
 

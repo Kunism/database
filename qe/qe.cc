@@ -611,8 +611,10 @@ Aggregate::Aggregate(Iterator *input,               // Iterator of input R
     this->m_aggreOp = op;
     input->getAttributes(m_attributes);
     this->groupFlag = true;
+    // this->groupIt = groupValue.begin();
     this->tupleData = new uint8_t [PAGE_SIZE];
     memset(tupleData, 0, PAGE_SIZE);
+    this->calculateGroupBy();
 };
 
 RC Aggregate::getNextTuple(void *data) {
@@ -723,16 +725,14 @@ RC Aggregate::getNextTupleWithoutGroup(void *data) {
     }
 }
 
-RC Aggregate::getNextTupleWithGroup(void *data) {
-    
+RC Aggregate::calculateGroupBy() {
+    uint8_t* attrData = new uint8_t [PAGE_SIZE];
     while(m_input->getNextTuple(tupleData) != QE_EOF) {
-        Record nextRecord(m_attributes, tupleData, {0,0});
-        
-        uint8_t* attrData = new uint8_t [PAGE_SIZE];
         memset(attrData, 0, PAGE_SIZE);
+
+        Record nextRecord(m_attributes, tupleData, {0,0});
         nextRecord.getAttribute(m_groupAttr.name, m_attributes, attrData);
         Key key(attrData+1, {0,0}, m_groupAttr.type);
-      
 
         if(groupValue.find(key) == groupValue.end()) {
             char* buffer = new char [sizeof(int) + 1];
@@ -746,24 +746,12 @@ RC Aggregate::getNextTupleWithGroup(void *data) {
             case MAX: {
                 if(!Utility::isNullByName(m_aggAttribute.name, tupleData, m_attributes)) {
                     updateComparatorIfNeeded(tupleData, (char*)groupValue[key].first, m_aggAttribute.name, m_aggreOp);
-
                 }
-                mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, (char*)groupValue[key].first, data);
-                delete[] attrData;
-                return 0;
             }
-
             case COUNT: {
                 if(!Utility::isNullByName(m_aggAttribute.name, tupleData, m_attributes)) {
                     groupValue[key].second++;
                 }
-                char* temp = new char [sizeof(float) + 1];
-                memset(temp, 0, sizeof(float) + 1);
-                memcpy(temp+1, &(groupValue[key].second), sizeof(float));
-                mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, temp, data);
-                delete[] temp;
-                delete[] attrData;
-                return 0;
             }
             case SUM:
             case AVG: {
@@ -771,22 +759,64 @@ RC Aggregate::getNextTupleWithGroup(void *data) {
                     updateCumulator(tupleData, (char*)groupValue[key].first, m_aggAttribute.name);
                     groupValue[key].second++;
                 }
+            }
+        }
+    }
+    delete[] attrData;
+}
 
+RC Aggregate::getNextTupleWithGroup(void *data) {
+
+    for(auto p : groupValue) {
+        std::cerr << p.first << ' ' << ((float*)(p.second.first))[0] << std::endl;
+    }
+
+
+
+    static auto groupIt = groupValue.begin();
+    std::cerr << "getNextTupleWithGroup" << (groupIt == groupValue.begin()) << (groupIt == groupValue.end())  << std::endl;
+    while(groupIt != groupValue.end()) {
+        std::cerr << "IAM IN" << std::endl;
+        char* attrData = new char [PAGE_SIZE];
+        memset(attrData, 0, PAGE_SIZE);
+        groupIt->first.toData(attrData+1);
+        switch(m_aggreOp) {
+            case MIN:
+            case MAX: {
+                mergeTwoTuple({m_groupAttr}, attrData, {m_aggAttribute}, groupIt->second.first, data);
+                delete[] attrData;
+                groupIt++;
+                return 0;
+            }
+            case COUNT: {
+                char* temp = new char [sizeof(float) + 1];
+                memset(temp, 0, sizeof(float) + 1);
+                memcpy(temp+1, &(groupIt->second), sizeof(float));
+                mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, temp, data);
+                delete[] temp;
+                delete[] attrData;
+                groupIt++;
+                return 0;
+            }
+            case SUM:
+            case AVG: {
                 if(m_aggreOp == SUM) {
-                    mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, (char*)groupValue[key].first, data);
+                    mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, groupIt->second.first, data);
                     delete[] attrData;
+                    groupIt++;
                     return 0;
                 }
-                else if(groupValue[key].second == 0.0){
-                    mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, (char*)groupValue[key].first, data);
+                else if(groupIt->second.second == 0.0){
+                    mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, groupIt->second.first, data);
                     delete[] attrData;
+                    groupIt++;
                     return 0;
                 }
                 else {
                     float sum = 0.0f;
-                    memcpy(&sum, groupValue[key].first + sizeof(uint8_t), sizeof(float));
+                    memcpy(&sum, groupIt->second.first + sizeof(uint8_t), sizeof(float));
 
-                    float avg = sum / groupValue[key].second;
+                    float avg = sum / groupIt->second.second;
 
                     char* temp = new char [sizeof(float) + 1];
                     memset(temp, 0, sizeof(float) + 1);
@@ -794,9 +824,9 @@ RC Aggregate::getNextTupleWithGroup(void *data) {
                     mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, (char*)temp, data);
                     delete[] temp;
                     delete[] attrData;
+                    groupIt++;
                     return 0;
                 } 
-
             }
         }
     }
