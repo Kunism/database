@@ -353,9 +353,7 @@ RC RelationManager::insertIndexes(const std::string &tableName, const RID &rid) 
     
     RID returnRID;
     uint8_t* returnData = new uint8_t [m_indexDataSize];
-    ////////////////////////////////////////////////////
-    // TODO:: DEAL WITH NULL ???
-    ////////////////////////////////////////////////////
+    uint8_t nullFlag = 0x80;
     while(rm_it.getNextTuple(returnRID, returnData) != RM_EOF) {
         std::string attrName = decodeString(returnData+1);
         // std::cerr << "Get Index Name: " << attrName << std::endl;
@@ -369,18 +367,17 @@ RC RelationManager::insertIndexes(const std::string &tableName, const RID &rid) 
         IXFileHandle ixFileHandle;
         uint8_t* keyData = new uint8_t [targetAttr.length + sizeof(int) + 1];
         if(ix.openFile(indexFileName, ixFileHandle) != 0) {
-            std::cerr << "RelationManager::insertIndexes open file fail" <<std::endl;
+            // std::cerr << "RelationManager::insertIndexes open file fail" <<std::endl;
             return -1;
         }
 
         if(readAttribute(tableName, rid, attrName, keyData) != 0) {
-            std::cerr << "RelationManager::insertIndexes readAttribute fail" <<std::endl;
+            // std::cerr << "RelationManager::insertIndexes readAttribute fail" <<std::endl;
             return -1;
         }
-
-        if(ix.insertEntry(ixFileHandle, targetAttr, keyData+1, rid) != 0) {
-            std::cerr << "RelationManager::insertIndexes insertEntry fail" <<std::endl;
-            return -1;
+        // checkif null key
+        if( memcmp(&nullFlag, keyData, sizeof(uint8_t)) != 0) {
+            ix.insertEntry(ixFileHandle, targetAttr, keyData+1, rid);
         }
         delete[] keyData;
     }
@@ -425,9 +422,7 @@ RC RelationManager::deleteIndexes(const std::string &tableName, const RID &rid) 
 
     RID returnRID;
     uint8_t* returnData = new uint8_t [m_indexDataSize];
-    ////////////////////////////////////////////////////
-    // DEAL WITH NULL ???
-    ////////////////////////////////////////////////////
+    uint8_t nullFlag = 0x80;
     while(rm_it.getNextTuple(returnRID, returnData) != RM_EOF) {
         std::string attrName = decodeString(returnData+1);
         Attribute targetAttr;
@@ -442,7 +437,9 @@ RC RelationManager::deleteIndexes(const std::string &tableName, const RID &rid) 
         ix.openFile(indexFileName, ixFileHandle);
 
         readAttribute(tableName, rid, attrName, keyData);
-        ix.deleteEntry(ixFileHandle, targetAttr, keyData+1, rid);
+        if( memcmp(&nullFlag, keyData, sizeof(uint8_t)) != 0) {
+            ix.deleteEntry(ixFileHandle, targetAttr, keyData+1, rid);
+        }
     }
 
     rm_it.close();
@@ -719,11 +716,14 @@ RC RelationManager::createIndex(const std::string &tableName, const std::string 
     }
    
     RID rid;
+    uint8_t nullFlag = 0x80;
     uint8_t* key = new uint8_t [insertAttr.length + sizeof(int) + 1];
     this->scan(tableName, "", NO_OP, NULL, {attributeName}, rm_it);
     while (rm_it.getNextTuple(rid, key) != RM_EOF)
     {
-        ix.insertEntry(indexFile, insertAttr, key+1, rid);
+        if(memcmp(&nullFlag, key, sizeof(uint8_t)) != 0) {
+            ix.insertEntry(indexFile, insertAttr, key+1, rid);
+        }
     }
 
     uint8_t* indexData = new uint8_t [m_indexDataSize];
@@ -770,7 +770,7 @@ RC RelationManager::indexScan(const std::string &tableName,
                               bool lowKeyInclusive,
                               bool highKeyInclusive,
                               RM_IndexScanIterator &rm_IndexScanIterator) {
-    std::cerr << "RM:IX:SCAN " << std::endl;                                  
+    // std::cerr << "RM:IX:SCAN " << std::endl;                                  
     std::vector<Attribute> attrs;
     getAttributes(tableName, attrs);
 
@@ -784,7 +784,7 @@ RC RelationManager::indexScan(const std::string &tableName,
     IndexManager &indexManager = IndexManager::instance();
     std::string indexFileName = tableName + "_" + attributeName+ ".index";
     if(indexManager.openFile(indexFileName, rm_IndexScanIterator.ixFileHandle) != 0) {
-        std::cerr<< "open file fail" <<std::endl;
+        // std::cerr<< "open file fail" <<std::endl;
         return -1;
     }
 
