@@ -331,7 +331,7 @@ public:
     // output attrname = "MAX(rel.attr)"
     void getAttributes(std::vector<Attribute> &attrs) const override;
     void updateComparatorIfNeeded(const void *tuple, char *comparator, std::string attrName, AggregateOp op);
-    void updateCumulatorIfNeeded(const void *tuple, char *cumulator, std::string attrName);
+    void updateCumulator(const void *tuple, char *cumulator, std::string attrName);
 
     std::string getAggrOpName(AggregateOp aggregateOp) const;
 
@@ -341,10 +341,11 @@ public:
     AggregateOp m_aggreOp;
     std::vector<Attribute> m_attributes;
     bool m_end;
-    bool groupFlag;
 
+    bool groupFlag;
     std::map<Key, std::pair<uint8_t*,int>> groupValue;
     uint8_t* tupleData;
+    float m_tupleNum;
 
 };
 
