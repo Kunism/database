@@ -418,38 +418,40 @@ RC INLJoin::getNextTuple(void *data) {
 
 
     memset(m_rightTupleData, 0, PAGE_SIZE);
-    std::cerr << "Begin INLJoin::getNxtTuple" << std::endl;
+    //std::cerr << "Begin INLJoin::getNxtTuple" << std::endl;
 
     if(!m_isFirstScan && m_rightInput->getNextTuple(m_rightTupleData) != QE_EOF) {
-        //std::cerr << "Got tuple from right" << std::endl;
+
         mergeTwoTuple(m_leftAttribute, m_leftTupleData, m_rightAttribute, m_rightTupleData, data);
 
         return 0;
     }
 
-    std::cerr << "First in" << std::endl;
+
     memset(m_leftTupleData, 0, PAGE_SIZE);
     do{
-        // std::cerr << "Try to getNext from left" << std::endl;
+
         if(m_leftInput->getNextTuple(m_leftTupleData) == QE_EOF) {
-            // std::cerr << "Left is over" << std::endl;
+
             return QE_EOF;
         }
-        // std::cerr << "INLJoin::getNextTuple Success" << std::endl;
+
         char* leftAttrData = new char [PAGE_SIZE];
         memset(leftAttrData, 0, PAGE_SIZE);
-        auto &rm = RelationManager::instance();
-        // std::cerr << "Print Left tuple" << std::endl;
-        rm.printTuple(m_leftAttribute,m_leftTupleData);
+
         Record leftTuple(m_leftAttribute, m_leftTupleData, {0, 0});
         leftTuple.getAttribute(m_condition.lhsAttr, m_leftAttribute, leftAttrData);
 
         //  return value of getAttribute contains nullIndicator
         //  , but underlying key constructor does not expect nullIndicator
-        // std::cerr << "RIGHT SET IT -----------------------------------" << std::endl;
-        // std::cerr << "LOW: " << ((int*)leftAttrData + sizeof(uint8_t))[0] << std::endl;
-        m_rightInput->setIterator(leftAttrData + sizeof(uint8_t), leftAttrData + sizeof(uint8_t), true, true);
-        // std::cerr << "RIGHT SET IT END-----------------------------------" << std::endl;
+        uint8_t nullIndicator = *leftAttrData;
+        if(signed(nullIndicator) == 0) {
+            m_rightInput->setIterator(leftAttrData + sizeof(uint8_t), leftAttrData + sizeof(uint8_t), true, true);
+        }
+        else {
+            m_rightInput->setIterator(leftAttrData, leftAttrData, false, false);
+        }
+
 
 
         delete[] leftAttrData;
@@ -747,11 +749,13 @@ RC Aggregate::calculateGroupBy() {
                 if(!Utility::isNullByName(m_aggAttribute.name, tupleData, m_attributes)) {
                     updateComparatorIfNeeded(tupleData, (char*)groupValue[key].first, m_aggAttribute.name, m_aggreOp);
                 }
+                break;
             }
             case COUNT: {
                 if(!Utility::isNullByName(m_aggAttribute.name, tupleData, m_attributes)) {
                     groupValue[key].second++;
                 }
+                break;
             }
             case SUM:
             case AVG: {
@@ -759,6 +763,7 @@ RC Aggregate::calculateGroupBy() {
                     updateCumulator(tupleData, (char*)groupValue[key].first, m_aggAttribute.name);
                     groupValue[key].second++;
                 }
+                break;
             }
         }
     }
@@ -767,16 +772,10 @@ RC Aggregate::calculateGroupBy() {
 
 RC Aggregate::getNextTupleWithGroup(void *data) {
 
-    for(auto p : groupValue) {
-        std::cerr << p.first << ' ' << ((float*)(p.second.first))[0] << std::endl;
-    }
-
-
-
     static auto groupIt = groupValue.begin();
-    std::cerr << "getNextTupleWithGroup" << (groupIt == groupValue.begin()) << (groupIt == groupValue.end())  << std::endl;
+    //std::cerr << "getNextTupleWithGroup" << (groupIt == groupValue.begin()) << (groupIt == groupValue.end())  << std::endl;
     while(groupIt != groupValue.end()) {
-        std::cerr << "IAM IN" << std::endl;
+        //std::cerr << "IAM IN" << std::endl;
         char* attrData = new char [PAGE_SIZE];
         memset(attrData, 0, PAGE_SIZE);
         groupIt->first.toData(attrData+1);
