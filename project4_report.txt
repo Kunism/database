@@ -10,11 +10,25 @@ gcc version :
 
 2. Catalog information about Index
 - Show your catalog information about an index (tables, columns). 
+Index information are tableName and attribute.
 
 
 3. Block Nested Loop Join (If you have implemented this feature)
 - Describe how your block nested loop join works (especially, how you manage the given buffers.)
 
+I have a std::map<Key, vector<Record>> to work as a hashtable for searching.
+I have a vector<Record> to store last buffered join result.
+Key is a class which store a single attribute.
+Record is a class which store the entrie *data record. 
+
+If the map is empty, then  load records with size of PAG_SIZE * numOfPages in to a std::map from leftInput->getNextTuple().
+
+Then, keep calling rightInput->getNextTuple() and check whether condition matches.
+Since there might be more than a record with the same key, buffer all results in a vector. Next time, it can directly check whether there is a available result in vector and thus having good amortized time complexity.
+
+If rightInput->getNextTuple return QE_EOF, clear std::map and load another PAG_SIZE * numOfPages in to map again.
+
+ 
 
 4. Index Nested Loop Join (If you have implemented this feature)
 - Describe how your grace hash join works.
@@ -27,6 +41,20 @@ gcc version :
 6. Aggregation
 - Describe how your aggregation (basic, group-based hash) works.
 
+
+
+groupBy:
+
+I have a map<Key, pair<char*, float>> to store the map of each group attribute and their according value.
+Key is a class which store value and type of the group attribute.
+for MAX MIN SUM: char* point to the actual value with its null indicator.
+for COUNT AVG: float store the actual count with this group attribute.
+
+when I got a tuple from getNextTuple, first got the current group value with this specific key.
+Then update according value in that group.
+
+When getNextTuple() is called, return the group attribute and according value. 
+In addition, using a iterator to maintain the last return position.
 
 7. Implementation Detail
 - Have you added your own source file (.cc or .h)?

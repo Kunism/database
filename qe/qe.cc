@@ -446,10 +446,8 @@ RC INLJoin::getNextTuple(void *data) {
 
         //  return value of getAttribute contains nullIndicator
         //  , but underlying key constructor does not expect nullIndicator
-        // std::cerr << "RIGHT SET IT -----------------------------------" << std::endl;
-        // std::cerr << "LOW: " << ((int*)leftAttrData + sizeof(uint8_t))[0] << std::endl;
+        
         m_rightInput->setIterator(leftAttrData + sizeof(uint8_t), leftAttrData + sizeof(uint8_t), true, true);
-        // std::cerr << "RIGHT SET IT END-----------------------------------" << std::endl;
 
 
         delete[] leftAttrData;
@@ -726,12 +724,16 @@ RC Aggregate::getNextTupleWithoutGroup(void *data) {
 }
 
 RC Aggregate::calculateGroupBy() {
+    uint8_t nullFlag = 0x80;
     uint8_t* attrData = new uint8_t [PAGE_SIZE];
     while(m_input->getNextTuple(tupleData) != QE_EOF) {
         memset(attrData, 0, PAGE_SIZE);
 
         Record nextRecord(m_attributes, tupleData, {0,0});
         nextRecord.getAttribute(m_groupAttr.name, m_attributes, attrData);
+        if(memcmp(&nullFlag, attrData, sizeof(uint8_t)) == 0) {
+            continue;
+        }
         Key key(attrData+1, {0,0}, m_groupAttr.type);
 
         if(groupValue.find(key) == groupValue.end()) {
@@ -770,16 +772,8 @@ RC Aggregate::calculateGroupBy() {
 
 RC Aggregate::getNextTupleWithGroup(void *data) {
 
-    for(auto p : groupValue) {
-        std::cerr << p.first << ' ' << ((float*)(p.second.first))[0] << std::endl;
-    }
-
-
-
     static auto groupIt = groupValue.begin();
-    std::cerr << "getNextTupleWithGroup" << (groupIt == groupValue.begin()) << (groupIt == groupValue.end())  << std::endl;
     while(groupIt != groupValue.end()) {
-        std::cerr << "IAM IN" << std::endl;
         char* attrData = new char [PAGE_SIZE];
         memset(attrData, 0, PAGE_SIZE);
         groupIt->first.toData(attrData+1);
