@@ -794,7 +794,7 @@ RC Aggregate::getNextTupleWithGroup(void *data) {
             case COUNT: {
                 char* temp = new char [sizeof(float) + 1];
                 memset(temp, 0, sizeof(float) + 1);
-                memcpy(temp+1, &(groupIt->second), sizeof(float));
+                memcpy(temp+1, &(groupIt->second.second), sizeof(float));
                 mergeTwoTuple({m_groupAttr}, (char*)attrData, {m_aggAttribute}, temp, data);
                 delete[] temp;
                 delete[] attrData;
