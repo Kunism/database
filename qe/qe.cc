@@ -747,11 +747,13 @@ RC Aggregate::calculateGroupBy() {
                 if(!Utility::isNullByName(m_aggAttribute.name, tupleData, m_attributes)) {
                     updateComparatorIfNeeded(tupleData, (char*)groupValue[key].first, m_aggAttribute.name, m_aggreOp);
                 }
+                break;
             }
             case COUNT: {
                 if(!Utility::isNullByName(m_aggAttribute.name, tupleData, m_attributes)) {
                     groupValue[key].second++;
                 }
+                break;
             }
             case SUM:
             case AVG: {
@@ -759,6 +761,7 @@ RC Aggregate::calculateGroupBy() {
                     updateCumulator(tupleData, (char*)groupValue[key].first, m_aggAttribute.name);
                     groupValue[key].second++;
                 }
+                break;
             }
         }
     }

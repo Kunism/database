@@ -987,9 +987,9 @@ RC IndexManager::scan(IXFileHandle &ixFileHandle,
                       IX_ScanIterator &ix_ScanIterator) {
 
     RC rc = 0;
-    std::cerr << "IX:SCAN " << std::endl;
+    // std::cerr << "IX:SCAN " << std::endl;
     if( ix_ScanIterator.init(ixFileHandle, attribute, lowKey, highKey, lowKeyInclusive, highKeyInclusive) != 0 ) {
-        std::cerr<< "IX init fail" <<std::endl;
+        // std::cerr<< "IX init fail" <<std::endl;
         return -1;
     }
 
